@@ -20,5 +20,5 @@ app.get('/lich_list', async (callReq, callRes) => {
 })
 
 app.listen(process.env.PORT, () => {
-  console.log(`Express running on port ${port}.`)
+  console.log(`Express running on port ${process.env.PORT}.`)
 })
