@@ -9,14 +9,13 @@ const db = new DB.Client({
 
 db.connect().then(async res => {
     console.log('DB Connection established.')
+    db.query('LISTEN hubapp_messages_insert').catch(err => console.log(err))
 }).catch(err => {
     console.log('DB Connection failure.\n' + err)
-    process.exit(1)
 });
 
-db.on('notification', msg => {
+db.on('notification', notification => {
     console.log('db notification')
-    console.log(msg.payload)
 })
 
 db.on('error', err => {
