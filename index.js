@@ -3,7 +3,6 @@ const express = require('express')
 const {db} = require('./modules/db_connection')
 
 const app = express()
-const port = 3001
 
 app.get('/', async (req, res) => {
     console.log('express call')
