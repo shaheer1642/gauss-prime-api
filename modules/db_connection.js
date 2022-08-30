@@ -1,5 +1,4 @@
 const DB = require('pg');
-require('dotenv').config()
 
 const db = new DB.Client({
     connectionString: process.env.DATABASE_URL,
@@ -24,4 +23,5 @@ db.on('error', err => {
     console.log('=============== DB Connection error. ==============')
     console.log(err)
 })
+
 module.exports = {db};
