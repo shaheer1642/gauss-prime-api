@@ -20,6 +20,6 @@ app.get('/lich_list', async (callReq, callRes) => {
     })
 })
 
-app.listen(port, () => {
+app.listen(process.env.PORT, () => {
   console.log(`Express running on port ${port}.`)
 })
