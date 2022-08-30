@@ -1,0 +1,15 @@
+{
+  "name": "gauss-prime-api",
+  "version": "1.0.0",
+  "description": "Express API for Gauss Prime",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "author": "MrSofty",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.1",
+    "pg": "^8.8.0"
+  }
+}
