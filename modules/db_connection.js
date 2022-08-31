@@ -14,10 +14,6 @@ db.connect().then(async res => {
     console.log('DB Connection failure.\n' + err)
 });
 
-db.on('notification', notification => {
-    console.log('db notification')
-})
-
 db.on('error', err => {
     console.log('=============== DB Connection error. ==============')
     console.log(err)
