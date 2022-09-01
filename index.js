@@ -16,6 +16,8 @@ app.get('/', (req, res) => {
 
 app.get('/hubapp', (req, res) => {
   //res.send('<html><body><h1>You are being redirected to Hub App web version</h1></body></html>');
+  console.log(req.socket.remoteAddress)
+
   res.redirect(`http://${process.env.HUBAPP_REDIRECT_IP}:19006`)
 });
 
