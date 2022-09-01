@@ -51,7 +51,7 @@ app.get('/discordOAuth2/authorize', async (req, res) => {
         return
       db.query(`
         INSERT INTO hubapp_users (discord_id, discord_username, discord_discriminator, discord_email, discord_verified, discord_avatar, forums_auth_token, session_key)
-        VALUES (${userData.id},'${userData.username}','${userData.discriminator}','${userData.email}',${userData.verified},'${userData.avatar}','${uuid.v4()}', '${session_key}')
+        VALUES (${userData.id},'${userData.username}','${userData.discriminator}','${userData.email}',${userData.verified},'${userData.avatar}','${uuid.v1().split('-')[0]}', '${session_key}')
         ON CONFLICT (discord_id) 
         DO UPDATE SET 
           discord_username = EXCLUDED.discord_username, 
