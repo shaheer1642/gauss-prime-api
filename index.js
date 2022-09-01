@@ -10,12 +10,13 @@ const { request } = require('undici');
 const uuid = require('uuid');
 
 app.get('/', (req, res) => {
+  res.he
   res.send('Hello, this is the API for Gauss Prime. Nothing fancy to show on the web-page');
 });
 
 app.get('/hubapp', (req, res) => {
   //res.send('<html><body><h1>You are being redirected to Hub App web version</h1></body></html>');
-  res.redirect('http://182.185.38.39:19006')
+  res.redirect(`http://${process.env.HUBAPP_REDIRECT_IP}:19006`)
 });
 
 app.get('/discordOAuth2/authorize', async (req, res) => {
