@@ -13,6 +13,11 @@ app.get('/', (req, res) => {
   res.send('Hello, this is the API for Gauss Prime. Nothing fancy to show on the web-page');
 });
 
+app.get('/hubapp', (req, res) => {
+  //res.send('<html><body><h1>You are being redirected to Hub App web version</h1></body></html>');
+  res.redirect('http://182.185.38.39:19006')
+});
+
 app.get('/discordOAuth2/authorize', async (req, res) => {
   if (!req.query.state) {
     res.send('<html><body><h1>session_key not found, please try again</h1></body></html>')
@@ -152,15 +157,15 @@ setInterval(() => {
   console.log('connected clients',new Date(),Object.keys(clients).length)
 }, 15000);
 
-db.on('notification', notification => {
+db.on('notification', (notification) => {
   console.log('db notification')
-  console.log(JSON.parse(notification.payload))
+  const payload = JSON.parse(notification.payload)
   if (notification.channel == 'hubapp_messages_insert') {
     db.query(`
       SELECT * FROM hubapp_messages
       JOIN hubapp_users ON
       hubapp_messages.discord_id = hubapp_users.discord_id
-      WHERE msg_id=${JSON.parse(notification.payload).msg_id}
+      WHERE msg_id=${payload.msg_id}
     `).then(res => {
       if (res.rowCount == 1) {
         io.emit('hubapp/receivedNewPublicMessage', {
@@ -172,6 +177,20 @@ db.on('notification', notification => {
         })
       }
     }).catch(console.error)
+  }
+  if (notification.channel == 'hubapp_users_update') {
+    if (payload[0].forums_username != payload[1].forums_username) {
+      console.log('a user has changed their forums username')
+      // find the socket which has the session_key
+      for (const socket in clients) {
+        if (clients[socket].handshake.query.session_key == payload[0].session_key) {
+          clients[socket].emit('hubapp/forumsUsernameUpdate', {
+            code: 200,
+            response: payload[0]
+          })
+        }
+      }
+    }
   }
 })
 
