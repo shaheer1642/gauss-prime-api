@@ -106,8 +106,11 @@ io.on('connection', (socket) => {
         const arr = []
         res.rows.forEach(row => {
           arr.push({
-            user: row.discord_username,
+            discord_id: row.discord_id,
+            discord_username: row.discord_username,
+            ign: row.forums_username,
             message: row.message,
+            avatar: row.discord_avatar
           })
         })
         socket.emit('hubapp/receivedPublicChat', {
@@ -167,8 +170,11 @@ db.on('notification', (notification) => {
         io.emit('hubapp/receivedNewPublicMessage', {
           code: 200,
           response: {
-            user: res.rows[0].discord_username,
+            discord_id: res.rows[0].discord_id,
+            discord_username: res.rows[0].discord_username,
+            ign: res.rows[0].forums_username,
             message: res.rows[0].message,
+            avatar: res.rows[0].discord_avatar
           }
         })
       }
@@ -189,10 +195,6 @@ db.on('notification', (notification) => {
     }
   }
 })
-
-setInterval(() => {
-    //io.emit('test_emit','test')
-}, 1000);
 
 server.listen(process.env.PORT, () => {
   console.log('Server is listening to port',process.env.PORT);
