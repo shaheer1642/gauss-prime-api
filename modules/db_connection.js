@@ -9,8 +9,16 @@ const db = new DB.Client({
 
 db.connect().then(async res => {
     console.log('DB Connection established.')
+
+    // Listening to triggers
     db.query('LISTEN hubapp_messages_insert').catch(err => console.log(err))
+
     db.query('LISTEN hubapp_users_update').catch(err => console.log(err))
+
+    db.query('LISTEN hub_recruitbot_squads_insert').catch(err => console.log(err))
+    db.query('LISTEN hub_recruitbot_squads_update').catch(err => console.log(err))
+    db.query('LISTEN hub_recruitbot_squads_delete').catch(err => console.log(err))
+    
 }).catch(err => {
     console.log('DB Connection failure.\n' + err)
 });

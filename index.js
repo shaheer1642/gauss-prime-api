@@ -135,6 +135,33 @@ io.on('connection', (socket) => {
       db.query(`INSERT INTO hubapp_messages (discord_id,message,timestamp) VALUES (${data.discord_id},'${data.message}',${new Date().getTime()})`).catch(console.error)
     });
     
+    socket.addListener("hubapp/recruitmentSquads/getAll", () => {
+      console.log('[Endpoint log] hubapp/recruitmentSquads/getAll called')
+      db.query(`
+        SELECT * FROM hub_recruitbot_squads
+        ORDER BY timestamp
+      `).then(res => {
+        var recruitment_squads = {
+          relics: [],
+          farming: [],
+          progression: [],
+          bosses: []
+        }
+        res.rows.forEach(row => {
+          recruitment_squads[row.category].push(row)
+        })
+        socket.emit('hubapp/recruitmentSquads/receivedAll', {
+            code: 200,
+            response: recruitment_squads
+        })
+      }).catch(err => {
+          console.log(err)
+          socket.emit('hubapp/recruitmentSquads/receivedAll', {
+              code: 500,
+              response: `[DB Error] ${JSON.stringify(err)}`
+          })
+      })
+    });
 });
 
 function checkUserLogin(session_key) {
@@ -196,6 +223,25 @@ db.on('notification', (notification) => {
         }
       }
     }
+  }
+
+  if (notification.channel == 'hub_recruitbot_squads_insert') {
+    io.emit('hubapp/recruitmentSquads/insertSquad', {
+      code: 200,
+      response: payload
+    })
+  }
+  if (notification.channel == 'hub_recruitbot_squads_update') {
+    io.emit('hubapp/recruitmentSquads/updateSquad', {
+      code: 200,
+      response: payload
+    })
+  }
+  if (notification.channel == 'hub_recruitbot_squads_delete') {
+    io.emit('hubapp/recruitmentSquads/deleteSquad', {
+      code: 200,
+      response: payload
+    })
   }
 })
 
