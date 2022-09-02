@@ -112,8 +112,7 @@ io.on('connection', (socket) => {
             ign: row.forums_username,
             message: row.message,
             avatar: row.discord_avatar,
-            timestamp: row.timestamp,
-            time_string: `${new Date(Number(row.timestamp)).getDate()}/${new Date(Number(row.timestamp)).getMonth()} ${new Date(Number(row.timestamp)).getHours()}:${new Date(Number(row.timestamp)).getMinutes()}`
+            timestamp: row.timestamp
           })
         })
         socket.emit('hubapp/receivedPublicChat', {
@@ -178,8 +177,7 @@ db.on('notification', (notification) => {
             ign: res.rows[0].forums_username,
             message: res.rows[0].message,
             avatar: res.rows[0].discord_avatar,
-            timestamp: res.rows[0].timestamp,
-            time_string: `${new Date(Number(res.rows[0].timestamp)).getDate()}/${new Date(Number(res.rows[0].timestamp)).getMonth()} ${new Date(Number(res.rows[0].timestamp)).getHours()}:${new Date(Number(res.rows[0].timestamp)).getMinutes()}`
+            timestamp: res.rows[0].timestamp
           }
         })
       }
