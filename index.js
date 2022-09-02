@@ -102,6 +102,7 @@ io.on('connection', (socket) => {
         SELECT * FROM hubapp_messages
         JOIN hubapp_users ON
         hubapp_messages.discord_id = hubapp_users.discord_id
+        ORDER BY hubapp_messages.timestamp
       `).then(res => {
         const arr = []
         res.rows.forEach(row => {
@@ -110,7 +111,9 @@ io.on('connection', (socket) => {
             discord_username: row.discord_username,
             ign: row.forums_username,
             message: row.message,
-            avatar: row.discord_avatar
+            avatar: row.discord_avatar,
+            timestamp: row.timestamp,
+            time_string: `${new Date(Number(row.timestamp)).getDate()}/${new Date(Number(row.timestamp)).getMonth()} ${new Date(Number(row.timestamp)).getHours()}:${new Date(Number(row.timestamp)).getMinutes()}`
           })
         })
         socket.emit('hubapp/receivedPublicChat', {
@@ -130,7 +133,7 @@ io.on('connection', (socket) => {
       console.log('[Endpoint log] hubapp/createPublicMessage called')
       if (!data || !data.discord_id)
         return;
-      db.query(`INSERT INTO hubapp_messages (discord_id,message) VALUES (${data.discord_id},'${data.message}')`).catch(console.error)
+      db.query(`INSERT INTO hubapp_messages (discord_id,message,timestamp) VALUES (${data.discord_id},'${data.message}',${new Date().getTime()})`).catch(console.error)
     });
     
 });
@@ -174,7 +177,9 @@ db.on('notification', (notification) => {
             discord_username: res.rows[0].discord_username,
             ign: res.rows[0].forums_username,
             message: res.rows[0].message,
-            avatar: res.rows[0].discord_avatar
+            avatar: res.rows[0].discord_avatar,
+            timestamp: res.rows[0].timestamp,
+            time_string: `${new Date(Number(res.rows[0].timestamp)).getDate()}/${new Date(Number(res.rows[0].timestamp)).getMonth()} ${new Date(Number(res.rows[0].timestamp)).getHours()}:${new Date(Number(res.rows[0].timestamp)).getMinutes()}`
           }
         })
       }
