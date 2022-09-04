@@ -162,6 +162,39 @@ io.on('connection', (socket) => {
           })
       })
     });
+
+    socket.addListener("hubapp/trades/getAll", () => {
+      console.log('[Endpoint log] hubapp/trades/getAll called')
+      db.query(`
+        SELECT
+        users_list.discord_id, users_list.ingame_name,
+        users_orders.order_type, users_orders.user_price, users_orders.user_rank, users_orders.update_timestamp, 
+        items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url
+        FROM users_orders
+        JOIN users_list ON
+        users_orders.discord_id = users_list.discord_id
+        JOIN items_list ON
+        users_orders.item_id = items_list.id
+        WHERE users_orders.visibility=false
+        ORDER BY users_orders.update_timestamp
+      `).then(res => {
+        const trades = {
+          itemTrades: res.rows,
+          lichTrades: [],
+          rivenTrades: []
+        }
+        socket.emit('hubapp/trades/receivedAll', {
+            code: 200,
+            response: trades
+        })
+      }).catch(err => {
+          console.log(err)
+          socket.emit('hubapp/trades/receivedAll', {
+              code: 500,
+              response: `[DB Error] ${JSON.stringify(err)}`
+          })
+      })
+    });
 });
 
 function checkUserLogin(session_key) {

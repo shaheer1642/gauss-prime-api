@@ -4,7 +4,7 @@
   "description": "Express API for Gauss Prime",
   "main": "index.js",
   "scripts": {
-    "test": "node index.js"
+    "start": "node -r dotenv/config index.js"
   },
   "author": "MrSofty",
   "license": "ISC",
