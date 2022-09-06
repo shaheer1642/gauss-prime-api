@@ -8,6 +8,7 @@ const {db} = require('./modules/db_connection')
 const axios = require('axios')
 const { request } = require('undici');
 const uuid = require('uuid');
+const JSONbig = require('json-bigint');
 
 app.get('/', (req, res) => {
   res.he
@@ -167,16 +168,16 @@ io.on('connection', (socket) => {
       console.log('[Endpoint log] hubapp/trades/getAll called')
       db.query(`
         SELECT
-        users_list.discord_id, users_list.ingame_name,
-        users_orders.order_type, users_orders.user_price, users_orders.user_rank, users_orders.update_timestamp, 
-        items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url
-        FROM users_orders
-        JOIN users_list ON
-        users_orders.discord_id = users_list.discord_id
+        tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+        tradebot_users_orders.order_type, tradebot_users_orders.user_price, tradebot_users_orders.user_rank, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
+        items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url, items_list.id as item_id
+        FROM tradebot_users_orders
+        JOIN tradebot_users_list ON
+        tradebot_users_orders.discord_id = tradebot_users_list.discord_id
         JOIN items_list ON
-        users_orders.item_id = items_list.id
-        WHERE users_orders.visibility=false
-        ORDER BY users_orders.update_timestamp
+        tradebot_users_orders.item_id = items_list.id
+        WHERE tradebot_users_orders.visibility=true
+        ORDER BY tradebot_users_orders.update_timestamp
       `).then(res => {
         const trades = {
           itemTrades: res.rows,
@@ -220,7 +221,8 @@ setInterval(() => {
 
 db.on('notification', (notification) => {
   console.log('db notification')
-  const payload = JSON.parse(notification.payload)
+  console.log(notification.payload)
+  const payload = JSONbig.parse(notification.payload);
   if (notification.channel == 'hubapp_messages_insert') {
     db.query(`
       SELECT * FROM hubapp_messages
@@ -272,6 +274,88 @@ db.on('notification', (notification) => {
   }
   if (notification.channel == 'hub_recruitbot_squads_delete') {
     io.emit('hubapp/recruitmentSquads/deleteSquad', {
+      code: 200,
+      response: payload
+    })
+  }
+
+  if (notification.channel == 'tradebot_users_orders_insert') {
+    db.query(`
+      SELECT
+      tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+      tradebot_users_orders.order_type, tradebot_users_orders.user_price, tradebot_users_orders.user_rank, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility,
+      items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url, items_list.id as item_id
+      FROM tradebot_users_orders
+      JOIN tradebot_users_list ON
+      tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+      JOIN items_list ON
+      tradebot_users_orders.item_id = items_list.id
+      WHERE tradebot_users_orders.discord_id=${payload.discord_id} AND tradebot_users_orders.item_id='${payload.item_id}' AND tradebot_users_orders.user_rank= '${payload.user_rank}'
+    `).then(res => {
+      console.log(JSON.stringify(res.rows))
+      if (res.rowCount == 1) {
+        io.emit('hubapp/trades/insertItem', {
+          code: 200,
+          response: res.rows[0]
+        })
+      } else {
+        io.emit('hubapp/trades/insertItem', {
+          code: 500,
+          response: `[DB Error] Zero rows returned when querying`
+        })
+      }
+    }).catch(err => {
+        console.log(err)
+        io.emit('hubapp/trades/insertItem', {
+            code: 500,
+            response: `[DB Error] ${JSON.stringify(err)}`
+        })
+    })
+  }
+  if (notification.channel == 'tradebot_users_orders_update') {
+    if (payload[0].visibility == true && payload[1].visibility == false) {
+      console.log('an item became visible')
+      db.query(`
+        SELECT
+        tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+        tradebot_users_orders.order_type, tradebot_users_orders.user_price, tradebot_users_orders.user_rank, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility,
+        items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url, items_list.id as item_id
+        FROM tradebot_users_orders
+        JOIN tradebot_users_list ON
+        tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+        JOIN items_list ON
+        tradebot_users_orders.item_id = items_list.id
+        WHERE tradebot_users_orders.discord_id=${payload[0].discord_id} AND tradebot_users_orders.item_id='${payload[0].item_id}' AND tradebot_users_orders.user_rank= '${payload[0].user_rank}'
+      `).then(res => {
+        console.log(JSON.stringify(res.rows))
+        if (res.rowCount == 1) {
+          io.emit('hubapp/trades/insertItem', {
+            code: 200,
+            response: res.rows[0]
+          })
+        } else {
+          io.emit('hubapp/trades/insertItem', {
+            code: 500,
+            response: `[DB Error] Zero rows returned when querying`
+          })
+        }
+      }).catch(err => {
+          console.log(err)
+          io.emit('hubapp/trades/insertItem', {
+              code: 500,
+              response: `[DB Error] ${JSON.stringify(err)}`
+          })
+      })
+    } else if (payload[0].visibility == false && payload[1].visibility == true) {
+      console.log('an item became invisible')
+      io.emit('hubapp/trades/deleteItem', {
+        code: 200,
+        response: payload[1]
+      })
+    }
+  }
+  if (notification.channel == 'tradebot_users_orders_delete') {
+    io.emit('hubapp/trades/deleteItem', {
       code: 200,
       response: payload
     })
