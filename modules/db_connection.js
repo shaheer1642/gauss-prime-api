@@ -23,6 +23,7 @@ db.connect().then(async res => {
     db.query('LISTEN tradebot_users_orders_update').catch(err => console.log(err))
     db.query('LISTEN tradebot_users_orders_delete').catch(err => console.log(err))
     
+    db.query('LISTEN hubapp_users_dm_channels_update').catch(err => console.log(err))
 }).catch(err => {
     console.log('DB Connection failure.\n' + err)
 });

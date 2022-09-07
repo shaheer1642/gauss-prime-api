@@ -128,12 +128,96 @@ io.on('connection', (socket) => {
           })
       })
     });
+
+    socket.addListener("hubapp/getPrivateChat", (data) => {
+      console.log('[Endpoint log] hubapp/getPrivateChat called')
+      console.log(data)
+      db.query(`
+        INSERT INTO hubapp_users_dm_channels (discord_ids) SELECT '[${data.discord_id_1},${data.discord_id_2}]' 
+        WHERE NOT EXISTS(SELECT * FROM hubapp_users_dm_channels where discord_ids @> '${data.discord_id_1}' AND discord_ids @> '${data.discord_id_2}');
+        SELECT * FROM hubapp_users_dm_channels WHERE discord_ids @> '${data.discord_id_1}' AND discord_ids @> '${data.discord_id_2}';
+      `).then(res => {
+        const channel = res[1].rows[0];
+        db.query(`
+          SELECT discord_id, discord_username, forums_username, discord_avatar FROM hubapp_users WHERE discord_id = ${data.discord_id_1} OR discord_id = ${data.discord_id_2}
+        `).then(res => {
+          console.log(res.rows)
+          const user_data = {}
+          user_data[res.rows[0].discord_id] = {...res.rows[0]}
+          user_data[res.rows[1].discord_id] = {...res.rows[1]}
+          const arr = []
+          channel.messages.forEach(message => {
+            arr.push({
+              discord_id: message.discord_id,
+              discord_username: user_data[message.discord_id].discord_username,
+              ign: user_data[message.discord_id].forums_username,
+              avatar: user_data[message.discord_id].discord_avatar,
+              message: message.message,
+              timestamp: message.timestamp
+            })
+          })
+          socket.emit('hubapp/receivedPrivateChat', {
+              code: 200,
+              response: arr
+          })
+        }).catch(console.error)
+      }).catch(err => {
+        console.log(err)
+        socket.emit('hubapp/receivedPrivateChat', {
+            code: 500,
+            response: `[DB Error] ${JSON.stringify(err)}`
+        })
+      })
+    });
+
+    socket.addListener("hubapp/getChatUsersList", (data) => {
+      console.log('[Endpoint log] hubapp/getPublicChat called')
+      db.query(`
+        SELECT * FROM hubapp_users_dm_channels
+        JOIN hubapp_users ON hubapp_users.discord_id = TO_NUMBER((array_remove((translate(hubapp_users_dm_channels.discord_ids::json::text, '[]','{}')::text[]),'${data.discord_id}'))[1],'999999999999999999999999')
+        WHERE discord_ids @> '${data.discord_id}'
+        ORDER BY hubapp_users_dm_channels.last_update_timestamp DESC;
+      `).then(res => {
+        const arr = []
+        res.rows.forEach(row => {
+          arr.push({
+            discord_id: row.discord_id,
+            name: row.discord_username,
+            avatar: `https://cdn.discordapp.com/avatars/${row.discord_id}/${row.discord_avatar}.png`,
+            last_update_timestamp: row.last_update_timestamp,
+          })
+        })
+        console.log(arr)
+        socket.emit('hubapp/receivedChatUsersList', {
+            code: 200,
+            response: arr
+        })
+      }).catch(err => {
+          console.log(err)
+          socket.emit('hubapp/receivedChatUsersList', {
+              code: 500,
+              response: `[DB Error] ${JSON.stringify(err)}`
+          })
+      })
+    });
     
     socket.addListener("hubapp/createPublicMessage", (data) => {
       console.log('[Endpoint log] hubapp/createPublicMessage called')
       if (!data || !data.discord_id)
         return;
-      db.query(`INSERT INTO hubapp_messages (discord_id,message,timestamp) VALUES (${data.discord_id},'${data.message}',${new Date().getTime()})`).catch(console.error)
+      db.query(`INSERT INTO hubapp_messages (discord_id,message,timestamp) VALUES (${data.discord_id},'${data.message.replace(/\'/g,`''`)}',${new Date().getTime()})`).catch(console.error)
+    });
+
+    socket.addListener("hubapp/createPrivateMessage", (data) => {
+      console.log('[Endpoint log] hubapp/createPrivateMessage called')
+      if (!data || (!data.discord_id_1 && !data.discord_id_2))
+        return;
+      db.query(`
+        UPDATE hubapp_users_dm_channels
+        SET messages = messages || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), timestamp: new Date().getTime(), discord_id: data.discord_id_1})}]'::jsonb,
+        last_update_timestamp = ${new Date().getTime()}
+        WHERE discord_ids @> '${data.discord_id_1}' AND discord_ids @> '${data.discord_id_2}';`
+      ).catch(console.error)
     });
     
     socket.addListener("hubapp/recruitmentSquads/getAll", () => {
@@ -245,6 +329,33 @@ db.on('notification', (notification) => {
       }
     }).catch(console.error)
   }
+
+
+  if (notification.channel == 'hubapp_users_dm_channels_update') {
+    if ((payload[0].messages.length - 1) == payload[1].messages.length) {
+      console.log('new message')
+      db.query(`
+        SELECT discord_id, discord_username, forums_username, discord_avatar FROM hubapp_users WHERE discord_id = ${payload[0].discord_ids[0]} OR discord_id = ${payload[0].discord_ids[1]}
+      `).then(res => {
+        const message = payload[0].messages[payload[0].messages.length-1]
+        const user_data = {}
+        user_data[res.rows[0].discord_id] = {...res.rows[0]}
+        user_data[res.rows[1].discord_id] = {...res.rows[1]}
+        io.emit('hubapp/receivedNewPrivateMessage', {
+            code: 200,
+            response: {
+              discord_id: message.discord_id,
+              discord_username: user_data[message.discord_id].discord_username,
+              ign: user_data[message.discord_id].forums_username,
+              avatar: user_data[message.discord_id].discord_avatar,
+              message: message.message,
+              timestamp: message.timestamp
+            }
+        })
+      }).catch(console.error)
+    }
+  }
+
   if (notification.channel == 'hubapp_users_update') {
     if (payload[0].forums_username != payload[1].forums_username) {
       console.log('a user has changed their forums username')
