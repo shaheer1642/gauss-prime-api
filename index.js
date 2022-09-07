@@ -335,23 +335,30 @@ db.on('notification', (notification) => {
     if ((payload[0].messages.length - 1) == payload[1].messages.length) {
       console.log('new message')
       db.query(`
-        SELECT discord_id, discord_username, forums_username, discord_avatar FROM hubapp_users WHERE discord_id = ${payload[0].discord_ids[0]} OR discord_id = ${payload[0].discord_ids[1]}
+        SELECT * FROM hubapp_users WHERE discord_id = ${payload[0].discord_ids[0]} OR discord_id = ${payload[0].discord_ids[1]}
       `).then(res => {
         const message = payload[0].messages[payload[0].messages.length-1]
         const user_data = {}
         user_data[res.rows[0].discord_id] = {...res.rows[0]}
         user_data[res.rows[1].discord_id] = {...res.rows[1]}
-        io.emit('hubapp/receivedNewPrivateMessage', {
-            code: 200,
-            response: {
-              discord_id: message.discord_id,
-              discord_username: user_data[message.discord_id].discord_username,
-              ign: user_data[message.discord_id].forums_username,
-              avatar: user_data[message.discord_id].discord_avatar,
-              message: message.message,
-              timestamp: message.timestamp
-            }
-        })
+        
+        for (const socket in clients) {
+          if (JSON.stringify(user_data).match(clients[socket].handshake.query.session_key)) {
+            clients[socket].emit('hubapp/receivedNewPrivateMessage', {
+              code: 200,
+              response: {
+                discord_id: message.discord_id,
+                discord_username: user_data[message.discord_id].discord_username,
+                ign: user_data[message.discord_id].forums_username,
+                avatar: user_data[message.discord_id].discord_avatar,
+                message: message.message,
+                timestamp: message.timestamp
+              }
+            })
+          }
+        }
+
+        
       }).catch(console.error)
     }
   }
