@@ -133,13 +133,14 @@ io.on('connection', (socket) => {
       console.log('[Endpoint log] hubapp/getPrivateChat called')
       console.log(data)
       db.query(`
-        INSERT INTO hubapp_users_dm_channels (discord_ids) SELECT '[${data.discord_id_1},${data.discord_id_2}]' 
+        INSERT INTO hubapp_users_dm_channels (discord_ids,last_read_message) SELECT '[${data.discord_id_1},${data.discord_id_2}]','{"${data.discord_id_1}":${new Date().getTime()},"${data.discord_id_2}":${new Date().getTime()}}'
         WHERE NOT EXISTS(SELECT * FROM hubapp_users_dm_channels where discord_ids @> '${data.discord_id_1}' AND discord_ids @> '${data.discord_id_2}');
         SELECT * FROM hubapp_users_dm_channels WHERE discord_ids @> '${data.discord_id_1}' AND discord_ids @> '${data.discord_id_2}';
+        UPDATE hubapp_users_dm_channels SET last_read_message = jsonb_set(last_read_message, '{${data.discord_id_1}}', '${new Date().getTime()}');
       `).then(res => {
         const channel = res[1].rows[0];
         db.query(`
-          SELECT discord_id, discord_username, forums_username, discord_avatar FROM hubapp_users WHERE discord_id = ${data.discord_id_1} OR discord_id = ${data.discord_id_2}
+          SELECT discord_id, discord_username, forums_username, discord_avatar FROM hubapp_users WHERE discord_id = ${data.discord_id_1} OR discord_id = ${data.discord_id_2};
         `).then(res => {
           console.log(res.rows)
           const user_data = {}
@@ -214,7 +215,7 @@ io.on('connection', (socket) => {
         return;
       db.query(`
         UPDATE hubapp_users_dm_channels
-        SET messages = messages || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), timestamp: new Date().getTime(), discord_id: data.discord_id_1})}]'::jsonb,
+        SET messages = messages || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), discord_id: data.discord_id_1, timestamp: new Date().getTime()})}]'::jsonb,
         last_update_timestamp = ${new Date().getTime()}
         WHERE discord_ids @> '${data.discord_id_1}' AND discord_ids @> '${data.discord_id_2}';`
       ).catch(console.error)
