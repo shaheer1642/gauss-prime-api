@@ -9,6 +9,7 @@ const axios = require('axios')
 const { request } = require('undici');
 const uuid = require('uuid');
 const JSONbig = require('json-bigint');
+const {convertUpper} = require('./modules/functions')
 
 app.get('/', (req, res) => {
   res.he
@@ -82,6 +83,7 @@ var clients = {}
 
 io.on('connection', (socket) => {
     console.log('a user connected',socket.id);
+    console.log('connected clients',new Date(),Object.keys(clients).length)
     if (!socket.handshake.query.session_key)
       return
     clients[socket.id] = socket
@@ -93,6 +95,7 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
       console.log('a user disconnected');
+      console.log('connected clients',new Date(),Object.keys(clients).length)
       delete clients[socket.id]
       socket.removeAllListeners()
     });
@@ -100,20 +103,20 @@ io.on('connection', (socket) => {
     socket.addListener("hubapp/getPublicChat", () => {
       console.log('[Endpoint log] hubapp/getPublicChat called')
       db.query(`
-        SELECT * FROM hubapp_messages
-        JOIN hubapp_users ON
-        hubapp_messages.discord_id = hubapp_users.discord_id
-        ORDER BY hubapp_messages.timestamp
+        SELECT * FROM hubapp_messages_channels WHERE discord_ids @> '"ALL"';
+        SELECT * FROM hubapp_users;
       `).then(res => {
+        const user_data = {}
+        res[1].rows.forEach(row => user_data[row.discord_id] = row)
         const arr = []
-        res.rows.forEach(row => {
+        res[0].rows[0].messages.forEach(message => {
           arr.push({
-            discord_id: row.discord_id,
-            discord_username: row.discord_username,
-            ign: row.forums_username,
-            message: row.message,
-            avatar: row.discord_avatar,
-            timestamp: row.timestamp
+            discord_id: message.discord_id,
+            discord_username: user_data[message.discord_id].discord_username,
+            ign: user_data[message.discord_id].forums_username,
+            avatar: user_data[message.discord_id].discord_avatar,
+            message: message.message,
+            timestamp: message.timestamp
           })
         })
         socket.emit('hubapp/receivedPublicChat', {
@@ -132,10 +135,23 @@ io.on('connection', (socket) => {
     socket.addListener("hubapp/privateChatMarkAsRead", (data) => {
       console.log('[Endpoint log] hubapp/privateChatMarkAsRead called')
       db.query(`
-        UPDATE hubapp_users_dm_channels SET last_read_message = jsonb_set(last_read_message, '{${data.discord_id_1}}', '${new Date().getTime()}') 
-        WHERE discord_ids @> '${data.discord_id_1}' AND discord_ids @> '${data.discord_id_2}';
+        UPDATE hubapp_messages_channels SET last_read_message = jsonb_set(last_read_message, '{${data.discord_id_1}}', '${new Date().getTime()}') 
+        WHERE discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"';
       `).then(res => {
         socket.emit("hubapp/privateChatMarkedAsRead", {
+          code: 200,
+          response: data
+        })
+      }).catch(console.error)
+    })
+
+    socket.addListener("hubapp/publicChatMarkAsRead", (data) => {
+      console.log('[Endpoint log] hubapp/publicChatMarkAsRead called')
+      db.query(`
+        UPDATE hubapp_messages_channels SET last_read_message = jsonb_set(last_read_message, '{${data.discord_id}}', '${new Date().getTime()}') 
+        WHERE discord_ids @> '"ALL"';
+      `).then(res => {
+        socket.emit("hubapp/publicChatMarkedAsRead", {
           code: 200,
           response: data
         })
@@ -146,24 +162,16 @@ io.on('connection', (socket) => {
       console.log('[Endpoint log] hubapp/getPrivateChat called')
       console.log(data)
       db.query(`
-        INSERT INTO hubapp_users_dm_channels (discord_ids,last_read_message) SELECT '[${data.discord_id_1},${data.discord_id_2}]','{"${data.discord_id_1}":${new Date().getTime()},"${data.discord_id_2}":${new Date().getTime()}}'
-        WHERE NOT EXISTS(SELECT * FROM hubapp_users_dm_channels where discord_ids @> '${data.discord_id_1}' AND discord_ids @> '${data.discord_id_2}');
-        SELECT * FROM hubapp_users_dm_channels WHERE discord_ids @> '${data.discord_id_1}' AND discord_ids @> '${data.discord_id_2}';
-        UPDATE hubapp_users_dm_channels SET last_read_message = jsonb_set(last_read_message, '{${data.discord_id_1}}', '${new Date().getTime()}') 
-        WHERE discord_ids @> '${data.discord_id_1}' AND discord_ids @> '${data.discord_id_2}';
+        INSERT INTO hubapp_messages_channels (discord_ids,last_read_message) SELECT '${JSON.stringify([data.discord_id_1,data.discord_id_2])}','{"${data.discord_id_1}":${new Date().getTime()},"${data.discord_id_2}":${new Date().getTime()}}'
+        WHERE NOT EXISTS(SELECT * FROM hubapp_messages_channels where discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"');
+        SELECT * FROM hubapp_messages_channels WHERE discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"';
       `).then(res => {
-        socket.emit("hubapp/privateChatMarkedAsRead", {
-          code: 200,
-          response: data
-        })
         const channel = res[1].rows[0];
         db.query(`
-          SELECT discord_id, discord_username, forums_username, discord_avatar FROM hubapp_users WHERE discord_id = ${data.discord_id_1} OR discord_id = ${data.discord_id_2};
+          SELECT * FROM hubapp_users WHERE discord_id = ${data.discord_id_1} OR discord_id = ${data.discord_id_2} OR discord_id = 111111111111111111;
         `).then(res => {
-          console.log(res.rows)
           const user_data = {}
-          user_data[res.rows[0].discord_id] = {...res.rows[0]}
-          user_data[res.rows[1].discord_id] = {...res.rows[1]}
+          res.rows.forEach(row => user_data[row.discord_id] = row)
           const arr = []
           channel.messages.forEach(message => {
             arr.push({
@@ -189,34 +197,48 @@ io.on('connection', (socket) => {
       })
     });
 
-    socket.addListener("hubapp/getChatUsersList", (data) => {
-      console.log('[Endpoint log] hubapp/getChatUsersList called')
+    socket.addListener("hubapp/getChatsList", (data) => {
+      console.log('[Endpoint log] hubapp/getChatsList called')
       db.query(`
-        SELECT * FROM hubapp_users_dm_channels
-        JOIN hubapp_users ON hubapp_users.discord_id = TO_NUMBER((array_remove((translate(hubapp_users_dm_channels.discord_ids::json::text, '[]','{}')::text[]),'${data.discord_id}'))[1],'999999999999999999999999')
-        WHERE discord_ids @> '${data.discord_id}'
-        ORDER BY hubapp_users_dm_channels.last_update_timestamp DESC;
+        SELECT * FROM hubapp_messages_channels
+        WHERE discord_ids @> '"${data.discord_id}"' OR discord_ids @> '"ALL"'
+        ORDER BY last_update_timestamp DESC;
+        SELECT * FROM hubapp_users;
       `).then(res => {
+        const user_data = {}
+        res[1].rows.forEach(row => user_data[row.discord_id] = row)
         const arr = []
-        res.rows.forEach(row => {
+        res[0].rows.forEach(row => {
           var unread_messages = 0;
           row.messages.forEach(message => message.timestamp > row.last_read_message[data.discord_id] && message.discord_id != data.discord_id ? unread_messages++:true)
-          arr.push({
-            discord_id: row.discord_id,
-            name: row.discord_username,
-            avatar: `https://cdn.discordapp.com/avatars/${row.discord_id}/${row.discord_avatar}.png`,
-            last_update_timestamp: row.last_update_timestamp,
-            unread_messages: unread_messages
-          })
+          if (row.discord_ids.includes('ALL')) {
+            arr.push({
+              discord_id: null,
+              name: 'Public Chat',
+              avatar: `https://static.vecteezy.com/system/resources/thumbnails/000/450/102/small/Basic_Ui__28154_29.jpg`,
+              last_update_timestamp: row.last_update_timestamp,
+              unread_messages: unread_messages
+            })
+          } else {
+            const target_discord_id = ((row.discord_ids.filter(function(e) { return e !== data.discord_id }))[0]).toString()
+            console.log(target_discord_id)
+            arr.push({
+              discord_id: user_data[target_discord_id].discord_id,
+              name: user_data[target_discord_id].discord_username,
+              avatar: `https://cdn.discordapp.com/avatars/${user_data[target_discord_id].discord_id}/${user_data[target_discord_id].discord_avatar}.png`,
+              last_update_timestamp: row.last_update_timestamp,
+              unread_messages: unread_messages
+            })
+          }
         })
         console.log(arr)
-        socket.emit('hubapp/receivedChatUsersList', {
+        socket.emit('hubapp/receivedChatsList', {
             code: 200,
             response: arr
         })
       }).catch(err => {
         console.log(err)
-        socket.emit('hubapp/receivedChatUsersList', {
+        socket.emit('hubapp/receivedChatsList', {
             code: 500,
             response: `[DB Error] ${JSON.stringify(err)}`
         })
@@ -227,7 +249,12 @@ io.on('connection', (socket) => {
       console.log('[Endpoint log] hubapp/createPublicMessage called')
       if (!data || !data.discord_id)
         return;
-      db.query(`INSERT INTO hubapp_messages (discord_id,message,timestamp) VALUES (${data.discord_id},'${data.message.replace(/\'/g,`''`)}',${new Date().getTime()})`).catch(console.error)
+      db.query(`
+        UPDATE hubapp_messages_channels
+        SET messages = messages || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), discord_id: data.discord_id, timestamp: new Date().getTime()})}]'::jsonb,
+        last_update_timestamp = ${new Date().getTime()}
+        WHERE discord_ids @> '"ALL"';`
+      ).catch(console.error)
     });
 
     socket.addListener("hubapp/createPrivateMessage", (data) => {
@@ -235,10 +262,10 @@ io.on('connection', (socket) => {
       if (!data || (!data.discord_id_1 && !data.discord_id_2))
         return;
       db.query(`
-        UPDATE hubapp_users_dm_channels
+        UPDATE hubapp_messages_channels
         SET messages = messages || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), discord_id: data.discord_id_1, timestamp: new Date().getTime()})}]'::jsonb,
         last_update_timestamp = ${new Date().getTime()}
-        WHERE discord_ids @> '${data.discord_id_1}' AND discord_ids @> '${data.discord_id_2}';`
+        WHERE discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"';`
       ).catch(console.error)
     });
     
@@ -321,65 +348,62 @@ function checkUserLogin(session_key) {
   }).catch(console.error)
 }
 
-setInterval(() => {
-  console.log('connected clients',new Date(),Object.keys(clients).length)
-}, 15000);
-
 db.on('notification', (notification) => {
   console.log('db notification')
   console.log(notification.payload)
+  console.log(notification.channel)
   const payload = JSONbig.parse(notification.payload);
-  if (notification.channel == 'hubapp_messages_insert') {
-    db.query(`
-      SELECT * FROM hubapp_messages
-      JOIN hubapp_users ON
-      hubapp_messages.discord_id = hubapp_users.discord_id
-      WHERE msg_id=${payload.msg_id}
-    `).then(res => {
-      if (res.rowCount == 1) {
-        io.emit('hubapp/receivedNewPublicMessage', {
-          code: 200,
-          response: {
-            discord_id: res.rows[0].discord_id,
-            discord_username: res.rows[0].discord_username,
-            ign: res.rows[0].forums_username,
-            message: res.rows[0].message,
-            avatar: res.rows[0].discord_avatar,
-            timestamp: res.rows[0].timestamp
-          }
-        })
+
+  if (notification.channel == 'hubapp_messages_channels_update') {
+    if (payload.discord_ids.includes('ALL')) {
+      if (payload.new_last_message.timestamp != payload.old_last_message.timestamp) {
+        console.log('new public message')
+        const message = payload.new_last_message
+        db.query(`
+          SELECT * FROM hubapp_users WHERE discord_id = ${message.discord_id}
+        `).then(res => {
+          const user_data = res.rows[0]
+          io.emit('hubapp/receivedNewPublicMessage', {
+            code: 200,
+            response: {
+              discord_id: message.discord_id,
+              discord_username: user_data.discord_username,
+              ign: user_data.forums_username,
+              avatar: user_data.discord_avatar,
+              message: message.message,
+              timestamp: message.timestamp
+            }
+          })
+        }).catch(console.error)
       }
-    }).catch(console.error)
-  }
-
-
-  if (notification.channel == 'hubapp_users_dm_channels_update') {
-    if ((payload[0].messages.length - 1) == payload[1].messages.length) {
-      console.log('new message')
-      db.query(`
-        SELECT * FROM hubapp_users WHERE discord_id = ${payload[0].discord_ids[0]} OR discord_id = ${payload[0].discord_ids[1]}
-      `).then(res => {
-        const message = payload[0].messages[payload[0].messages.length-1]
-        const user_data = {}
-        user_data[res.rows[0].discord_id] = {...res.rows[0]}
-        user_data[res.rows[1].discord_id] = {...res.rows[1]}
-        for (const socket in clients) {
-          if (JSON.stringify(user_data).match(clients[socket].handshake.query.session_key)) {
-            clients[socket].emit('hubapp/receivedNewPrivateMessage', {
-              code: 200,
-              response: {
-                discord_id: message.discord_id,
-                discord_username: user_data[message.discord_id].discord_username,
-                ign: user_data[message.discord_id].forums_username,
-                avatar: user_data[message.discord_id].discord_avatar,
-                message: message.message,
-                timestamp: message.timestamp
-              }
-            })
+    } else {
+      if (payload.new_last_message.timestamp != payload.old_last_message.timestamp) {
+        console.log('new private message')
+        db.query(`
+          SELECT * FROM hubapp_users WHERE discord_id = ${payload.discord_ids[0]} OR discord_id = ${payload.discord_ids[1]} OR discord_id = 111111111111111111
+        `).then(res => {
+          const message = payload.new_last_message
+          const user_data = {}
+          res.rows.forEach(row => user_data[row.discord_id] = row)
+          for (const socket in clients) {
+            if (JSON.stringify(user_data).match(clients[socket].handshake.query.session_key)) {
+              clients[socket].emit('hubapp/receivedNewPrivateMessage', {
+                code: 200,
+                response: {
+                  discord_id: message.discord_id,
+                  discord_username: user_data[message.discord_id].discord_username,
+                  ign: user_data[message.discord_id].forums_username,
+                  avatar: user_data[message.discord_id].discord_avatar,
+                  message: message.message,
+                  channel: payload.discord_ids,
+                  timestamp: message.timestamp
+                }
+              })
+            }
           }
-        }
-        
-      }).catch(console.error)
+          
+        }).catch(console.error)
+      }
     }
   }
 
@@ -450,6 +474,42 @@ db.on('notification', (notification) => {
         })
     })
   }
+
+  if (notification.channel == 'tradebot_filled_users_orders_insert') {
+    db.query(`
+      SELECT * FROM items_list WHERE id='${payload.item_id}';
+    `).then(res => {
+      const item_data = res.rows[0]
+      db.query(`
+        SELECT * FROM tradebot_users_list WHERE discord_id = ${payload.order_owner} OR discord_id = ${payload.order_filler};
+      `).then(res => {
+        const user_data = {}
+        res.rows.forEach(row => user_data[row.discord_id] = row)
+        db.query(`
+          INSERT INTO hubapp_messages_channels (discord_ids,last_read_message) SELECT '${JSON.stringify([payload.order_owner,payload.order_filler])}','{"${payload.order_owner}":${new Date().getTime()},"${payload.order_filler}":${new Date().getTime()}}'
+          WHERE NOT EXISTS(SELECT * FROM hubapp_messages_channels where discord_ids @> '"${payload.order_owner}"' AND discord_ids @> '"${payload.order_filler}"');
+          UPDATE hubapp_messages_channels
+          SET messages = messages || '[${JSON.stringify({message: `A trade has been opened!
+          
+${convertUpper(item_data.item_url)}
+
+${payload.order_type == 'wts' ? 
+`Seller: ${user_data[payload.order_owner].ingame_name}
+Buyer: ${user_data[payload.order_filler].ingame_name}
+`:
+`Seller: ${user_data[payload.order_filler].ingame_name}
+Buyer: ${user_data[payload.order_owner].ingame_name}
+`}
+Price: ${payload.user_price}p`, discord_id: '111111111111111111', timestamp: new Date().getTime()})}]'::jsonb,
+          last_update_timestamp = ${new Date().getTime()}
+          WHERE discord_ids @> '"${payload.order_owner}"' AND discord_ids @> '"${payload.order_filler}"';
+        `).catch(console.error)
+      })
+    }).catch(console.error)
+
+
+  }
+
   if (notification.channel == 'tradebot_users_orders_update') {
     if (payload[0].visibility == true && payload[1].visibility == false) {
       console.log('an item became visible')
