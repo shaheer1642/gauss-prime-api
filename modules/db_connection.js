@@ -24,6 +24,8 @@ db.connect().then(async res => {
     db.query('LISTEN tradebot_users_orders_delete').catch(err => console.log(err))
 
     db.query('LISTEN tradebot_filled_users_orders_insert').catch(err => console.log(err))
+    db.query('LISTEN tradebot_filled_users_orders_update_new_message').catch(console.error)
+    db.query('LISTEN tradebot_filled_users_orders_update_archived').catch(console.error)
     
     db.query('LISTEN hubapp_messages_channels_update').catch(err => console.log(err))
 }).catch(err => {

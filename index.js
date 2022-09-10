@@ -265,8 +265,26 @@ io.on('connection', (socket) => {
         UPDATE hubapp_messages_channels
         SET messages = messages || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), discord_id: data.discord_id_1, timestamp: new Date().getTime()})}]'::jsonb,
         last_update_timestamp = ${new Date().getTime()}
-        WHERE discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"';`
-      ).catch(console.error)
+        WHERE discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"'
+        RETURNING *;`
+      ).then(res => {
+        if (res.rowCount == 1) {
+          const channel = res.rows[0]
+          if (channel.trade_active) {
+            db.query(`
+              UPDATE tradebot_filled_users_orders
+              SET messages_log = messages_log || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), discord_id: data.discord_id_1, platform: 'hubapp',timestamp: new Date().getTime()})}]'::jsonb
+              WHERE archived = false AND (order_owner = ${data.discord_id_1} OR order_filler = ${data.discord_id_1}) AND (order_owner = ${data.discord_id_2} OR order_filler = ${data.discord_id_2})
+              RETURNING *;
+              UPDATE tradebot_filled_users_lich_orders
+              SET messages_log = messages_log || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), discord_id: data.discord_id_1, platform: 'hubapp', timestamp: new Date().getTime()})}]'::jsonb
+              WHERE archived = false AND (order_owner = ${data.discord_id_1} OR order_filler = ${data.discord_id_1}) AND (order_owner = ${data.discord_id_2} OR order_filler = ${data.discord_id_2})
+              RETURNING *;
+            `).catch(console.error)
+          }
+        }
+      })
+      .catch(console.error)
     });
     
     socket.addListener("hubapp/recruitmentSquads/getAll", () => {
@@ -504,7 +522,8 @@ db.on('notification', (notification) => {
           INSERT INTO hubapp_messages_channels (discord_ids,last_read_message) SELECT '${JSON.stringify([payload.order_owner,payload.order_filler])}','{"${payload.order_owner}":${new Date().getTime()},"${payload.order_filler}":${new Date().getTime()}}'
           WHERE NOT EXISTS(SELECT * FROM hubapp_messages_channels where discord_ids @> '"${payload.order_owner}"' AND discord_ids @> '"${payload.order_filler}"');
           UPDATE hubapp_messages_channels
-          SET messages = messages || '[${JSON.stringify({message: `A trade has been opened!
+          SET trade_active = true,
+          messages = messages || '[${JSON.stringify({message: `A trade has been opened!
           
 ${convertUpper(item_data.item_url)}
 
@@ -515,7 +534,9 @@ Buyer: ${user_data[payload.order_filler].ingame_name}
 `Seller: ${user_data[payload.order_filler].ingame_name}
 Buyer: ${user_data[payload.order_owner].ingame_name}
 `}
-Price: ${payload.user_price}p`, discord_id: '111111111111111111', timestamp: new Date().getTime()})}]'::jsonb,
+Price: ${payload.user_price}p
+
+This trading session will be auto-closed in 15 minutes`, discord_id: '111111111111111111', timestamp: new Date().getTime()})}]'::jsonb,
           last_update_timestamp = ${new Date().getTime()}
           WHERE discord_ids @> '"${payload.order_owner}"' AND discord_ids @> '"${payload.order_filler}"';
         `).catch(console.error)
@@ -606,11 +627,33 @@ Price: ${payload.user_price}p`, discord_id: '111111111111111111', timestamp: new
       })
     }
   }
+
   if (notification.channel == 'tradebot_users_orders_delete') {
     io.emit('hubapp/trades/deleteItem', {
       code: 200,
       response: payload
     })
+  }
+  
+  if (notification.channel == 'tradebot_filled_users_orders_update_new_message') {
+    if (payload.message.platform == 'discord') {
+      db.query(`
+        UPDATE hubapp_messages_channels
+        SET messages = messages || '[${JSON.stringify({message: payload.message.message.replace(/\'/g,`''`), discord_id: payload.message.discord_id, timestamp: payload.message.timestamp})}]'::jsonb,
+        last_update_timestamp = ${new Date().getTime()}
+        WHERE discord_ids @> '"${payload.order_owner}"' AND discord_ids @> '"${payload.order_filler}"';
+      `).catch(console.error)
+    }
+  }
+
+  if (notification.channel == 'tradebot_filled_users_orders_update_archived') {
+    db.query(`
+      UPDATE hubapp_messages_channels
+      SET trade_active = false,
+      messages = messages || '[${JSON.stringify({message: `This trading session has been closed`, discord_id: '111111111111111111', timestamp: new Date().getTime()})}]'::jsonb,
+      last_update_timestamp = ${new Date().getTime()}
+      WHERE discord_ids @> '"${payload.order_owner}"' AND discord_ids @> '"${payload.order_filler}"';
+    `).catch(console.error)
   }
 })
 
