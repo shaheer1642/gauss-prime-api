@@ -329,6 +329,21 @@ io.on('connection', (socket) => {
           })
       })
     });
+
+    socket.addListener("hubapp/trades/openTrade", (data) => {
+      console.log('[Endpoint log] hubapp/trades/openTrade called',data)
+      db.query(`
+        SELECT * FROM tradebot_users_orders WHERE discord_id = ${data.target_discord_id} AND item_id = '${data.item_id}' AND user_rank = '${data.user_rank}'
+      `).then(res => {
+        if (res.rowCount != 1) {console.log('zero rows returned');return}
+        const order_data = res.rows[0]
+        db.query(`
+          INSERT INTO tradebot_filled_users_orders
+          (order_id,filler_channel_id,owner_channel_id,order_owner,order_filler,item_id,order_type,order_rating,user_price,user_rank,trade_timestamp)
+          VALUES ('${uuid.v1()}',${order_data.origin_channel_id},${order_data.origin_channel_id},${order_data.discord_id},${data.current_discord_id},'${order_data.item_id}','${order_data.order_type}','{"${order_data.discord_id}": 0, "${data.current_discord_id}": 0}',${order_data.user_price},'${order_data.user_rank}',${new Date().getTime()})
+        `).catch(console.error)
+      }).catch(console.error)
+    });
 });
 
 function checkUserLogin(session_key) {
