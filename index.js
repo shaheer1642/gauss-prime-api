@@ -86,10 +86,10 @@ var clients = {}
 
 io.on('connection', (socket) => {
     console.log('a user connected',socket.id);
-    console.log('connected clients',new Date(),Object.keys(clients).length)
     if (!socket.handshake.query.session_key)
       return
     clients[socket.id] = socket
+    console.log('connected clients',new Date(),Object.keys(clients).length)
 
     // check if user was previously logged in
     setTimeout(() => {
@@ -98,8 +98,8 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
       console.log('a user disconnected');
-      console.log('connected clients',new Date(),Object.keys(clients).length)
       delete clients[socket.id]
+      console.log('connected clients',new Date(),Object.keys(clients).length)
       socket.removeAllListeners()
     });
 
@@ -340,7 +340,7 @@ io.on('connection', (socket) => {
       db.query(`
         SELECT
         tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
-        tradebot_users_orders.order_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
+        tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
         items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url, items_list.id as item_id
         FROM tradebot_users_orders
         JOIN tradebot_users_list ON
@@ -348,11 +348,22 @@ io.on('connection', (socket) => {
         JOIN items_list ON
         tradebot_users_orders.item_id = items_list.id
         WHERE tradebot_users_orders.visibility=true
-        ORDER BY tradebot_users_orders.update_timestamp
+        ORDER BY tradebot_users_orders.update_timestamp;
+        SELECT
+        tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+        tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
+        lich_list.weapon_url, lich_list.icon_url, lich_list.lich_id as item_id
+        FROM tradebot_users_orders
+        JOIN tradebot_users_list ON
+        tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+        JOIN lich_list ON
+        tradebot_users_orders.item_id = lich_list.lich_id
+        WHERE tradebot_users_orders.visibility=true
+        ORDER BY tradebot_users_orders.update_timestamp;
       `).then(res => {
         const trades = {
-          itemTrades: res.rows,
-          lichTrades: [],
+          itemTrades: res[0].rows,
+          lichTrades: res[1].rows,
           rivenTrades: []
         }
         socket.emit('hubapp/trades/receivedAll', {
@@ -846,40 +857,6 @@ db.on('notification', (notification) => {
     })
   }
 
-  if (notification.channel == 'tradebot_users_orders_insert') {
-    db.query(`
-      SELECT
-      tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
-      tradebot_users_orders.order_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility,
-      items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url, items_list.id as item_id
-      FROM tradebot_users_orders
-      JOIN tradebot_users_list ON
-      tradebot_users_orders.discord_id = tradebot_users_list.discord_id
-      JOIN items_list ON
-      tradebot_users_orders.item_id = items_list.id
-      WHERE tradebot_users_orders.discord_id=${payload.discord_id} AND tradebot_users_orders.item_id='${payload.item_id}' AND tradebot_users_orders.visibility=TRUE
-    `).then(res => {
-      console.log(JSON.stringify(res.rows))
-      if (res.rowCount == 1) {
-        io.emit('hubapp/trades/insertItem', {
-          code: 200,
-          response: res.rows[0]
-        })
-      } else {
-        io.emit('hubapp/trades/insertItem', {
-          code: 500,
-          response: `[DB Error] Zero rows returned when querying`
-        })
-      }
-    }).catch(err => {
-        console.log(err)
-        io.emit('hubapp/trades/insertItem', {
-            code: 500,
-            response: `[DB Error] ${JSON.stringify(err)}`
-        })
-    })
-  }
-
   if (notification.channel == 'tradebot_filled_users_orders_insert') {
     db.query(`
       SELECT * FROM items_list WHERE id='${payload.item_id}';
@@ -922,6 +899,39 @@ This trading session will be auto-closed in 15 minutes`, discord_id: '1111111111
     }, 900000);
   }
 
+  if (notification.channel == 'tradebot_users_orders_insert') {
+    db.query(`
+      SELECT
+      tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+      tradebot_users_orders.order_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility,
+      items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url, items_list.id as item_id
+      FROM tradebot_users_orders
+      JOIN tradebot_users_list ON
+      tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+      JOIN items_list ON
+      tradebot_users_orders.item_id = items_list.id
+      WHERE tradebot_users_orders.discord_id=${payload.discord_id} AND tradebot_users_orders.item_id='${payload.item_id}' AND tradebot_users_orders.visibility=TRUE
+    `).then(res => {
+      console.log(JSON.stringify(res.rows))
+      if (res.rowCount == 1) {
+        io.emit('hubapp/trades/insertItem', {
+          code: 200,
+          response: res.rows[0]
+        })
+      } else {
+        io.emit('hubapp/trades/insertItem', {
+          code: 500,
+          response: `[DB Error] Zero rows returned when querying`
+        })
+      }
+    }).catch(err => {
+        console.log(err)
+        io.emit('hubapp/trades/insertItem', {
+            code: 500,
+            response: `[DB Error] ${JSON.stringify(err)}`
+        })
+    })
+  }
   if (notification.channel == 'tradebot_users_orders_update') {
     if (payload[0].visibility == true && payload[1].visibility == false) {
       console.log('an item became visible')
@@ -1003,7 +1013,6 @@ This trading session will be auto-closed in 15 minutes`, discord_id: '1111111111
       })
     }
   }
-
   if (notification.channel == 'tradebot_users_orders_delete') {
     io.emit('hubapp/trades/deleteItem', {
       code: 200,
@@ -1021,7 +1030,6 @@ This trading session will be auto-closed in 15 minutes`, discord_id: '1111111111
       `).catch(console.error)
     }
   }
-
   if (notification.channel == 'tradebot_filled_users_orders_update_archived') {
     db.query(`
       UPDATE hubapp_messages_channels
