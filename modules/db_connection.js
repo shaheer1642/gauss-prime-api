@@ -31,11 +31,11 @@ db.connect().then(async res => {
     db.query('LISTEN hubapp_messages_channels_update').catch(err => console.log(err))
 }).catch(err => {
     console.log('DB Connection failure.\n' + err)
+    process.exit()
 });
 
 db.on('error', err => {
-    console.log('=============== DB Connection error. ==============')
-    console.log(err)
+    console.log('=============== DB Connection error. ==============',err)
     process.exit()
 })
 
