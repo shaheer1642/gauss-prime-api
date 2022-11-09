@@ -15,8 +15,13 @@ const db_modules = require('./modules/db_modules')
 const userOrderLimit = 50
 
 app.get('/', (req, res) => {
-  res.he
   res.send('Hello, this is the API for Gauss Prime. Nothing fancy to show on the web-page');
+});
+
+app.get('/items/fetch', (req, res) => {
+  db.query(`SELECT * FROM items_list`).then(items_list => {
+    res.send(items_list.rows);
+  }).catch(console.error)
 });
 
 app.get('/discordOAuth2/authorize', async (req, res) => {
