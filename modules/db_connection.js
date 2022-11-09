@@ -44,6 +44,6 @@ setInterval(() => {
     db.query(`SELECT * FROM items_list`).then(res => {
         console.log('Pinged the DB. Received rows:',res.rowCount)
     }).catch(console.error)
-}, 3600000);
+}, 1800000);
 
 module.exports = {db};
