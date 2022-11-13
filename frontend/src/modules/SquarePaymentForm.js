@@ -78,7 +78,7 @@ function SquarePaymenForm() {
               <CreditCard />
           </PaymentForm> : <></>
         }
-        <div style={{margin: '20px',color: paymentStatus == 200 ? 'white':'red'}}>
+        <div style={{margin: '20px',color: paymentStatus == 200 ? 'green':'red'}}>
           {paymentMessage}
         </div>
             </div>
