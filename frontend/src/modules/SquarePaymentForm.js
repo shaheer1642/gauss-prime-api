@@ -25,7 +25,7 @@ function SquarePaymenForm() {
              */
             cardTokenizeResponseReceived={(token, buyer) => {
               console.log(token)
-              axios.post("http://localhost:3001/payments/hubvip", {
+              axios.post("/payments/hubvip", {
                 token: token.token,
                 discord_id: document.cookie.split('; ').find((row) => row.startsWith('discord_id='))?.split('=')[1]
               }).then(res => {
