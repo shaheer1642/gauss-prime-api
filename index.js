@@ -1,5 +1,6 @@
 const express = require('express');
 const app = express();
+const path = require('path')
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
@@ -11,8 +12,64 @@ const uuid = require('uuid');
 const JSONbig = require('json-bigint');
 const {convertUpper, dynamicSort, dynamicSortDesc} = require('./modules/functions')
 const db_modules = require('./modules/db_modules')
+const {createPaymentHubVIP} = require('./modules/square_payment_gateway/functions')
+//const cors = require('cors')
+const bodyParser = require('body-parser')
 
-const userOrderLimit = 50
+//app.use(cors())
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
+app.use(bodyParser.json())
+
+app.use(express.static(path.join(__dirname, 'frontend/build')))
+
+app.use(function (req, res, next) {
+  const allowedOrigins = ['http://localhost:3000','http://localhost:3001', 'https://gauss-prime-api.up.railway.app/'];
+  // Website you wish to allow to connectconst origin = req.headers.origin;
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  // Request methods you wish to allow
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+
+  // Request headers you wish to allow
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+
+  // Set to true if you need the website to include cookies in the requests sent
+  // to the API (e.g. in case you use sessions)
+  res.setHeader('Access-Control-Allow-Credentials', true);
+
+  // Pass to next layer of middleware
+  next();
+});
+
+app.get('/warframehub/purchase/vip', (req,res) => {
+  const discord_id = req.query.discord_id
+  if (!discord_id)
+    return res.send({code: 400, status: 'BAD REQUEST', message: 'discord ID not provided'})
+  res.append('Set-Cookie', 'discord_id=' + discord_id)
+  res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'))
+})
+
+app.post('/payments/hubvip', (req,res) => {
+  console.log('[/payments/hubvip] ',req.body)
+  createPaymentHubVIP(req.body.token,req.body.discord_id).then(payment => {
+    console.log(payment)
+    res.send({
+      code: 200,
+      status: 'OK'
+    })
+  }).catch(err => {
+    console.log(err)
+    res.send({
+      code: 500,
+      status: 'ERROR'
+    })
+  })
+})
 
 app.get('/', (req, res) => {
   res.send('Hello, this is the API for Gauss Prime. Nothing fancy to show on the web-page');
