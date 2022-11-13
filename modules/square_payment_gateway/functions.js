@@ -17,7 +17,7 @@ async function createPaymentHubVIP(token,discord_id) {
                 INSERT INTO wfhub_payment_receipts
                 (discord_id,receipt_id,type,receipt,timestamp)
                 VALUES
-                (${discord_id},'${res.result.payment.id}','hub_vip_purchase','${JSON.stringify(res.result.payment)}',${new Date().getTime()})
+                (${discord_id},'${res.result.payment.orderId}','hub_vip_purchase','${JSON.stringify(res.result.payment)}',${new Date().getTime()})
             `).then(dbres => {
                 if (dbres.rowCount == 1) {
                     resolve(res)
