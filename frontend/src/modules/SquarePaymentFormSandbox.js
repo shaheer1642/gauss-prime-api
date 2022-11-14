@@ -53,6 +53,8 @@ function SquarePaymenFormSandbox() {
              */
             createVerificationDetails={() => ({
               /* collected from the buyer */
+              amount: '100',
+              currencyCode: 'USD',
               billingContact: {
                 addressLines: ['123 Main Street', 'Apartment 1'],
                 familyName: 'Doe',
