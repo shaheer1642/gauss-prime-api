@@ -55,7 +55,7 @@ app.get('/warframehub/purchase/*', (req,res) => {
 
 app.post('/payments/hubvip', (req,res) => {
   console.log('[/payments/hubvip] ',req.body)
-  if (res.body.sandbox) {
+  if (req.body.sandbox) {
     createPaymentHubVIPSandbox(req.body.token,req.body.discord_id).then(payment => {
       console.log(payment)
       res.send({
