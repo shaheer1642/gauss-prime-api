@@ -1,7 +1,7 @@
 
 const uuid = require('uuid');
 const { db } = require('../db_connection');
-const square_test_client = require('./client')
+const {square_client,square_test_client} = require('./client')
 
 async function createPaymentHubVIPSandbox(token,discord_id) {
     return new Promise((resolve,reject) => {
@@ -35,7 +35,7 @@ async function createPaymentHubVIPSandbox(token,discord_id) {
 
 async function createPaymentHubVIP(token,discord_id) {
     return new Promise((resolve,reject) => {
-        square_test_client.paymentsApi.createPayment({
+        square_client.paymentsApi.createPayment({
             sourceId: token,
             idempotencyKey: uuid.v4(),
             amountMoney: {
