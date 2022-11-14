@@ -5,7 +5,7 @@ import { CreditCard, PaymentForm } from 'react-square-web-payments-sdk';
 import axios from 'axios';
 import '../App.css';
 
-function SquarePaymenForm() {
+function SquarePaymenFormSandbox() {
   const [paymentStatus, setPaymentStatus] = React.useState(0);
   const [paymentMessage, setPaymentMessage] = React.useState('');
   
@@ -19,7 +19,7 @@ function SquarePaymenForm() {
              * Identifies the calling form with a verified application ID generated from
              * the Square Application Dashboard.
              */
-            applicationId="sq0idp-_KFm1BevAXB1rUsqc9voqg"
+            applicationId="sandbox-sq0idb-dlM0HaihzBAJ_6mLIlfGWg"
             /**
              * Invoked when payment form receives the result of a tokenize generation
              * request. The result will be a valid credit card or wallet token, or an error.
@@ -28,7 +28,8 @@ function SquarePaymenForm() {
               console.log(token)
               axios.post("/payments/hubvip", {
                 token: token.token,
-                discord_id: document.cookie.split('; ').find((row) => row.startsWith('discord_id='))?.split('=')[1]
+                discord_id: document.cookie.split('; ').find((row) => row.startsWith('discord_id='))?.split('=')[1],
+                sandbox: true
               }).then(res => {
                 console.log(res.data)
                 if (res.data.code == 200) {
@@ -50,17 +51,28 @@ function SquarePaymenForm() {
              * We strongly recommend use this function to verify the buyer and reduce
              * the chance of fraudulent transactions.
              */
+            createVerificationDetails={() => ({
+              /* collected from the buyer */
+              billingContact: {
+                addressLines: ['123 Main Street', 'Apartment 1'],
+                familyName: 'Doe',
+                givenName: 'John',
+                countryCode: 'GB',
+                city: 'London',
+              },
+              intent: 'CHARGE',
+            })}
             /**
              * Identifies the location of the merchant that is taking the payment.
              * Obtained from the Square Application Dashboard - Locations tab.
              */
-            locationId="LNK824H3GZSCB"
+            locationId="L4WPY00F9H4HC"
           >
               <div style={{margin: '20px'}}>
                 Purchase Warframe Hub VIP
               </div>
               <div style={{margin: '20px'}}>
-                $1.00
+                $3.99
               </div>
               <CreditCard />
           </PaymentForm> : <></>
@@ -74,4 +86,4 @@ function SquarePaymenForm() {
   );
 }
 
-export default SquarePaymenForm;
+export default SquarePaymenFormSandbox;

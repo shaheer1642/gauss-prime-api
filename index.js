@@ -12,7 +12,7 @@ const uuid = require('uuid');
 const JSONbig = require('json-bigint');
 const {convertUpper, dynamicSort, dynamicSortDesc} = require('./modules/functions')
 const db_modules = require('./modules/db_modules')
-const {createPaymentHubVIP} = require('./modules/square_payment_gateway/functions')
+const {createPaymentHubVIPSandbox, createPaymentHubVIP} = require('./modules/square_payment_gateway/functions')
 //const cors = require('cors')
 const bodyParser = require('body-parser')
 
@@ -46,29 +46,44 @@ app.use(function (req, res, next) {
   next();
 });
 
-app.get('/warframehub/purchase/vip', (req,res) => {
+app.get('/warframehub/purchase/*', (req,res) => {
   const discord_id = req.query.discord_id
-  if (!discord_id)
-    return res.send({code: 400, status: 'BAD REQUEST', message: 'discord ID not provided'})
+  if (!discord_id) return res.send({code: 400, status: 'BAD REQUEST', message: 'discord ID not provided'})
   res.append('Set-Cookie', 'discord_id=' + discord_id)
   res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'))
 })
 
 app.post('/payments/hubvip', (req,res) => {
   console.log('[/payments/hubvip] ',req.body)
-  createPaymentHubVIP(req.body.token,req.body.discord_id).then(payment => {
-    console.log(payment)
-    res.send({
-      code: 200,
-      status: 'OK'
+  if (res.body.sandbox) {
+    createPaymentHubVIPSandbox(req.body.token,req.body.discord_id).then(payment => {
+      console.log(payment)
+      res.send({
+        code: 200,
+        status: 'OK'
+      })
+    }).catch(err => {
+      console.log(err)
+      res.send({
+        code: 500,
+        status: 'ERROR'
+      })
     })
-  }).catch(err => {
-    console.log(err)
-    res.send({
-      code: 500,
-      status: 'ERROR'
+  } else {
+    createPaymentHubVIP(req.body.token,req.body.discord_id).then(payment => {
+      console.log(payment)
+      res.send({
+        code: 200,
+        status: 'OK'
+      })
+    }).catch(err => {
+      console.log(err)
+      res.send({
+        code: 500,
+        status: 'ERROR'
+      })
     })
-  })
+  }
 })
 
 app.get('/', (req, res) => {
