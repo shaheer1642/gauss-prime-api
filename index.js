@@ -13,11 +13,11 @@ const JSONbig = require('json-bigint');
 const {convertUpper, dynamicSort, dynamicSortDesc} = require('./modules/functions')
 const db_modules = require('./modules/db_modules')
 const {createPaymentHubVIPSandbox, createPaymentHubVIP} = require('./modules/square_payment_gateway/functions')
-//const cors = require('cors')
+const cors = require('cors')
 const bodyParser = require('body-parser')
 const crypto = require('crypto')
 
-//app.use(cors())
+app.use(cors())
 app.use(bodyParser.urlencoded({
   extended: true
 }));
@@ -25,8 +25,9 @@ app.use(bodyParser.json())
 
 app.use(express.static(path.join(__dirname, 'frontend/build')))
 
+/*
 app.use(function (req, res, next) {
-  console.log('[app.use]')
+  console.log('[app.use]',req.headers)
   //console.log(req.headers)
   //console.log(req.body)
   const allowedOrigins = ['http://localhost:3000','http://localhost:3001', 'https://gauss-prime-api.up.railway.app/'];
@@ -51,6 +52,7 @@ app.use(function (req, res, next) {
   // Pass to next layer of middleware
   next();
 });
+*/
 
 app.get('/warframehub/purchase/*', (req,res) => {
   const discord_id = req.query.discord_id
