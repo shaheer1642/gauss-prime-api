@@ -1176,6 +1176,7 @@ server.listen(process.env.PORT, () => {
 
 
 function calculateSignaturePatreon(key) {
+    console.log('[calculateSignaturePatreon] called')
     return function(req, res, next) {
         var hash = req.header("x-patreon-signature"),
             hmac = crypto.createHmac("md5", key);
