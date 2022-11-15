@@ -1190,7 +1190,8 @@ function calculateSignaturePatreon(key) {
               Buffer.from(hash.padEnd(crypted.length))
             )) {
                 // Valid request
-                return res.send("Success!", { "Content-Type": "text/plain" });
+                return next()
+                //return res.send("Success!", { "Content-Type": "text/plain" });
             } else {
                 // Invalid request
                 return res.send("Invalid x-patreon-signature hash", { "Content-Type": "text/plain" }, 403);
