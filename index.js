@@ -64,8 +64,8 @@ app.get('/warframehub/purchase/*', (req,res) => {
 app.post('/patreon/webhook', function(req, res, next) {
   console.log('[/patreon/webhook] header verification')
   var hash = req.header("x-patreon-signature"),
-      hmac = crypto.createHmac("md5", process.env.PATREON_WEBHOOK_SECRET);
-
+      hmac = crypto.createHmac("md5", process.env.PATREON_WEBHOOK_SECRET).update(req.body).digest('hex');
+  console.log('hash:',hash,'hmac:',hmac)
   req.on("data", function(data) {
       hmac.update(data);
   });
@@ -89,7 +89,6 @@ app.post('/patreon/webhook', function(req, res, next) {
       return next(err);
   });
 }, (req,res) => {
-  console.log('[/patreon/webhook]')
   console.log('[/patreon/webhook] body: ',JSON.stringify(req.body))
   res.status(200).send('received');
 });
