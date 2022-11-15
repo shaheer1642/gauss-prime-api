@@ -64,16 +64,8 @@ app.get('/warframehub/purchase/*', (req,res) => {
 app.post('/patreon/webhook', function(req, res, next) {
   console.log('[/patreon/webhook] header verification')
   var hash = req.header("x-patreon-signature"),
-      hmac = crypto.createHmac("md5", process.env.PATREON_WEBHOOK_SECRET);
+      crypted = crypto.createHmac("md5", process.env.PATREON_WEBHOOK_SECRET).update(JSON.stringify(req.body)).digest("hex")
 
-  req.on("data", function(data) {
-      console.log('req on data')
-      hmac.update(data);
-  });
-
-  req.on("end", function() {
-      console.log('req on end')
-      var crypted = hmac.digest("hex");
       console.log('hash:',hash,'crypted:',crypted)
 
       if(crypto.timingSafeEqual(
@@ -86,6 +78,16 @@ app.post('/patreon/webhook', function(req, res, next) {
           // Invalid request
           return res.status(400).send("Invalid Patreon hash");
       }
+
+  req.on("data", function(data) {
+      console.log('req on data')
+      hmac;
+  });
+
+  req.on("end", function() {
+      console.log('req on end')
+      var crypted = hmac;
+
   });
 
   req.on("error", function(err) {
