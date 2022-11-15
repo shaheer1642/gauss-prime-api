@@ -61,15 +61,37 @@ app.get('/warframehub/purchase/*', (req,res) => {
   res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'))
 })
 
-app.post('/patreon/webhook', (req,res) => {
+app.post('/patreon/webhook', function(req, res, next) {
+  console.log('[/patreon/webhook] header verification')
+  var hash = req.header("x-patreon-signature"),
+      hmac = crypto.createHmac("md5", process.env.PATREON_WEBHOOK_SECRET);
+
+  req.on("data", function(data) {
+      hmac.update(data);
+  });
+
+  req.on("end", function() {
+      var crypted = hmac.digest("hex");
+
+      if(crypto.timingSafeEqual(
+        Buffer.from(crypted),
+        Buffer.from(hash.padEnd(crypted.length))
+      )) {
+          // Valid request
+          return next()
+      } else {
+          // Invalid request
+          return res.status(400).send("Invalid Patreon hash");
+      }
+  });
+
+  req.on("error", function(err) {
+      return next(err);
+  });
+}, (req,res) => {
   console.log('[/patreon/webhook]')
-  calculateSignaturePatreon(req).then(() => {
-    console.log('[/patreon/webhook] body: ',JSON.stringify(req.body))
-    res.status(200).send('received');
-  }).catch((err) => {
-    console.log(err)
-    res.status(400).json(err);
-  })
+  console.log('[/patreon/webhook] body: ',JSON.stringify(req.body))
+  res.status(200).send('received');
 });
 
 app.post('/payments/hubvip', (req,res) => {
@@ -1182,33 +1204,6 @@ server.listen(process.env.PORT, () => {
 });
 
 
-function calculateSignaturePatreon(req) {
-  return new Promise((resolve, reject) => {
-    console.log('[calculateSignaturePatreon] called')
-    var hash = req.header("x-patreon-signature"),
-        hmac = crypto.createHmac("md5", process.env.PATREON_WEBHOOK_SECRET);
-  
-    req.on("data", function(data) {
-        hmac.update(data);
-    });
-  
-    req.on("end", function() {
-        var crypted = hmac.digest("hex");
-        console.log('[calculateSignaturePatreon]',hash,crypted)
-        if(crypto.timingSafeEqual(
-          Buffer.from(crypted),
-          Buffer.from(hash.padEnd(crypted.length))
-        )) {
-            // Valid request
-            return resolve()
-            //return res.send("Success!", { "Content-Type": "text/plain" }); 
-        } else {
-            // Invalid request
-            return reject("Invalid x-patreon-signature hash");
-        }
-    });
-    req.on("error", function(err) {
-        return reject(err);
-    });
-  })
+function calculateSignaturePatreon() {
+  return 
 }
