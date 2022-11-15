@@ -1194,7 +1194,7 @@ function calculateSignaturePatreon(key) {
             )) {
                 // Valid request
                 return next()
-                //return res.send("Success!", { "Content-Type": "text/plain" });
+                //return res.send("Success!", { "Content-Type": "text/plain" }); 
             } else {
                 // Invalid request
                 return res.send("Invalid x-patreon-signature hash", { "Content-Type": "text/plain" }, 403);
