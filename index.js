@@ -29,8 +29,8 @@ app.use(function (req, res, next) {
   // Website you wish to allow to connectconst origin = req.headers.origin;
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
   }
+  res.setHeader('Access-Control-Allow-Origin', origin);
 
   // Request methods you wish to allow
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
@@ -54,7 +54,7 @@ app.get('/warframehub/purchase/*', (req,res) => {
 })
 
 app.get('/patreon/webhook', (req,res) => {
-  console.log(JSON.stringify(req))
+  console.log('[/patreon/webhook]', JSON.stringify(req))
 })
 
 app.post('/payments/hubvip', (req,res) => {
