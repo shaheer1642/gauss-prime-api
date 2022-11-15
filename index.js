@@ -15,6 +15,7 @@ const db_modules = require('./modules/db_modules')
 const {createPaymentHubVIPSandbox, createPaymentHubVIP} = require('./modules/square_payment_gateway/functions')
 //const cors = require('cors')
 const bodyParser = require('body-parser')
+const crypto = require('crypto')
 
 //app.use(cors())
 app.use(bodyParser.urlencoded({
@@ -31,9 +32,17 @@ app.use(function (req, res, next) {
   // Website you wish to allow to connectconst origin = req.headers.origin;
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
-  }
-  if (origin)
     res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  if (!origin) {
+    //check if an authorized header token
+    const hash = crypto.createHmac('MD5', process.env.PATREON_WEBHOOK_SECRET).update(req.headers['x-patreon-signature']).digest('HEX')
+    console.log(hash)
+    if (hash == req.headers['x-patreon-signature']) {
+      next()
+    }
+  }
 
   // Request methods you wish to allow
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
