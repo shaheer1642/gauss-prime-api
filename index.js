@@ -61,42 +61,18 @@ app.get('/warframehub/purchase/*', (req,res) => {
   res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'))
 })
 
-app.post('/patreon/webhook', function(req, res, next) {
-  console.log('[/patreon/webhook] header verification')
-  var hash = req.header("x-patreon-signature"),
-      crypted = crypto.createHmac("md5", process.env.PATREON_WEBHOOK_SECRET).update(JSON.stringify(req.body)).digest("hex")
-
-      console.log('hash:',hash,'crypted:',crypted)
-
-      if(crypto.timingSafeEqual(
-        Buffer.from(crypted),
-        Buffer.from(hash.padEnd(crypted.length))
-      )) {
-          // Valid request
-          return next()
-      } else {
-          // Invalid request
-          return res.status(400).send("Invalid Patreon hash");
-      }
-
-  req.on("data", function(data) {
-      console.log('req on data')
-      hmac;
-  });
-
-  req.on("end", function() {
-      console.log('req on end')
-      var crypted = hmac;
-
-  });
-
-  req.on("error", function(err) {
-      console.log('req on error')
-      return next(err);
-  });
-}, (req,res) => {
-  console.log('[/patreon/webhook] body: ',JSON.stringify(req.body))
-  res.status(200).send('received');
+app.post('/patreon/webhook', (req, res, next) => {
+    console.log('[/patreon/webhook] header verification')
+    const hash = req.header("x-patreon-signature");
+    const crypted = crypto.createHmac("md5", process.env.PATREON_WEBHOOK_SECRET).update(JSON.stringify(req.body)).digest("hex")
+    if(crypto.timingSafeEqual(
+      Buffer.from(crypted),
+      Buffer.from(hash.padEnd(crypted.length))
+    )) return next()
+    else return res.status(400).send("Invalid Patreon hash");
+  }, (req,res) => {
+    console.log('[/patreon/webhook] body:',JSON.stringify(req.body))
+    res.status(200).send('received');
 });
 
 app.post('/payments/hubvip', (req,res) => {
