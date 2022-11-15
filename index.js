@@ -25,7 +25,7 @@ app.use(bodyParser.json())
 app.use(express.static(path.join(__dirname, 'frontend/build')))
 
 app.use(function (req, res, next) {
-  const allowedOrigins = ['http://localhost:3000','http://localhost:3001', 'https://gauss-prime-api.up.railway.app/'];
+  const allowedOrigins = ['http://localhost:3000','http://localhost:3001', 'https://gauss-prime-api.up.railway.app/', 'https://patreon.com/'];
   // Website you wish to allow to connectconst origin = req.headers.origin;
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
@@ -51,6 +51,10 @@ app.get('/warframehub/purchase/*', (req,res) => {
   if (!discord_id) return res.send({code: 400, status: 'BAD REQUEST', message: 'discord ID not provided'})
   res.append('Set-Cookie', 'discord_id=' + discord_id)
   res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'))
+})
+
+app.get('/patreon/webhook', (req,res) => {
+  console.log(JSON.stringify(req))
 })
 
 app.post('/payments/hubvip', (req,res) => {
