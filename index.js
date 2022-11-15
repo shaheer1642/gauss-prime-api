@@ -54,7 +54,8 @@ app.get('/warframehub/purchase/*', (req,res) => {
 })
 
 app.get('/patreon/webhook', (req,res) => {
-  console.log('[/patreon/webhook]', JSON.stringify(req))
+  console.log('[/patreon/webhook] headers: ', JSON.stringify(req.headers), ' body: ',JSON.stringify(req.body))
+  res.send('hi')
 })
 
 app.post('/payments/hubvip', (req,res) => {
