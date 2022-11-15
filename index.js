@@ -25,6 +25,8 @@ app.use(bodyParser.json())
 app.use(express.static(path.join(__dirname, 'frontend/build')))
 
 app.use(function (req, res, next) {
+  console.log(req.headers)
+  console.log(req.body)
   const allowedOrigins = ['http://localhost:3000','http://localhost:3001', 'https://gauss-prime-api.up.railway.app/', 'https://patreon.com/'];
   // Website you wish to allow to connectconst origin = req.headers.origin;
   const origin = req.headers.origin;
