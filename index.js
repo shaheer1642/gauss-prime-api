@@ -59,7 +59,7 @@ app.get('/warframehub/purchase/*', (req,res) => {
   res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'))
 })
 
-app.get('/patreon/webhook', calculateSignaturePatreon(process.env.PATREON_WEBHOOK_SECRET), (req,res) => {
+app.get('/patreon/webhook', (req,res) => {
   console.log('[/patreon/webhook] body: ',JSON.stringify(req.body))
   res.send('received')
 });
