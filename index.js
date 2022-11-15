@@ -26,22 +26,13 @@ app.use(bodyParser.json())
 app.use(express.static(path.join(__dirname, 'frontend/build')))
 
 app.use(function (req, res, next) {
-  console.log(req.headers)
-  console.log(req.body)
+  //console.log(req.headers)
+  //console.log(req.body)
   const allowedOrigins = ['http://localhost:3000','http://localhost:3001', 'https://gauss-prime-api.up.railway.app/', 'https://patreon.com/'];
   // Website you wish to allow to connectconst origin = req.headers.origin;
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-
-  if (!origin) {
-    //check if an authorized header token
-    const hash = crypto.createHmac('MD5', process.env.PATREON_WEBHOOK_SECRET).update(req.headers['x-patreon-signature']).digest('HEX')
-    console.log(hash)
-    if (hash == req.headers['x-patreon-signature']) {
-      next()
-    }
   }
 
   // Request methods you wish to allow
@@ -65,9 +56,10 @@ app.get('/warframehub/purchase/*', (req,res) => {
   res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'))
 })
 
+app.get('/patreon/webhook', calculateSignaturePatreon(process.env.PATREON_WEBHOOK_SECRET));
 app.get('/patreon/webhook', (req,res) => {
-  console.log('[/patreon/webhook] headers: ', JSON.stringify(req.headers), ' body: ',JSON.stringify(req.body))
-  res.send('hi')
+  console.log('[/patreon/webhook] body: ',JSON.stringify(req.body))
+  res.send('received')
 })
 
 app.post('/payments/hubvip', (req,res) => {
@@ -1178,3 +1170,34 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
 server.listen(process.env.PORT, () => {
   console.log('Server is listening to port',process.env.PORT);
 });
+
+
+function calculateSignaturePatreon(key) {
+    return function(req, res, next) {
+        var hash = req.header("x-patreon-signature"),
+            hmac = crypto.createHmac("md5", key);
+
+        req.on("data", function(data) {
+            hmac.update(data);
+        });
+
+        req.on("end", function() {
+            var crypted = hmac.digest("hex");
+
+            if(crypto.timingSafeEqual(
+              Buffer.from(crypted),
+              Buffer.from(hash.padEnd(crypted.length))
+            )) {
+                // Valid request
+                return res.send("Success!", { "Content-Type": "text/plain" });
+            } else {
+                // Invalid request
+                return res.send("Invalid x-patreon-signature hash", { "Content-Type": "text/plain" }, 403);
+            }
+        });
+
+        req.on("error", function(err) {
+            return next(err);
+        });
+    }
+}
