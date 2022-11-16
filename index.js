@@ -56,9 +56,29 @@ app.use(function (req, res, next) {
 
 app.get('/warframehub/purchase/*', (req,res) => {
   const discord_id = req.query.discord_id
-  if (!discord_id) return res.send({code: 400, status: 'BAD REQUEST', message: 'discord ID not provided'})
+  console.log(discord_id)
+  if (!discord_id) return res.status(400).send('discord id not provided')
   res.append('Set-Cookie', 'discord_id=' + discord_id)
   res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'))
+})
+
+app.post('/warframehub/purchase/vip/submit', (req,res) => {
+  const discord_id = req.body.discord_id
+  const transaction = req.body.transaction
+  if (!discord_id) return res.status(400).send('discord_id not provided')
+  if (!transaction) return res.status(400).send('transaction object not provided')
+  db.query(`
+    INSERT INTO wfhub_payment_receipts
+    (discord_id,status,amount,currencyreceipt_id,type,details,timestamp)
+    VALUES
+    (${discord_id},'${transaction.purchase_units[0].payments.captures.status}',${transaction.purchase_units[0].payments.captures.amount.value},'${transaction.purchase_units[0].payments.captures.amount.currency_code}','${transaction.purchase_units[0].payments.captures.id}','hub_vip_purchase','${JSON.stringify(transaction)}',${new Date().getTime()})
+  `).then(dbres => {
+    if (dbres.rowCount == 1) return res.status(200).send('successful')
+    else return res.status(500).send('unexpected db response')
+  }).catch(err => {
+    console.log(err)
+    return res.status(500).send(JSON.stringify(err))
+  })
 })
 
 app.post('/patreon/webhook', (req, res, next) => {
