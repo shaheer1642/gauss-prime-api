@@ -12,17 +12,17 @@ export default function PaypalPaymentForm() {
                         Your payment is successful! You will receive a receipt on Discord
                     </div>
                     :
-                    <PayPalScriptProvider options={{ "client-id": 'AXPaVkZ2MUtdJJv4D-Kt_WMOp0ekOJmpoRPNINMygmcK_UDo9DeidNqWsJrZSCEBz9qWhlW4N2Pz3QcP', currency: 'EUR' }}>
+                    <PayPalScriptProvider options={{ "client-id": 'AY9F_kRIn3_uHmsdMgIMZLUYZmjuS1_Bvx_f69nfxbiYwrXqp_6xJ8SrJOEWdJycny9KAM6eSkmH6FbG', currency: 'EUR' }}>
                         <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', width: '100%', marginBottom: '20px', fontSize: '32px', fontFamily: 'times new roman', fontWeight: 'bold', color: '#0d2857'}}>
                             <div>Purchase WarframeHub Vip</div>
-                            <div>€3.99</div>
+                            <div>€1.00</div>
                         </div>
                         <PayPalButtons
                             createOrder={(data, actions) => {
                                 return actions.order.create({
                                     purchase_units: [{
                                         amount: {
-                                            value: "3.99",
+                                            value: "1.00",
                                             currency_code: 'EUR'
                                         },
                                     }],
