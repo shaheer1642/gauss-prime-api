@@ -65,20 +65,20 @@ app.post('/warframehub/purchase/vip/submit', (req,res) => {
   console.log('[/warframehub/purchase/vip/submit] called')
   const discord_id = req.body.discord_id
   const transaction = req.body.transaction
-  if (!discord_id) return res.status(400).send('discord_id not provided')
-  if (!transaction) return res.status(400).send('transaction object not provided')
+  if (!discord_id) return res.status(400).send(`discord_id not provided\nPlease contact an Administrator @ WarframeHub with your transaction id: ${transaction.id}`)
+  if (!transaction) return res.status(400).send(`transaction object not provided\nPlease contact an Administrator @ WarframeHub with your transaction id: ${transaction.id}`)
   console.log('[/warframehub/purchase/vip/submit]',JSON.stringify(transaction))
   db.query(`
     INSERT INTO wfhub_payment_receipts
     (discord_id,status,amount,currencyreceipt_id,type,details,timestamp)
     VALUES
-    (${discord_id},'${transaction.purchase_units[0].payments.captures.status}',${transaction.purchase_units[0].payments.captures.amount.value},'${transaction.purchase_units[0].payments.captures.amount.currency_code}','${transaction.purchase_units[0].payments.captures.id}','hub_vip_purchase','${JSON.stringify(transaction)}',${new Date().getTime()})
+    (${discord_id},'${transaction.purchase_units[0].payments.captures[0].status}',${transaction.purchase_units[0].payments.captures[0].amount.value},'${transaction.purchase_units[0].payments.captures[0].amount.currency_code}','${transaction.purchase_units[0].payments.captures[0].id}','hub_vip_purchase','${JSON.stringify(transaction)}',${new Date().getTime()})
   `).then(dbres => {
     if (dbres.rowCount == 1) return res.status(200).send('successful')
-    else return res.status(500).send('unexpected db response')
+    else return res.status(500).send(`Unexpected DB response\nPlease contact an Administrator @ WarframeHub with your transaction id: ${transaction.id}`)
   }).catch(err => {
     console.log(err)
-    return res.status(500).send(JSON.stringify(err))
+    return res.status(500).send(`${JSON.stringify(err)}\nPlease contact an Administrator @ WarframeHub with your transaction id: ${transaction.id}`)
   })
 })
 
