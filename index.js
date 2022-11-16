@@ -12,7 +12,6 @@ const uuid = require('uuid');
 const JSONbig = require('json-bigint');
 const {convertUpper, dynamicSort, dynamicSortDesc} = require('./modules/functions')
 const db_modules = require('./modules/db_modules')
-const {createPaymentHubVIPSandbox, createPaymentHubVIP} = require('./modules/square_payment_gateway/functions')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const crypto = require('crypto')
