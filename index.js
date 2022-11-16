@@ -96,6 +96,12 @@ app.post('/patreon/webhook', (req, res, next) => {
     res.status(200).send('received');
 });
 
+app.post('/paypal/webhook', (req, res) => {
+  console.log('[/patreon/webhook] called')
+  console.log('[/patreon/webhook] headers',JSON.stringify(req.headers))
+  console.log('[/patreon/webhook] body',JSON.stringify(req.body))
+});
+
 app.post('/payments/hubvip', (req,res) => {
   console.log('[/payments/hubvip] ',req.body)
   if (req.body.sandbox) {
