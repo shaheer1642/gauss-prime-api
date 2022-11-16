@@ -39,8 +39,17 @@ export default function PaypalPaymentForm() {
                                     }).then(res => {
                                         if (res.status == 200) setSuccess(true)
                                         else alert(`ERROR: server responded with code ${res.status} with message ${res.data}`)
-                                    }).catch(err => {
-                                        alert(err)
+                                    }).catch(error => {
+                                        if (error.response) {
+                                          // Request made and server responded
+                                          alert(`ERROR: server responded with code ${error.response.status} with message ${error.response.data}`);
+                                        } else if (error.request) {
+                                          // The request was made but no response was received
+                                          alert(error.request);
+                                        } else {
+                                          // Something happened in setting up the request that triggered an Error
+                                          alert(`Error ${error.message}`, );
+                                        }
                                     })
                                 });
                             }}

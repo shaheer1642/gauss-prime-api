@@ -70,7 +70,7 @@ app.post('/warframehub/purchase/vip/submit', (req,res) => {
   console.log('[/warframehub/purchase/vip/submit]',JSON.stringify(transaction))
   db.query(`
     INSERT INTO wfhub_payment_receipts
-    (discord_id,status,amount,currencyreceipt_id,type,details,timestamp)
+    (discord_id,status,amount,currency,receipt_id,type,details,timestamp)
     VALUES
     (${discord_id},'${transaction.purchase_units[0].payments.captures[0].status}',${transaction.purchase_units[0].payments.captures[0].amount.value},'${transaction.purchase_units[0].payments.captures[0].amount.currency_code}','${transaction.purchase_units[0].payments.captures[0].id}','hub_vip_purchase','${JSON.stringify(transaction)}',${new Date().getTime()})
   `).then(dbres => {
