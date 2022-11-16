@@ -62,10 +62,12 @@ app.get('/warframehub/purchase/*', (req,res) => {
 })
 
 app.post('/warframehub/purchase/vip/submit', (req,res) => {
+  console.log('[/warframehub/purchase/vip/submit] called')
   const discord_id = req.body.discord_id
   const transaction = req.body.transaction
   if (!discord_id) return res.status(400).send('discord_id not provided')
   if (!transaction) return res.status(400).send('transaction object not provided')
+  console.log('[/warframehub/purchase/vip/submit]',JSON.stringify(transaction))
   db.query(`
     INSERT INTO wfhub_payment_receipts
     (discord_id,status,amount,currencyreceipt_id,type,details,timestamp)
