@@ -53,6 +53,40 @@ app.use(function (req, res, next) {
 });
 */
 
+const patreon = require('patreon')
+const patreonAPI = patreon.patreon
+const patreonOAuthClient = patreon.oauth(process.env.PATREON_CLIENT_ID, process.env.PATREON_CLIENT_SECRET)
+app.get('/patreon/oauth', (req,res) => {
+  console.log('[/patreon/oauth] called')
+
+  const oauthGrantCode = req.query.code
+  const discord_id = req.query.state
+  if (!oauthGrantCode || !discord_id) return res.status(400).send('Invalid request')
+
+  patreonOAuthClient.getTokens(oauthGrantCode, 'https://gauss-prime-api.up.railway.app/patreon/oauth')
+  .then(function(tokensResponse) {
+    const patreonAPIClient = patreonAPI(tokensResponse.access_token)
+    patreonAPIClient('/current_user').then(patreon_user => {
+      const patreon_id = patreon_user.rawJson.data.id
+      db.query(`UPDATE tradebot_users_list SET patreon_id=${patreon_id} WHERE discord_id = ${discord_id}`)
+      .then(db_res => {
+        if (db_res.rowCount == 1) return res.redirect('https://www.patreon.com/join/user?u=82800386')
+        else if (db_res.rowCount == 0) return res.status(400).send('ERROR: Could not find your Discord ID in DB')
+        else return res.status(500).send('INTERNAL ERROR: Unexpected DB response')
+      }).catch(err => {
+        console.error(err)
+        return res.status(500).send('INTERNAL ERROR: DB error occured')
+      })
+    }).catch((err) => {
+      console.error(err)
+      return res.status(500).send('INTERNAL ERROR: Patreon API error occured')
+    })
+  }).catch((err) => {
+    console.error(err)
+    return res.status(500).send('INTERNAL ERROR: Patreon API error occured')
+  })
+})
+
 app.get('/warframehub/purchase/*', (req,res) => {
   const discord_id = req.query.discord_id
   console.log(discord_id)
