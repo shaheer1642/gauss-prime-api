@@ -45,7 +45,7 @@ app.use(function (req, res, next) {
   res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
 
   // Set to true if you need the website to include cookies in the requests sent
-  // to the API (e.g. in case you use sessions)
+  // to the API (e.g. in case you use sessions)  
   res.setHeader('Access-Control-Allow-Credentials', true);  
 
   // Pass to next layer of middleware
@@ -62,6 +62,8 @@ app.get('/patreon/oauth', (req,res) => {
   const oauthGrantCode = req.query.code
   const discord_id = req.query.state
   if (!oauthGrantCode || !discord_id) return res.status(400).send('Invalid request')
+
+  console.log('[/patreon/oauth] oauthGrantCode:',oauthGrantCode,'discord_id:',discord_id)
 
   patreonOAuthClient.getTokens(oauthGrantCode, 'https://gauss-prime-api.up.railway.app/patreon/oauth')
   .then(function(tokensResponse) {
