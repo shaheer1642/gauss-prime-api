@@ -79,11 +79,11 @@ app.get('/patreon/oauth', (req,res) => {
       })
     }).catch((err) => {
       console.error(err)
-      return res.status(500).send('INTERNAL ERROR: Patreon API error occured')
+      return res.status(500).send('INTERNAL ERROR: Patreon API error occured while getting user profile')
     })
   }).catch((err) => {
     console.error(err)
-    return res.status(500).send('INTERNAL ERROR: Patreon API error occured')
+    return res.status(500).send('INTERNAL ERROR: Patreon API error occured while getting oauth token')
   })
 })
 
