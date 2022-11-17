@@ -133,6 +133,8 @@ app.post('/warframehub/purchase/vip/submit', (req,res) => {
 })
 
 app.post('/patreon/webhook', (req, res, next) => {
+  console.log('[/patreon/webhook] called')
+  console.log('[/patreon/webhook] headers:',JSON.stringify(req.headers))
     console.log('[/patreon/webhook] header verification')
     const hash = req.header("x-patreon-signature");
     const crypted = crypto.createHmac("md5", process.env.PATREON_WEBHOOK_SECRET).update(JSON.stringify(req.body)).digest("hex")
@@ -144,6 +146,25 @@ app.post('/patreon/webhook', (req, res, next) => {
   }, (req,res) => {
     console.log('[/patreon/webhook] body:',JSON.stringify(req.body))
     res.status(200).send('received');
+    const payment_obj = req.body
+    const patreon_id = payment_obj.data.relationships.user.data.id
+    const receipt_id = payment_obj.data.id
+    db.query(`
+      INSERT INTO wfhub_payment_receipts 
+      (payer_id, receipt_id, platform, details, timestamp)
+      VALUES
+      (${patreon_id}, '${receipt_id}', 'patreon', '${JSON.stringify(payment_obj)}', ${new Date().getTime()})
+    `).then(res => {
+      const last_charge_status = payment_obj.data.attributes.last_charge_status
+      if (last_charge_status.toLowerCase() != 'paid') return
+      const currently_entitled_amount_cents = payment_obj.data.attributes.currently_entitled_amount_cents
+      if (currently_entitled_amount_cents < 379) return
+      const patron_status = payment_obj.data.attributes.patron_status
+      if (patron_status.toLowerCase() != 'active_patron') return
+      const last_charge_date = new Date(payment_obj.data.attributes.last_charge_date).getTime()
+      const next_charge_date = new Date(payment_obj.data.attributes.next_charge_date).getTime()
+      db.query(`UPDATE tradebot_users_list SET is_patron=true, patreon_join_timestamp=${last_charge_date}, patreon_expiry_timestamp=${next_charge_date} WHERE patreon_id=${patreon_id}`).catch(console.error)
+    }).catch(console.error)
 });
 
 app.post('/paypal/webhook', (req, res) => {
