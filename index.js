@@ -72,16 +72,16 @@ app.get('/patreon/oauth', (req,res) => {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     }
-  }).then(res => {
-    const oAuthToken = res.data.access_token
+  }).then(token_res => {
+    const oAuthToken = token_res.data.access_token
     axios({
       method: 'get',
       url: `https://www.patreon.com/api/oauth2/v2/identity`,
       headers: {
         Authorization: 'Bearer ' + oAuthToken
       },
-    }).then(res => {
-      const patreon_id = res.data.data.id
+    }).then(patreon_user => {
+      const patreon_id = patreon_user.data.data.id
       console.log('[/patreon/oauth] patreon_id',patreon_id)
       if (!patreon_id) return res.status(500).send('INTERNAL ERROR: Unable to get patreon_id')
       db.query(`UPDATE tradebot_users_list SET patreon_id=${patreon_id} WHERE discord_id = ${discord_id}`)
