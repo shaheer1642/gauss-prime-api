@@ -53,26 +53,40 @@ app.use(function (req, res, next) {
 });
 */
 
-const patreon = require('patreon')
-const patreonAPI = patreon.patreon
-const patreonOAuthClient = patreon.oauth(process.env.PATREON_CLIENT_ID, process.env.PATREON_CLIENT_SECRET)
+//const patreon = require('patreon')
+//const patreonAPI = patreon.patreon
+//const patreonOAuthClient = patreon.oauth(process.env.PATREON_CLIENT_ID, process.env.PATREON_CLIENT_SECRET)
 app.get('/patreon/oauth', (req,res) => {
   console.log('[/patreon/oauth] called')
+
 
   const oauthGrantCode = req.query.code
   const discord_id = req.query.state
   if (!oauthGrantCode || !discord_id) return res.status(400).send('Invalid request')
 
-  console.log('[/patreon/oauth] oauthGrantCode:',oauthGrantCode,'discord_id:',discord_id)
+  const redirect_uri = 'https://gauss-prime-api.up.railway.app/patreon/oauth'
 
-  patreonOAuthClient.getTokens(oauthGrantCode, 'https://gauss-prime-api.up.railway.app/patreon/oauth')
-  .then(function(tokensResponse) {
-    const patreonAPIClient = patreonAPI(tokensResponse.access_token)
-    patreonAPIClient('/current_user').then(patreon_user => {
-      const patreon_id = patreon_user.rawJson.data.id
+  axios({
+    method: 'post',
+    url: `https://www.patreon.com/api/oauth2/token?code=${oauthGrantCode}&grant_type=authorization_code&client_id=${process.env.PATREON_CLIENT_ID}&client_secret=${process.env.PATREON_CLIENT_SECRET}&redirect_uri=${redirect_uri}`,
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    }
+  }).then(res => {
+    const oAuthToken = res.data.access_token
+    axios({
+      method: 'get',
+      url: `https://www.patreon.com/api/oauth2/v2/identity`,
+      headers: {
+        Authorization: 'Bearer ' + oAuthToken
+      },
+    }).then(res => {
+      const patreon_id = res.data.data.id
+      console.log('[/patreon/oauth] patreon_id',patreon_id)
+      if (!patreon_id) return res.status(500).send('INTERNAL ERROR: Unable to get patreon_id')
       db.query(`UPDATE tradebot_users_list SET patreon_id=${patreon_id} WHERE discord_id = ${discord_id}`)
       .then(db_res => {
-        if (db_res.rowCount == 1) return res.redirect('https://www.patreon.com/join/user?u=82800386')
+        if (db_res.rowCount == 1) return res.redirect('https://www.patreon.com/join/warframehub')
         else if (db_res.rowCount == 0) return res.status(400).send('ERROR: Could not find your Discord ID in DB')
         else return res.status(500).send('INTERNAL ERROR: Unexpected DB response')
       }).catch(err => {
