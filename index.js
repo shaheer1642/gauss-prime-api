@@ -15,6 +15,7 @@ const db_modules = require('./modules/db_modules')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const crypto = require('crypto')
+const relicbot = require('./modules/relicbot')
 
 app.use(cors())
 app.use(bodyParser.urlencoded({
@@ -284,15 +285,8 @@ var clients = {}
 
 io.on('connection', (socket) => {
     console.log('a user connected',socket.id);
-    if (!socket.handshake.query.session_key)
-      return
     clients[socket.id] = socket
     console.log('connected clients',new Date(),Object.keys(clients).length)
-
-    // check if user was previously logged in
-    setTimeout(() => {
-      checkUserLogin(socket.handshake.query.session_key)
-    }, 500);
 
     socket.on('disconnect', () => {
       console.log('a user disconnected');
@@ -301,636 +295,648 @@ io.on('connection', (socket) => {
       socket.removeAllListeners()
     });
 
-    socket.addListener("hubapp/getPublicChat", (data) => {
-      console.log('[Endpoint log] hubapp/getPublicChat called')
-      db.query(`
-        SELECT trade_active, last_trading_session, 
-        jsonb_path_query_array(
-          messages, 
-          '$[$.size() - ${data.end_limit} to $.size() - ${data.start_limit}]'
-        ) messages
-        FROM hubapp_messages_channels WHERE discord_ids @> '"ALL"';
-
-        SELECT * FROM hubapp_users;
-      `).then(res => {
-        const user_data = {}
-        res[1].rows.forEach(row => user_data[row.discord_id] = row)
-        const arr = []
-        res[0].rows[0].messages.forEach(message => {
-          arr.push({
-            discord_id: message.discord_id,
-            discord_username: user_data[message.discord_id].discord_username,
-            ign: user_data[message.discord_id].forums_username,
-            avatar: user_data[message.discord_id].discord_avatar,
-            message: message.message,
-            timestamp: message.timestamp
-          })
-        })
-        socket.emit('hubapp/receivedPublicChat', {
-            code: 200,
-            response: arr
-        })
-      }).catch(err => {
-          console.log(err)
-          socket.emit('hubapp/receivedPublicChat', {
-              code: 500,
-              response: `[DB Error] ${JSON.stringify(err)}`
-          })
+    if (socket.handshake.query.bot_token && socket.handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+      Object.keys(relicbot.endpoints).forEach(key => {
+        socket.addListener(key, relicbot.endpoints[key])
       })
-    });
+    } else {
+      if (!socket.handshake.query.session_key) return
+      // check if user was previously logged in
+      setTimeout(() => {
+        checkUserLogin(socket.handshake.query.session_key)
+      }, 500);
 
-    socket.addListener("hubapp/privateChatMarkAsRead", (data) => {
-      console.log('[Endpoint log] hubapp/privateChatMarkAsRead called')
-      db.query(`
-        UPDATE hubapp_messages_channels SET last_read_message = jsonb_set(last_read_message, '{${data.discord_id_1}}', '${new Date().getTime()}') 
-        WHERE discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"';
-      `).then(res => {
-        socket.emit("hubapp/privateChatMarkedAsRead", {
-          code: 200,
-          response: data
-        })
-      }).catch(console.error)
-    })
-
-    socket.addListener("hubapp/publicChatMarkAsRead", (data) => {
-      console.log('[Endpoint log] hubapp/publicChatMarkAsRead called')
-      db.query(`
-        UPDATE hubapp_messages_channels SET last_read_message = jsonb_set(last_read_message, '{${data.discord_id}}', '${new Date().getTime()}') 
-        WHERE discord_ids @> '"ALL"';
-      `).then(res => {
-        socket.emit("hubapp/publicChatMarkedAsRead", {
-          code: 200,
-          response: data
-        })
-      }).catch(console.error)
-    })
-
-    socket.addListener("hubapp/getPrivateChat", (data) => {
-      console.log('[Endpoint log] hubapp/getPrivateChat called')
-      console.log(data)
-      db.query(`
-        INSERT INTO hubapp_messages_channels (discord_ids,last_read_message) SELECT '${JSON.stringify([data.discord_id_1,data.discord_id_2])}','{"${data.discord_id_1}":${new Date().getTime()},"${data.discord_id_2}":${new Date().getTime()}}'
-        WHERE NOT EXISTS(SELECT * FROM hubapp_messages_channels where discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"');
-        SELECT trade_active, last_trading_session, trade_receipt_id, trade_type,
-        jsonb_path_query_array(
-          messages, 
-          '$[$.size() - ${data.end_limit} to $.size() - ${data.start_limit}]'
-        ) messages
-        FROM hubapp_messages_channels WHERE discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"';
-      `).then(res => {
-        const channel = res[1].rows[0];
+      socket.addListener("hubapp/getPublicChat", (data) => {
+        console.log('[Endpoint log] hubapp/getPublicChat called')
         db.query(`
-          SELECT * FROM hubapp_users WHERE discord_id = ${data.discord_id_1} OR discord_id = ${data.discord_id_2} OR discord_id = 111111111111111111;
+          SELECT trade_active, last_trading_session, 
+          jsonb_path_query_array(
+            messages, 
+            '$[$.size() - ${data.end_limit} to $.size() - ${data.start_limit}]'
+          ) messages
+          FROM hubapp_messages_channels WHERE discord_ids @> '"ALL"';
+
+          SELECT * FROM hubapp_users;
         `).then(res => {
           const user_data = {}
-          res.rows.forEach(row => user_data[row.discord_id] = row)
+          res[1].rows.forEach(row => user_data[row.discord_id] = row)
           const arr = []
-          channel.messages.forEach(message => {
+          res[0].rows[0].messages.forEach(message => {
             arr.push({
               discord_id: message.discord_id,
               discord_username: user_data[message.discord_id].discord_username,
               ign: user_data[message.discord_id].forums_username,
               avatar: user_data[message.discord_id].discord_avatar,
               message: message.message,
-              attachments: message.attachments || [],
               timestamp: message.timestamp
             })
           })
-          socket.emit('hubapp/receivedPrivateChat', {
+          socket.emit('hubapp/receivedPublicChat', {
               code: 200,
-              response: {
-                trade_active: channel.trade_active,
-                last_trading_session: channel.last_trading_session,
-                trade_receipt_id: channel.trade_receipt_id,
-                trade_type: channel.trade_type,
-                chat_arr : arr
-              }
+              response: arr
+          })
+        }).catch(err => {
+            console.log(err)
+            socket.emit('hubapp/receivedPublicChat', {
+                code: 500,
+                response: `[DB Error] ${JSON.stringify(err)}`
+            })
+        })
+      });
+
+      socket.addListener("hubapp/privateChatMarkAsRead", (data) => {
+        console.log('[Endpoint log] hubapp/privateChatMarkAsRead called')
+        db.query(`
+          UPDATE hubapp_messages_channels SET last_read_message = jsonb_set(last_read_message, '{${data.discord_id_1}}', '${new Date().getTime()}') 
+          WHERE discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"';
+        `).then(res => {
+          socket.emit("hubapp/privateChatMarkedAsRead", {
+            code: 200,
+            response: data
           })
         }).catch(console.error)
-      }).catch(err => {
-        console.log(err)
-        socket.emit('hubapp/receivedPrivateChat', {
-            code: 500,
-            response: `[DB Error] ${JSON.stringify(err)}`
-        })
       })
-    });
 
-    socket.addListener("hubapp/getChatsList", (data) => {
-      console.log('[Endpoint log] hubapp/getChatsList called')
-      db.query(`
-        SELECT * FROM hubapp_messages_channels
-        WHERE discord_ids @> '"${data.discord_id}"' OR discord_ids @> '"ALL"'
-        ORDER BY last_update_timestamp DESC;
-        SELECT * FROM hubapp_users;
-      `).then(res => {
-        const user_data = {}
-        res[1].rows.forEach(row => user_data[row.discord_id] = row)
-        const arr = []
-        res[0].rows.forEach(row => {
-          var unread_messages = 0;
-          row.messages.forEach(message => message.timestamp > row.last_read_message[data.discord_id] && message.discord_id != data.discord_id ? unread_messages++:true)
-          if (row.discord_ids.includes('ALL')) {
-            arr.push({
-              discord_id: null,
-              name: 'Public Chat',
-              avatar: `https://static.vecteezy.com/system/resources/thumbnails/000/450/102/small/Basic_Ui__28154_29.jpg`,
-              last_update_timestamp: row.last_update_timestamp,
-              unread_messages: unread_messages
-            })
-          } else {
-            const target_discord_id = ((row.discord_ids.filter(function(e) { return e !== data.discord_id }))[0]).toString()
-            console.log(target_discord_id)
-            arr.push({
-              discord_id: user_data[target_discord_id].discord_id,
-              name: user_data[target_discord_id].discord_username,
-              avatar: user_data[target_discord_id].discord_avatar,
-              last_update_timestamp: row.last_update_timestamp,
-              unread_messages: unread_messages
-            })
-          }
-        })
-        console.log(arr)
-        socket.emit('hubapp/receivedChatsList', {
-            code: 200,
-            response: arr
-        })
-      }).catch(err => {
-        console.log(err)
-        socket.emit('hubapp/receivedChatsList', {
-            code: 500,
-            response: `[DB Error] ${JSON.stringify(err)}`
-        })
-      })
-    });
-    
-    socket.addListener("hubapp/createPublicMessage", (data) => {
-      console.log('[Endpoint log] hubapp/createPublicMessage called')
-      if (!data || !data.discord_id)
-        return;
-      db.query(`
-        UPDATE hubapp_messages_channels
-        SET messages = messages || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), discord_id: data.discord_id, timestamp: new Date().getTime()})}]'::jsonb,
-        last_update_timestamp = ${new Date().getTime()}
-        WHERE discord_ids @> '"ALL"';`
-      ).catch(console.error)
-    });
-
-    socket.addListener("hubapp/createPrivateMessage", (data) => {
-      console.log('[Endpoint log] hubapp/createPrivateMessage called')
-      if (!data || (!data.discord_id_1 && !data.discord_id_2))
-        return;
-      db.query(`
-        UPDATE hubapp_messages_channels
-        SET messages = messages || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), discord_id: data.discord_id_1, timestamp: new Date().getTime()})}]'::jsonb,
-        last_update_timestamp = ${new Date().getTime()}
-        WHERE discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"'
-        RETURNING *;`
-      ).then(res => {
-        if (res.rowCount == 1) {
-          const channel = res.rows[0]
-          if (channel.trade_active) {
-            db.query(`
-              UPDATE tradebot_filled_users_orders
-              SET messages_log = messages_log || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), discord_id: data.discord_id_1, platform: 'hubapp',timestamp: new Date().getTime()})}]'::jsonb
-              WHERE archived = false AND (order_owner = ${data.discord_id_1} OR order_filler = ${data.discord_id_1}) AND (order_owner = ${data.discord_id_2} OR order_filler = ${data.discord_id_2});
-            `).catch(console.error)
-          }
-        }
-      })
-      .catch(console.error)
-    });
-    
-    socket.addListener("hubapp/recruitmentSquads/getAll", () => {
-      console.log('[Endpoint log] hubapp/recruitmentSquads/getAll called')
-      db.query(`
-        SELECT * FROM hub_recruitbot_squads
-        ORDER BY timestamp
-      `).then(res => {
-        var recruitment_squads = {
-          relics: [],
-          farming: [],
-          progression: [],
-          bosses: []
-        }
-        res.rows.forEach(row => {
-          recruitment_squads[row.category].push(row)
-        })
-        socket.emit('hubapp/recruitmentSquads/receivedAll', {
-            code: 200,
-            response: recruitment_squads
-        })
-      }).catch(err => {
-          console.log(err)
-          socket.emit('hubapp/recruitmentSquads/receivedAll', {
-              code: 500,
-              response: `[DB Error] ${JSON.stringify(err)}`
-          })
-      })
-    });
-
-    socket.addListener("hubapp/trades/getAll", () => {
-      console.log('[Endpoint log] hubapp/trades/getAll called')
-      db.query(`
-        SELECT
-        tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
-        tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
-        items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url, items_list.id as item_id
-        FROM tradebot_users_orders
-        JOIN tradebot_users_list ON
-        tradebot_users_orders.discord_id = tradebot_users_list.discord_id
-        JOIN items_list ON
-        tradebot_users_orders.item_id = items_list.id
-        WHERE tradebot_users_orders.visibility=true
-        ORDER BY tradebot_users_orders.update_timestamp;
-        SELECT
-        tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
-        tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
-        lich_list.weapon_url as item_url, lich_list.icon_url, lich_list.lich_id as item_id
-        FROM tradebot_users_orders
-        JOIN tradebot_users_list ON
-        tradebot_users_orders.discord_id = tradebot_users_list.discord_id
-        JOIN lich_list ON
-        tradebot_users_orders.item_id = lich_list.lich_id
-        WHERE tradebot_users_orders.visibility=true
-        ORDER BY tradebot_users_orders.update_timestamp;
-      `).then(res => {
-        const trades = {
-          itemTrades: res[0].rows,
-          lichTrades: res[1].rows,
-          rivenTrades: []
-        }
-        socket.emit('hubapp/trades/receivedAll', {
-            code: 200,
-            response: trades
-        })
-      }).catch(err => {
-          console.log(err)
-          socket.emit('hubapp/trades/receivedAll', {
-              code: 500,
-              response: `[DB Error] ${JSON.stringify(err)}`
-          })
-      })
-    });
-
-    socket.addListener("hubapp/trades/openTrade", (data) => {
-      console.log('[Endpoint log] hubapp/trades/openTrade called',data)
-      db.query(`
-        SELECT * FROM tradebot_users_orders WHERE discord_id = ${data.target_discord_id} AND item_id = '${data.item_id}'
-      `).then(res => {
-        if (res.rowCount != 1) {console.log('zero rows returned');return}
-        const order_data = res.rows[0]
+      socket.addListener("hubapp/publicChatMarkAsRead", (data) => {
+        console.log('[Endpoint log] hubapp/publicChatMarkAsRead called')
         db.query(`
-          INSERT INTO tradebot_filled_users_orders
-          (order_id,receipt_id,filler_channel_id,owner_channel_id,order_owner,order_filler,item_id,order_type,order_rating,user_price,order_data,item_type,trade_timestamp)
-          VALUES ('${order_data.order_id}','${uuid.v1()}',${order_data.origin_channel_id},${order_data.origin_channel_id},${order_data.discord_id},${data.current_discord_id},'${order_data.item_id}','${order_data.order_type}','{"${order_data.discord_id}": 0, "${data.current_discord_id}": 0}',${order_data.user_price},'${JSON.stringify(order_data.order_data)}','${order_data.item_type}',${new Date().getTime()})
-        `).catch(console.error)
-      }).catch(console.error)
-    });
+          UPDATE hubapp_messages_channels SET last_read_message = jsonb_set(last_read_message, '{${data.discord_id}}', '${new Date().getTime()}') 
+          WHERE discord_ids @> '"ALL"';
+        `).then(res => {
+          socket.emit("hubapp/publicChatMarkedAsRead", {
+            code: 200,
+            response: data
+          })
+        }).catch(console.error)
+      })
 
-    socket.addListener("hubapp/trades/closeTradeSession", (data) => {
-      console.log('[Endpoint log] hubapp/trades/closeTradeSession called',data)
-
-      const q_filledOrderTable = data.trade_type == 'item_trade' ? 'tradebot_filled_users_orders':'tradebot_filled_users_lich_orders'
-      const q_return = data.trade_type == 'item_trade' ? 'order_owner,order_filler,item_id,order_rating,order_type,user_price,order_status,trade_timestamp':'order_owner,order_filler,lich_id,element,damage,ephemera,lich_name,order_rating,order_type,user_price,order_status,trade_timestamp'
-      const suspicious = data.trade_type == 'lich_trade' && order_data.user_price > 1000 ? true:false
-
-      db.query(`
-          SELECT * FROM ${q_filledOrderTable} WHERE receipt_id = '${data.trade_receipt_id}' AND archived = false
-      `).then(res => {
-        if (res.rowCount == 1) {
-          const order_data = res.rows[0]
-          if (data.status == 'successful' && !suspicious) {
-              db.query(`
-                UPDATE ${q_filledOrderTable} SET order_status = 'successful', order_rating = jsonb_set(order_rating,'{${order_data.order_owner}}', '5', true), archived = true
-                WHERE receipt_id = '${data.trade_receipt_id}';
-                UPDATE ${q_filledOrderTable} SET order_rating = jsonb_set(order_rating,'{${order_data.order_filler}}', '5', true), archived = true
-                WHERE receipt_id = '${data.trade_receipt_id}'
-                RETURNING ${q_return};
-              `).then(async res => {
-                  if (res[1].rowCount == 1) {
-                      db.query(`
-                          UPDATE tradebot_users_list
-                          SET orders_history = jsonb_set(orders_history, '{payload,999999}', '${JSON.stringify(res[1].rows[0])}', true)
-                          WHERE discord_id = ${(order_data.order_owner)} OR discord_id = ${(order_data.order_filler)}
-                      `).then(res => {
-                        //update plat balance for users
-                        var q_ownerPlat = 'plat_gained'
-                        var q_fillerPlat = 'plat_spent'
-                        if (order_data.order_type == 'wtb') {
-                            var q_ownerPlat = 'plat_spent'
-                            var q_fillerPlat = 'plat_gained'
-                        }
-                        db.query(`
-                          UPDATE tradebot_users_list SET ${q_ownerPlat} = ${q_ownerPlat} + ${Number(order_data.user_price)}
-                          WHERE discord_id = ${(order_data.order_owner)};
-                          UPDATE tradebot_users_list SET ${q_fillerPlat} = ${q_fillerPlat} + ${Number(order_data.user_price)}
-                          WHERE discord_id = ${(order_data.order_filler)};
-                        `).then(res => console.log(`updated plat balance for seller and buyer`)).catch(console.error)
-                        //remove order from owner profile
-                        db.query(`DELETE FROM ${data.trade_type == 'item_trade' ? 'tradebot_users_orders':'tradebot_filled_users_lich_orders'} WHERE discord_id = ${order_data.order_owner} AND ${data.trade_type == 'item_trade' ? 'item_id':'lich_id'} = '${data.trade_type == 'item_trade' ? order_data.item_id:order_data.lich_id}'`).then(res => console.log(`deleted order ${order_data.item_id} for ${order_data.order_owner}`)).catch(console.error)
-                        //-------
-                      }).catch(console.error)
-                  } else {
-                    console.log('res[1].rowCount = ', res[1].rowCount)
-                  }
-              }).catch(console.error)
-          } else if (data.status == 'report' || suspicious) {
-              db.query(`
-                UPDATE ${q_filledOrderTable} SET reporter_id = ${suspicious ? null:data.discord_id_1}, suspicious = ${suspicious}, archived = true
-                WHERE receipt_id = '${data.trade_receipt_id}'
-              `).catch(console.error)
-          }
-        }
-      }).catch(console.error)
-    });
-
-    socket.addListener("hubapp/trades/addNewItem", (data) => {
-      console.log('[Endpoint log] hubapp/trades/addNewItem called',data)
-
-
-      var price = data.user_price
-      var list_low = data.auto_price
-      var isMaxed = data.rank == 'maxed' ? true:false
-
-      if (!Number(price)) {
-        list_low = true
-        price = null
-      } else if (price < 0) {
-        socket.emit('hubapp/trades/addNewItem', {
-          code: 400,
-          response: `Price cannot be negative`
+      socket.addListener("hubapp/getPrivateChat", (data) => {
+        console.log('[Endpoint log] hubapp/getPrivateChat called')
+        console.log(data)
+        db.query(`
+          INSERT INTO hubapp_messages_channels (discord_ids,last_read_message) SELECT '${JSON.stringify([data.discord_id_1,data.discord_id_2])}','{"${data.discord_id_1}":${new Date().getTime()},"${data.discord_id_2}":${new Date().getTime()}}'
+          WHERE NOT EXISTS(SELECT * FROM hubapp_messages_channels where discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"');
+          SELECT trade_active, last_trading_session, trade_receipt_id, trade_type,
+          jsonb_path_query_array(
+            messages, 
+            '$[$.size() - ${data.end_limit} to $.size() - ${data.start_limit}]'
+          ) messages
+          FROM hubapp_messages_channels WHERE discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"';
+        `).then(res => {
+          const channel = res[1].rows[0];
+          db.query(`
+            SELECT * FROM hubapp_users WHERE discord_id = ${data.discord_id_1} OR discord_id = ${data.discord_id_2} OR discord_id = 111111111111111111;
+          `).then(res => {
+            const user_data = {}
+            res.rows.forEach(row => user_data[row.discord_id] = row)
+            const arr = []
+            channel.messages.forEach(message => {
+              arr.push({
+                discord_id: message.discord_id,
+                discord_username: user_data[message.discord_id].discord_username,
+                ign: user_data[message.discord_id].forums_username,
+                avatar: user_data[message.discord_id].discord_avatar,
+                message: message.message,
+                attachments: message.attachments || [],
+                timestamp: message.timestamp
+              })
+            })
+            socket.emit('hubapp/receivedPrivateChat', {
+                code: 200,
+                response: {
+                  trade_active: channel.trade_active,
+                  last_trading_session: channel.last_trading_session,
+                  trade_receipt_id: channel.trade_receipt_id,
+                  trade_type: channel.trade_type,
+                  chat_arr : arr
+                }
+            })
+          }).catch(console.error)
+        }).catch(err => {
+          console.log(err)
+          socket.emit('hubapp/receivedPrivateChat', {
+              code: 500,
+              response: `[DB Error] ${JSON.stringify(err)}`
+          })
         })
-        return
-      }
+      });
 
-      //---------------
-      var d_item_url = data.item_name.toLowerCase().replace(/ /g, '_')
-      d_item_url = d_item_url.replace(/_p$/,'_prime').replace('_p_','_prime_').replace(/_bp$/,'_blueprint')
-      if (d_item_url.match('lith') || d_item_url.match('meso') || d_item_url.match('neo') || d_item_url.match('axi'))
-          if (!d_item_url.match('_relic'))
-              d_item_url += '_relic'
-      console.log('Retrieving Database -> items_list')
-      db.query(`SELECT * FROM items_list`)
-      .then(async res => {
-          var arrItems = []
-          var items_list = res.rows
+      socket.addListener("hubapp/getChatsList", (data) => {
+        console.log('[Endpoint log] hubapp/getChatsList called')
+        db.query(`
+          SELECT * FROM hubapp_messages_channels
+          WHERE discord_ids @> '"${data.discord_id}"' OR discord_ids @> '"ALL"'
+          ORDER BY last_update_timestamp DESC;
+          SELECT * FROM hubapp_users;
+        `).then(res => {
+          const user_data = {}
+          res[1].rows.forEach(row => user_data[row.discord_id] = row)
+          const arr = []
+          res[0].rows.forEach(row => {
+            var unread_messages = 0;
+            row.messages.forEach(message => message.timestamp > row.last_read_message[data.discord_id] && message.discord_id != data.discord_id ? unread_messages++:true)
+            if (row.discord_ids.includes('ALL')) {
+              arr.push({
+                discord_id: null,
+                name: 'Public Chat',
+                avatar: `https://static.vecteezy.com/system/resources/thumbnails/000/450/102/small/Basic_Ui__28154_29.jpg`,
+                last_update_timestamp: row.last_update_timestamp,
+                unread_messages: unread_messages
+              })
+            } else {
+              const target_discord_id = ((row.discord_ids.filter(function(e) { return e !== data.discord_id }))[0]).toString()
+              console.log(target_discord_id)
+              arr.push({
+                discord_id: user_data[target_discord_id].discord_id,
+                name: user_data[target_discord_id].discord_username,
+                avatar: user_data[target_discord_id].discord_avatar,
+                last_update_timestamp: row.last_update_timestamp,
+                unread_messages: unread_messages
+              })
+            }
+          })
+          console.log(arr)
+          socket.emit('hubapp/receivedChatsList', {
+              code: 200,
+              response: arr
+          })
+        }).catch(err => {
+          console.log(err)
+          socket.emit('hubapp/receivedChatsList', {
+              code: 500,
+              response: `[DB Error] ${JSON.stringify(err)}`
+          })
+        })
+      });
+      
+      socket.addListener("hubapp/createPublicMessage", (data) => {
+        console.log('[Endpoint log] hubapp/createPublicMessage called')
+        if (!data || !data.discord_id)
+          return;
+        db.query(`
+          UPDATE hubapp_messages_channels
+          SET messages = messages || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), discord_id: data.discord_id, timestamp: new Date().getTime()})}]'::jsonb,
+          last_update_timestamp = ${new Date().getTime()}
+          WHERE discord_ids @> '"ALL"';`
+        ).catch(console.error)
+      });
 
-          for (var i=0; i<items_list.length; i++) {
-              var element = items_list[i]
-              if (element.item_url.match('^' + d_item_url + '\W*')) {
-                  if ((new Date().getTime() - items_list[i].update_timestamp) > 86400000) {
-                      console.log(`updating item ${items_list[i].item_url} in db`)
-                      var status = await db_modules.updateDatabaseItem(items_list,items_list[i])
-                      .then(items_list => {
-                          for (var j=0; j<items_list.length; j++) {
-                              if (items_list[j].id == items_list[i].id) {
-                                  items_list[i] = items_list[j]
-                                  element = items_list[j]
-                                  break
-                              }
-                          }
-                          return true
-                      })
-                      .catch(() => {
-                          console.log("Error updating DB.")
-                          
-                          socket.emit('hubapp/trades/addNewItem', {
-                            code: 500,
-                            response: "☠️ Some error occured updating item in db.\nError code:\nContact MrSofty#7926 ☠️"
-                          })
-                          return false
-                      })
-                      if (!status)      
-                          return
-                  }
-                  if (element.tags.includes("set")) {
-                      arrItems = []
-                      arrItems.push(element);
-                      break
-                  }
-                  arrItems.push(element);
-              }
+      socket.addListener("hubapp/createPrivateMessage", (data) => {
+        console.log('[Endpoint log] hubapp/createPrivateMessage called')
+        if (!data || (!data.discord_id_1 && !data.discord_id_2))
+          return;
+        db.query(`
+          UPDATE hubapp_messages_channels
+          SET messages = messages || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), discord_id: data.discord_id_1, timestamp: new Date().getTime()})}]'::jsonb,
+          last_update_timestamp = ${new Date().getTime()}
+          WHERE discord_ids @> '"${data.discord_id_1}"' AND discord_ids @> '"${data.discord_id_2}"'
+          RETURNING *;`
+        ).then(res => {
+          if (res.rowCount == 1) {
+            const channel = res.rows[0]
+            if (channel.trade_active) {
+              db.query(`
+                UPDATE tradebot_filled_users_orders
+                SET messages_log = messages_log || '[${JSON.stringify({message: data.message.replace(/\'/g,`''`), discord_id: data.discord_id_1, platform: 'hubapp',timestamp: new Date().getTime()})}]'::jsonb
+                WHERE archived = false AND (order_owner = ${data.discord_id_1} OR order_filler = ${data.discord_id_1}) AND (order_owner = ${data.discord_id_2} OR order_filler = ${data.discord_id_2});
+              `).catch(console.error)
+            }
           }
-          if (arrItems.length==0) {
-            socket.emit('hubapp/trades/addNewItem', {
-              code: 400,
-              response: "⚠️ Item **" + d_item_url + "** either does not exist or is an unsupported item at the moment. ⚠️"
+        })
+        .catch(console.error)
+      });
+      
+      socket.addListener("hubapp/recruitmentSquads/getAll", () => {
+        console.log('[Endpoint log] hubapp/recruitmentSquads/getAll called')
+        db.query(`
+          SELECT * FROM hub_recruitbot_squads
+          ORDER BY timestamp
+        `).then(res => {
+          var recruitment_squads = {
+            relics: [],
+            farming: [],
+            progression: [],
+            bosses: []
+          }
+          res.rows.forEach(row => {
+            recruitment_squads[row.category].push(row)
+          })
+          socket.emit('hubapp/recruitmentSquads/receivedAll', {
+              code: 200,
+              response: recruitment_squads
+          })
+        }).catch(err => {
+            console.log(err)
+            socket.emit('hubapp/recruitmentSquads/receivedAll', {
+                code: 500,
+                response: `[DB Error] ${JSON.stringify(err)}`
             })
-            return
+        })
+      });
+
+      socket.addListener("hubapp/trades/getAll", () => {
+        console.log('[Endpoint log] hubapp/trades/getAll called')
+        db.query(`
+          SELECT
+          tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+          tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
+          items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url, items_list.id as item_id
+          FROM tradebot_users_orders
+          JOIN tradebot_users_list ON
+          tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+          JOIN items_list ON
+          tradebot_users_orders.item_id = items_list.id
+          WHERE tradebot_users_orders.visibility=true
+          ORDER BY tradebot_users_orders.update_timestamp;
+          SELECT
+          tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+          tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
+          lich_list.weapon_url as item_url, lich_list.icon_url, lich_list.lich_id as item_id
+          FROM tradebot_users_orders
+          JOIN tradebot_users_list ON
+          tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+          JOIN lich_list ON
+          tradebot_users_orders.item_id = lich_list.lich_id
+          WHERE tradebot_users_orders.visibility=true
+          ORDER BY tradebot_users_orders.update_timestamp;
+        `).then(res => {
+          const trades = {
+            itemTrades: res[0].rows,
+            lichTrades: res[1].rows,
+            rivenTrades: []
           }
-          if (arrItems.length > 1) {
-            socket.emit('hubapp/trades/addNewItem', {
-              code: 400,
-              response: "⚠️ More than one search results detected for the item **" + d_item_url + "**, cannot process this request. Please provide a valid item name ⚠️"
+          socket.emit('hubapp/trades/receivedAll', {
+              code: 200,
+              response: trades
+          })
+        }).catch(err => {
+            console.log(err)
+            socket.emit('hubapp/trades/receivedAll', {
+                code: 500,
+                response: `[DB Error] ${JSON.stringify(err)}`
             })
-            return
-          }
-          const item_url = arrItems[0].item_url
-          const item_id = arrItems[0].id
-          if (!arrItems[0].rank && isMaxed) {
-            socket.emit('hubapp/trades/addNewItem', {
-              code: 400,
-              response: "⚠️ Item **" + d_item_url + "**, does not have a rank ⚠️"
-            })
-            return
-          }
-          var item_rank = 'unranked'
-          if (isMaxed)
-              item_rank = 'maxed'
-          const item_name = convertUpper(item_url)
-          if (price) {
-              if (price != 0) {
-                  var open_trade = false
-                  var target_order_type = null
-                  var tradee = {}
-                  tradee.discord_id = data.discord_id
-                  var trader = {}
-                  trader.discord_id = null
-                  trader.ingame_name = null
-                  var all_orders = null
-                      //----check if wts price is lower than active buy order
-                      var status = await db.query(`
-                      SELECT * FROM tradebot_users_orders 
-                      JOIN tradebot_users_list ON tradebot_users_list.discord_id = tradebot_users_orders.discord_id
-                      JOIN items_list ON tradebot_users_orders.item_id = items_list.id
-                      WHERE tradebot_users_orders.item_id = '${item_id}' AND tradebot_users_orders.visibility = true AND tradebot_users_orders.order_type = 'wtb'
-                      ORDER BY tradebot_users_orders.user_price ${data.order_type == 'wts' ? 'DESC':'ASC'}, tradebot_users_orders.update_timestamp`)
-                      .then(res => {
-                        if (res.rows.length > 0)
-                          all_orders = res.rows
-                        return true
-                      }).catch(err => {
-                          console.log(err)
-                          return false
-                      })
-                      if (!status) {
-                        socket.emit('hubapp/trades/addNewItem', {
-                          code: 400,
-                          response: "☠️ Something went wrong retreiving buy orders\nError code: 502 ☠️"
-                        })
-                        return
-                      }
-                      if (all_orders) {
-                        if (data.order_type == 'wts') {
-                          if (price <= all_orders[0].user_price) {
-                            open_trade = true
-                            target_order_type = 'wtb'
-                            trader.discord_id = all_orders[0].discord_id
-                          }
-                        } else if (data.order_type == 'wtb') {
-                          if (price >= all_orders[0].user_price) {
-                              open_trade = true
-                              target_order_type = 'wts'
-                              trader.discord_id = all_orders[0].discord_id
-                          }
-                        }
-                      }
-                  if (open_trade) {
-                    if (trader.discord_id != tradee.discord_id) {
+        })
+      });
+
+      socket.addListener("hubapp/trades/openTrade", (data) => {
+        console.log('[Endpoint log] hubapp/trades/openTrade called',data)
+        db.query(`
+          SELECT * FROM tradebot_users_orders WHERE discord_id = ${data.target_discord_id} AND item_id = '${data.item_id}'
+        `).then(res => {
+          if (res.rowCount != 1) {console.log('zero rows returned');return}
+          const order_data = res.rows[0]
+          db.query(`
+            INSERT INTO tradebot_filled_users_orders
+            (order_id,receipt_id,filler_channel_id,owner_channel_id,order_owner,order_filler,item_id,order_type,order_rating,user_price,order_data,item_type,trade_timestamp)
+            VALUES ('${order_data.order_id}','${uuid.v1()}',${order_data.origin_channel_id},${order_data.origin_channel_id},${order_data.discord_id},${data.current_discord_id},'${order_data.item_id}','${order_data.order_type}','{"${order_data.discord_id}": 0, "${data.current_discord_id}": 0}',${order_data.user_price},'${JSON.stringify(order_data.order_data)}','${order_data.item_type}',${new Date().getTime()})
+          `).catch(console.error)
+        }).catch(console.error)
+      });
+
+      socket.addListener("hubapp/trades/closeTradeSession", (data) => {
+        console.log('[Endpoint log] hubapp/trades/closeTradeSession called',data)
+
+        const q_filledOrderTable = data.trade_type == 'item_trade' ? 'tradebot_filled_users_orders':'tradebot_filled_users_lich_orders'
+        const q_return = data.trade_type == 'item_trade' ? 'order_owner,order_filler,item_id,order_rating,order_type,user_price,order_status,trade_timestamp':'order_owner,order_filler,lich_id,element,damage,ephemera,lich_name,order_rating,order_type,user_price,order_status,trade_timestamp'
+        const suspicious = data.trade_type == 'lich_trade' && order_data.user_price > 1000 ? true:false
+
+        db.query(`
+            SELECT * FROM ${q_filledOrderTable} WHERE receipt_id = '${data.trade_receipt_id}' AND archived = false
+        `).then(res => {
+          if (res.rowCount == 1) {
+            const order_data = res.rows[0]
+            if (data.status == 'successful' && !suspicious) {
+                db.query(`
+                  UPDATE ${q_filledOrderTable} SET order_status = 'successful', order_rating = jsonb_set(order_rating,'{${order_data.order_owner}}', '5', true), archived = true
+                  WHERE receipt_id = '${data.trade_receipt_id}';
+                  UPDATE ${q_filledOrderTable} SET order_rating = jsonb_set(order_rating,'{${order_data.order_filler}}', '5', true), archived = true
+                  WHERE receipt_id = '${data.trade_receipt_id}'
+                  RETURNING ${q_return};
+                `).then(async res => {
+                    if (res[1].rowCount == 1) {
                         db.query(`
-                          INSERT INTO tradebot_filled_users_orders
-                          (order_id,receipt_id,filler_channel_id,owner_channel_id,order_owner,order_filler,item_id,order_type,order_rating,user_price,order_data,item_type,trade_timestamp)
-                          VALUES ('${all_orders[0].order_id}','${uuid.v1()}',${all_orders[0].origin_channel_id},${all_orders[0].origin_channel_id},${all_orders[0].discord_id},${data.discord_id},'${all_orders[0].item_id}','${all_orders[0].order_type}','{"${all_orders[0].discord_id}": 0, "${data.discord_id}": 0}',${all_orders[0].user_price},'${JSON.stringify(all_orders[0].order_data)}','item',${new Date().getTime()})
-                        `).catch(err => {
-                            console.log(err)
+                            UPDATE tradebot_users_list
+                            SET orders_history = jsonb_set(orders_history, '{payload,999999}', '${JSON.stringify(res[1].rows[0])}', true)
+                            WHERE discord_id = ${(order_data.order_owner)} OR discord_id = ${(order_data.order_filler)}
+                        `).then(res => {
+                          //update plat balance for users
+                          var q_ownerPlat = 'plat_gained'
+                          var q_fillerPlat = 'plat_spent'
+                          if (order_data.order_type == 'wtb') {
+                              var q_ownerPlat = 'plat_spent'
+                              var q_fillerPlat = 'plat_gained'
+                          }
+                          db.query(`
+                            UPDATE tradebot_users_list SET ${q_ownerPlat} = ${q_ownerPlat} + ${Number(order_data.user_price)}
+                            WHERE discord_id = ${(order_data.order_owner)};
+                            UPDATE tradebot_users_list SET ${q_fillerPlat} = ${q_fillerPlat} + ${Number(order_data.user_price)}
+                            WHERE discord_id = ${(order_data.order_filler)};
+                          `).then(res => console.log(`updated plat balance for seller and buyer`)).catch(console.error)
+                          //remove order from owner profile
+                          db.query(`DELETE FROM ${data.trade_type == 'item_trade' ? 'tradebot_users_orders':'tradebot_filled_users_lich_orders'} WHERE discord_id = ${order_data.order_owner} AND ${data.trade_type == 'item_trade' ? 'item_id':'lich_id'} = '${data.trade_type == 'item_trade' ? order_data.item_id:order_data.lich_id}'`).then(res => console.log(`deleted order ${order_data.item_id} for ${order_data.order_owner}`)).catch(console.error)
+                          //-------
+                        }).catch(console.error)
+                    } else {
+                      console.log('res[1].rowCount = ', res[1].rowCount)
+                    }
+                }).catch(console.error)
+            } else if (data.status == 'report' || suspicious) {
+                db.query(`
+                  UPDATE ${q_filledOrderTable} SET reporter_id = ${suspicious ? null:data.discord_id_1}, suspicious = ${suspicious}, archived = true
+                  WHERE receipt_id = '${data.trade_receipt_id}'
+                `).catch(console.error)
+            }
+          }
+        }).catch(console.error)
+      });
+
+      socket.addListener("hubapp/trades/addNewItem", (data) => {
+        console.log('[Endpoint log] hubapp/trades/addNewItem called',data)
+
+
+        var price = data.user_price
+        var list_low = data.auto_price
+        var isMaxed = data.rank == 'maxed' ? true:false
+
+        if (!Number(price)) {
+          list_low = true
+          price = null
+        } else if (price < 0) {
+          socket.emit('hubapp/trades/addNewItem', {
+            code: 400,
+            response: `Price cannot be negative`
+          })
+          return
+        }
+
+        //---------------
+        var d_item_url = data.item_name.toLowerCase().replace(/ /g, '_')
+        d_item_url = d_item_url.replace(/_p$/,'_prime').replace('_p_','_prime_').replace(/_bp$/,'_blueprint')
+        if (d_item_url.match('lith') || d_item_url.match('meso') || d_item_url.match('neo') || d_item_url.match('axi'))
+            if (!d_item_url.match('_relic'))
+                d_item_url += '_relic'
+        console.log('Retrieving Database -> items_list')
+        db.query(`SELECT * FROM items_list`)
+        .then(async res => {
+            var arrItems = []
+            var items_list = res.rows
+
+            for (var i=0; i<items_list.length; i++) {
+                var element = items_list[i]
+                if (element.item_url.match('^' + d_item_url + '\W*')) {
+                    if ((new Date().getTime() - items_list[i].update_timestamp) > 86400000) {
+                        console.log(`updating item ${items_list[i].item_url} in db`)
+                        var status = await db_modules.updateDatabaseItem(items_list,items_list[i])
+                        .then(items_list => {
+                            for (var j=0; j<items_list.length; j++) {
+                                if (items_list[j].id == items_list[i].id) {
+                                    items_list[i] = items_list[j]
+                                    element = items_list[j]
+                                    break
+                                }
+                            }
+                            return true
+                        })
+                        .catch(() => {
+                            console.log("Error updating DB.")
+                            
                             socket.emit('hubapp/trades/addNewItem', {
                               code: 500,
-                              response: `☠️ Error adding filled order in db.\nError code: 504\nPlease contact MrSofty#7926 ☠️`
+                              response: "☠️ Some error occured updating item in db.\nError code:\nContact MrSofty#7926 ☠️"
                             })
+                            return false
                         })
-                        return
+                        if (!status)      
+                            return
                     }
-                  }
-              }
-          }
-          if (list_low) {
-              var status = await db.query(`SELECT * FROM tradebot_users_orders WHERE item_id = '${item_id}' AND visibility = true AND order_type = '${data.order_type}'`)
-              .then(res => {
-                  var all_orders = res.rows
-                  if (res.rows.length > 0) {
-                      if (data.order_type == 'wts')
-                          all_orders = all_orders.sort(dynamicSort("user_price"))
-                      else if (data.order_type == 'wtb')
-                          all_orders = all_orders.sort(dynamicSortDesc("user_price"))
-                      price = all_orders[0].user_price
-                      console.log(all_orders)
-                      console.log('auto price is ' + price)
-                  }
-                  return true
-              }).catch(err => {
-                  console.log(err)
-                  return false
+                    if (element.tags.includes("set")) {
+                        arrItems = []
+                        arrItems.push(element);
+                        break
+                    }
+                    arrItems.push(element);
+                }
+            }
+            if (arrItems.length==0) {
+              socket.emit('hubapp/trades/addNewItem', {
+                code: 400,
+                response: "⚠️ Item **" + d_item_url + "** either does not exist or is an unsupported item at the moment. ⚠️"
               })
-              if (!status) {
-                socket.emit('hubapp/trades/addNewItem', {
-                  code: 500,
-                  response: "☠️ Something went wrong retreiving item lowest price\nError code: 500\nContact MrSofty#7926 ☠️"
+              return
+            }
+            if (arrItems.length > 1) {
+              socket.emit('hubapp/trades/addNewItem', {
+                code: 400,
+                response: "⚠️ More than one search results detected for the item **" + d_item_url + "**, cannot process this request. Please provide a valid item name ⚠️"
+              })
+              return
+            }
+            const item_url = arrItems[0].item_url
+            const item_id = arrItems[0].id
+            if (!arrItems[0].rank && isMaxed) {
+              socket.emit('hubapp/trades/addNewItem', {
+                code: 400,
+                response: "⚠️ Item **" + d_item_url + "**, does not have a rank ⚠️"
+              })
+              return
+            }
+            var item_rank = 'unranked'
+            if (isMaxed)
+                item_rank = 'maxed'
+            const item_name = convertUpper(item_url)
+            if (price) {
+                if (price != 0) {
+                    var open_trade = false
+                    var target_order_type = null
+                    var tradee = {}
+                    tradee.discord_id = data.discord_id
+                    var trader = {}
+                    trader.discord_id = null
+                    trader.ingame_name = null
+                    var all_orders = null
+                        //----check if wts price is lower than active buy order
+                        var status = await db.query(`
+                        SELECT * FROM tradebot_users_orders 
+                        JOIN tradebot_users_list ON tradebot_users_list.discord_id = tradebot_users_orders.discord_id
+                        JOIN items_list ON tradebot_users_orders.item_id = items_list.id
+                        WHERE tradebot_users_orders.item_id = '${item_id}' AND tradebot_users_orders.visibility = true AND tradebot_users_orders.order_type = 'wtb'
+                        ORDER BY tradebot_users_orders.user_price ${data.order_type == 'wts' ? 'DESC':'ASC'}, tradebot_users_orders.update_timestamp`)
+                        .then(res => {
+                          if (res.rows.length > 0)
+                            all_orders = res.rows
+                          return true
+                        }).catch(err => {
+                            console.log(err)
+                            return false
+                        })
+                        if (!status) {
+                          socket.emit('hubapp/trades/addNewItem', {
+                            code: 400,
+                            response: "☠️ Something went wrong retreiving buy orders\nError code: 502 ☠️"
+                          })
+                          return
+                        }
+                        if (all_orders) {
+                          if (data.order_type == 'wts') {
+                            if (price <= all_orders[0].user_price) {
+                              open_trade = true
+                              target_order_type = 'wtb'
+                              trader.discord_id = all_orders[0].discord_id
+                            }
+                          } else if (data.order_type == 'wtb') {
+                            if (price >= all_orders[0].user_price) {
+                                open_trade = true
+                                target_order_type = 'wts'
+                                trader.discord_id = all_orders[0].discord_id
+                            }
+                          }
+                        }
+                    if (open_trade) {
+                      if (trader.discord_id != tradee.discord_id) {
+                          db.query(`
+                            INSERT INTO tradebot_filled_users_orders
+                            (order_id,receipt_id,filler_channel_id,owner_channel_id,order_owner,order_filler,item_id,order_type,order_rating,user_price,order_data,item_type,trade_timestamp)
+                            VALUES ('${all_orders[0].order_id}','${uuid.v1()}',${all_orders[0].origin_channel_id},${all_orders[0].origin_channel_id},${all_orders[0].discord_id},${data.discord_id},'${all_orders[0].item_id}','${all_orders[0].order_type}','{"${all_orders[0].discord_id}": 0, "${data.discord_id}": 0}',${all_orders[0].user_price},'${JSON.stringify(all_orders[0].order_data)}','item',${new Date().getTime()})
+                          `).catch(err => {
+                              console.log(err)
+                              socket.emit('hubapp/trades/addNewItem', {
+                                code: 500,
+                                response: `☠️ Error adding filled order in db.\nError code: 504\nPlease contact MrSofty#7926 ☠️`
+                              })
+                          })
+                          return
+                      }
+                    }
+                }
+            }
+            if (list_low) {
+                var status = await db.query(`SELECT * FROM tradebot_users_orders WHERE item_id = '${item_id}' AND visibility = true AND order_type = '${data.order_type}'`)
+                .then(res => {
+                    var all_orders = res.rows
+                    if (res.rows.length > 0) {
+                        if (data.order_type == 'wts')
+                            all_orders = all_orders.sort(dynamicSort("user_price"))
+                        else if (data.order_type == 'wtb')
+                            all_orders = all_orders.sort(dynamicSortDesc("user_price"))
+                        price = all_orders[0].user_price
+                        console.log(all_orders)
+                        console.log('auto price is ' + price)
+                    }
+                    return true
+                }).catch(err => {
+                    console.log(err)
+                    return false
                 })
+                if (!status) {
+                  socket.emit('hubapp/trades/addNewItem', {
+                    code: 500,
+                    response: "☠️ Something went wrong retreiving item lowest price\nError code: 500\nContact MrSofty#7926 ☠️"
+                  })
+                  return
+                }
+            }
+            var avg_price = null
+            status = await db.query(`SELECT * from items_list WHERE id = '${item_id}'`)
+            .then(async res => {
+                if (data.order_type == 'wts' && item_rank == 'unranked')
+                    if (res.rows[0].sell_price) 
+                        avg_price = Math.round(Number(res.rows[0].sell_price))
+                if (data.order_type == 'wtb' && item_rank == 'unranked')
+                    if (res.rows[0].buy_price)
+                        avg_price = Math.round(Number(res.rows[0].buy_price))
+                if (data.order_type == 'wts' && item_rank == 'maxed') 
+                    if (res.rows[0].maxed_sell_price) 
+                        avg_price = Math.round(Number(res.rows[0].maxed_sell_price))
+                if (data.order_type == 'wtb' && item_rank == 'maxed')
+                    if (res.rows[0].maxed_buy_price)
+                        avg_price = Math.round(Number(res.rows[0].maxed_buy_price))
+                return true
+            }).catch(err => {
+                console.log(err)
+                return false
+            })
+            if (!status) {
+              socket.emit('hubapp/trades/addNewItem', {
+                code: 500,
+                response: "☠️ Something went wrong retreiving item avg price\nError code: 500\nContact MrSofty#7926 ☠️"
+              })
                 return
-              }
-          }
-          var avg_price = null
-          status = await db.query(`SELECT * from items_list WHERE id = '${item_id}'`)
-          .then(async res => {
-              if (data.order_type == 'wts' && item_rank == 'unranked')
-                  if (res.rows[0].sell_price) 
-                      avg_price = Math.round(Number(res.rows[0].sell_price))
-              if (data.order_type == 'wtb' && item_rank == 'unranked')
-                  if (res.rows[0].buy_price)
-                      avg_price = Math.round(Number(res.rows[0].buy_price))
-              if (data.order_type == 'wts' && item_rank == 'maxed') 
-                  if (res.rows[0].maxed_sell_price) 
-                      avg_price = Math.round(Number(res.rows[0].maxed_sell_price))
-              if (data.order_type == 'wtb' && item_rank == 'maxed')
-                  if (res.rows[0].maxed_buy_price)
-                      avg_price = Math.round(Number(res.rows[0].maxed_buy_price))
-              return true
-          }).catch(err => {
+            }
+            if (avg_price == null || avg_price == "null") {
+              socket.emit('hubapp/trades/addNewItem', {
+                code: 500,
+                response: "☠️ Something went wrong retreiving item avg price\nError code: 501\nContact MrSofty#7926 ☠️"
+              })
+                return
+            }
+            if (!price) {
+                price = avg_price
+            }
+            if (price > (avg_price*1.2)) {
+              socket.emit('hubapp/trades/addNewItem', {
+                code: 400,
+                response: `⚠️ Your price is a lot **greater than** the average **${data.order_type.replace('wts','sell').replace('wtb','buy')}** price of **${avg_price}** for **${item_name}** ⚠️\nTry lowering it`
+              })
+                return
+            }
+            else if (price < (avg_price*0.8)) {
+              socket.emit('hubapp/trades/addNewItem', {
+                code: 400,
+                response: `⚠️ Your price is a lot **lower than** the average **${data.order_type.replace('wts','sell').replace('wtb','buy')}** price of **${avg_price}** for **${item_name}** ⚠️\nTry increasing it`
+              })
+                return
+            }
+            db.query(`
+                INSERT INTO tradebot_users_orders 
+                (order_id,discord_id,item_id,order_type,item_type,user_price,order_data,visibility,platform,update_timestamp,creation_timestamp) 
+                VALUES ('${uuid.v1()}',${data.discord_id},'${item_id}','${data.order_type}','item',${price},'${JSON.stringify({rank: item_rank})}',true,'hubapp',${new Date().getTime()},${new Date().getTime()})
+                ON CONFLICT (discord_id,item_id) 
+                DO UPDATE SET 
+                order_type = EXCLUDED.order_type, 
+                item_type = EXCLUDED.item_type, 
+                user_price = EXCLUDED.user_price, 
+                order_data = EXCLUDED.order_data, 
+                visibility = EXCLUDED.visibility, 
+                origin_channel_id = EXCLUDED.origin_channel_id, 
+                origin_guild_id = EXCLUDED.origin_guild_id, 
+                platform = EXCLUDED.platform,
+                update_timestamp = EXCLUDED.update_timestamp;
+            `).then(async res => {
+              socket.emit('hubapp/trades/addNewItem', {
+                code: 200,
+                response: `${convertUpper(item_url)} order has been updated`
+              })
+            }).catch(err => {
               console.log(err)
-              return false
+              socket.emit('hubapp/trades/addNewItem', {
+                code: 500,
+                response: `[DB Error] ${JSON.stringify(err)}`
+              })
+            })
+        }).catch(err => {
+          console.log(err)
+          socket.emit('hubapp/trades/addNewItem', {
+            code: 500,
+            response: `[DB Error] ${JSON.stringify(err)}`
           })
-          if (!status) {
-            socket.emit('hubapp/trades/addNewItem', {
-              code: 500,
-              response: "☠️ Something went wrong retreiving item avg price\nError code: 500\nContact MrSofty#7926 ☠️"
-            })
-              return
-          }
-          if (avg_price == null || avg_price == "null") {
-            socket.emit('hubapp/trades/addNewItem', {
-              code: 500,
-              response: "☠️ Something went wrong retreiving item avg price\nError code: 501\nContact MrSofty#7926 ☠️"
-            })
-              return
-          }
-          if (!price) {
-              price = avg_price
-          }
-          if (price > (avg_price*1.2)) {
-            socket.emit('hubapp/trades/addNewItem', {
-              code: 400,
-              response: `⚠️ Your price is a lot **greater than** the average **${data.order_type.replace('wts','sell').replace('wtb','buy')}** price of **${avg_price}** for **${item_name}** ⚠️\nTry lowering it`
-            })
-              return
-          }
-          else if (price < (avg_price*0.8)) {
-            socket.emit('hubapp/trades/addNewItem', {
-              code: 400,
-              response: `⚠️ Your price is a lot **lower than** the average **${data.order_type.replace('wts','sell').replace('wtb','buy')}** price of **${avg_price}** for **${item_name}** ⚠️\nTry increasing it`
-            })
-              return
-          }
-          db.query(`
-              INSERT INTO tradebot_users_orders 
-              (order_id,discord_id,item_id,order_type,item_type,user_price,order_data,visibility,platform,update_timestamp,creation_timestamp) 
-              VALUES ('${uuid.v1()}',${data.discord_id},'${item_id}','${data.order_type}','item',${price},'${JSON.stringify({rank: item_rank})}',true,'hubapp',${new Date().getTime()},${new Date().getTime()})
-              ON CONFLICT (discord_id,item_id) 
-              DO UPDATE SET 
-              order_type = EXCLUDED.order_type, 
-              item_type = EXCLUDED.item_type, 
-              user_price = EXCLUDED.user_price, 
-              order_data = EXCLUDED.order_data, 
-              visibility = EXCLUDED.visibility, 
-              origin_channel_id = EXCLUDED.origin_channel_id, 
-              origin_guild_id = EXCLUDED.origin_guild_id, 
-              platform = EXCLUDED.platform,
-              update_timestamp = EXCLUDED.update_timestamp;
-          `).then(async res => {
-            socket.emit('hubapp/trades/addNewItem', {
-              code: 200,
-              response: `${convertUpper(item_url)} order has been updated`
-            })
-          }).catch(err => {
-            console.log(err)
-            socket.emit('hubapp/trades/addNewItem', {
-              code: 500,
-              response: `[DB Error] ${JSON.stringify(err)}`
-            })
-          })
-      }).catch(err => {
-        console.log(err)
-        socket.emit('hubapp/trades/addNewItem', {
-          code: 500,
-          response: `[DB Error] ${JSON.stringify(err)}`
         })
-      })
-    });
+      });
 
-    socket.addListener("hubapp/trades/removeItem", (data) => {
-      console.log('[Endpoint log] hubapp/trades/removeItem called',data)
-      db.query(`DELETE FROM tradebot_users_orders WHERE discord_id = ${data.discord_id} AND item_id = '${data.item_id}'`).catch(console.error)
-    });
+      socket.addListener("hubapp/trades/removeItem", (data) => {
+        console.log('[Endpoint log] hubapp/trades/removeItem called',data)
+        db.query(`DELETE FROM tradebot_users_orders WHERE discord_id = ${data.discord_id} AND item_id = '${data.item_id}'`).catch(console.error)
+      });
 
-    socket.addListener("hubapp/trades/activateAll", (data) => {
-      console.log('[Endpoint log] hubapp/trades/activateAll called',data)
-      db.query(`UPDATE tradebot_users_orders SET visibility = true WHERE discord_id = ${data.discord_id}`).catch(console.error)
-    });
+      socket.addListener("hubapp/trades/activateAll", (data) => {
+        console.log('[Endpoint log] hubapp/trades/activateAll called',data)
+        db.query(`UPDATE tradebot_users_orders SET visibility = true WHERE discord_id = ${data.discord_id}`).catch(console.error)
+      });
 
-    socket.addListener("hubapp/trades/closeAll", (data) => {
-      console.log('[Endpoint log] hubapp/trades/closeAll called',data)
-      db.query(`UPDATE tradebot_users_orders SET visibility = false WHERE discord_id = ${data.discord_id}`).catch(console.error)
-    });
+      socket.addListener("hubapp/trades/closeAll", (data) => {
+        console.log('[Endpoint log] hubapp/trades/closeAll called',data)
+        db.query(`UPDATE tradebot_users_orders SET visibility = false WHERE discord_id = ${data.discord_id}`).catch(console.error)
+      });
+    }
 });
 
 function checkUserLogin(session_key) {
@@ -1276,6 +1282,14 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       last_update_timestamp = ${new Date().getTime()}
       WHERE discord_ids @> '"${payload.order_owner}"' AND discord_ids @> '"${payload.order_filler}"';
     `).catch(console.error)
+  }
+
+  if (notification.channel == 'rb_squads_insert') {
+    for (const socket in clients) {
+      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+        clients[socket].emit('squadCreate', payload)
+      }
+    }
   }
 })
 

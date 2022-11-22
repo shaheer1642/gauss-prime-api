@@ -29,6 +29,8 @@ db.connect().then(async res => {
     db.query('LISTEN tradebot_filled_users_orders_update_archived').catch(console.error)
     
     db.query('LISTEN hubapp_messages_channels_update').catch(err => console.log(err))
+
+    db.query('LISTEN rb_squads_insert').catch(err => console.log(err))
 }).catch(err => {
     console.log('DB Connection failure.\n' + err)
     process.exit()
