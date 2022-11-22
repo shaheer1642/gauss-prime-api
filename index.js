@@ -1291,6 +1291,14 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       }
     }
   }
+
+  if (notification.channel == 'rb_squads_update') {
+    for (const socket in clients) {
+      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+        clients[socket].emit('squadUpdate', payload)
+      }
+    }
+  }
 })
 
 server.listen(process.env.PORT, () => {

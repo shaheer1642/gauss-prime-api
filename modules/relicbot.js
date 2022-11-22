@@ -24,7 +24,7 @@ function squadsCreate(data,callback) {
                     message: `Invalid tier ${tier}`
                 })
             }
-            db.query(`INSERT INTO rb_squads (squad_id,tier,relic,host) VALUES ('${squad_id}','${tier}','${relic}','${host}')`)
+            db.query(`INSERT INTO rb_squads (squad_id,tier,relic,members,original_host) VALUES ('${squad_id}','${tier}','${relic}','["${host}"]','${host}')`)
             .then(res => {
                 if (res.rowCount == 1) {
                     return resolve({
@@ -38,7 +38,7 @@ function squadsCreate(data,callback) {
                 console.log(err)
                 return resolve({
                     code: 500,
-                    message: err
+                    message: err.stack
                 })
             })
         })
@@ -48,14 +48,14 @@ function squadsCreate(data,callback) {
         console.log(err)
         return callback([{
             code: 500,
-            message: err
+            message: err.stack
         }])
     })
 }
 
 function squadsFetch(data,callback) {
     console.log('[squadsFetch] data:',data)
-    db.query(`SELECT * FROM rb_squads ${data.tier ? `WHERE tier='${data.tier}'`:''}`)
+    db.query(`SELECT * FROM rb_squads WHERE status='active' ${data.tier ? `AND tier='${data.tier}'`:''}`)
     .then(res => {
         return callback({
             code: 200,
@@ -65,7 +65,7 @@ function squadsFetch(data,callback) {
         console.log(err)
         return callback({
             code: 500,
-            message: err
+            message: err.stack
         })
     })
 }
@@ -78,8 +78,13 @@ function squadsAddMember(data,callback) {
     console.log('[squadsAddMember] data:',data)
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
-    db.query(`UPDATE rb_squads SET members=remove_dupes(members||'"${data.discord_id}"') WHERE status = 'active' AND squad_id = '${data.squad_id}'`)
-    .then(res => {
+    db.query(`
+        UPDATE rb_squads SET members =
+        CASE WHEN members @> '"${data.discord_id}"'
+        THEN remove_dupes(members-'${data.discord_id}')
+        ELSE remove_dupes(members||'"${data.discord_id}"') END
+        WHERE status = 'active' AND squad_id = '${data.squad_id}'
+    `).then(res => {
         if (res.rowCount == 1) {
             return callback({
                 code: 200
@@ -89,11 +94,26 @@ function squadsAddMember(data,callback) {
             message: 'unexpected db response'
         })
     }).catch(err => {
-        console.log(err)
-        return callback({
-            code: 500,
-            message: err
-        })
+        if (err.code == '23502') {
+            // last member trying to leave
+            db.query(`UPDATE rb_squads SET status = 'abandoned' WHERE squad_id = '${data.squad_id}'`)
+            .then(res => {
+                if (res.rowCount == 1) {
+                    return callback({
+                        code: 200
+                    })
+                } else return callback({
+                    code: 500,
+                    message: 'unexpected db response'
+                })
+            })
+        } else {
+            console.log(err)
+            return callback({
+                code: 500,
+                message: err.stack
+            })
+        }
     })
 }
 
@@ -114,7 +134,7 @@ function squadsRemoveMember(data,callback) {
         console.log(err)
         return callback({
             code: 500,
-            message: err
+            message: err.stack
         })
     })
 }
