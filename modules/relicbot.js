@@ -21,7 +21,7 @@ function squadsCreate(data,callback) {
             const squad_id = uuid.v4()
             var str = line
             str = str.toLowerCase().trim()
-            str = str.replace(/^h /,'').replace(/off$/g,'').replace(/off$/g,'').replace(/offcycle$/g,'').replace(/ or /g,'').replace(/ intact /g,'int').replace(/ flawless /g,'flaw').replace(/ radiant /g,'rad')
+            str = str.replace(/^h /,'').replace(/off$/g,'').replace(/off$/g,'').replace(/offcycle$/g,'').replace(/ or /g,'').replace(/ intact /g,' int ').replace(/ flawless /g,' flaw ').replace(/ radiant /g,' rad ')
             const tier = str.split(' ')[0]
             if (!['lith','meso','neo','axi'].includes(tier)) return resolve({
                 code: 400,
