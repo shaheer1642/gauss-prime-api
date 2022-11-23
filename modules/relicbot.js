@@ -21,7 +21,7 @@ function squadsCreate(data,callback) {
             const squad_id = uuid.v4()
             var str = line
             str = str.toLowerCase().trim()
-            str = str.replace(/^h /,'').replace(/off$/g,'').replace(/off$/g,'').replace(/offcycle$/g,'').replace(/ or /g,'').replace(/ intact /g,' int ').replace(/ flawless /g,' flaw ').replace(/ radiant /g,' rad ')
+            str = str.replace(/^h /,'').replace(/off$/g,'').replace(/off$/g,'').replace(/offcycle$/g,'').replace(/ or /g,'')
             const tier = str.split(' ')[0]
             if (!['lith','meso','neo','axi'].includes(tier)) return resolve({
                 code: 400,
@@ -38,7 +38,8 @@ function squadsCreate(data,callback) {
             var cycle_count = ''
 
             subline[0].split(' ').forEach((word,index) => {
-                if (['int','flaw','rad'].includes(word)) {
+                if (['int','flaw','rad','intact','flawless','radiant'].includes(word)) {
+                    word = word.replace('intact','int').replace('flawless','flaw').replace('radiant','rad')
                     if (!main_refinements.includes(word)) main_refinements.push(word)
                 }
                 else if (['2b2','4b4'].includes(word)) {
@@ -62,7 +63,8 @@ function squadsCreate(data,callback) {
                 message: `Relic name could not be determined`
             })
             subline[1]?.split(' ').forEach((word,index) => {
-                if (['int','flaw','rad'].includes(word)) {
+                if (['int','flaw','rad','intact','flawless','radiant'].includes(word)) {
+                    word = word.replace('intact','int').replace('flawless','flaw').replace('radiant','rad')
                     if (!off_refinements.includes(word)) off_refinements.push(word)
                 }
                 else if ((word.length == 2 || word.length == 3) && !Number(word[0]) && Number(`${word[1]}${word[2] || ''}`)) {
