@@ -1296,6 +1296,8 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     for (const socket in clients) {
       if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
         clients[socket].emit('squadUpdate', payload)
+        if (payload[0].status == 'opened' && payload[1].status == 'active')
+          clients[socket].emit('squadUpdate/open', payload)
       }
     }
   }

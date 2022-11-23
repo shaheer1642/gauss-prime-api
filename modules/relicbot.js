@@ -9,6 +9,8 @@ const endpoints = {
     'relicbot/squads/removemember': squadsRemoveMember,
 }
 
+const main_squads_channel = '1043987463049318450'
+
 function squadsCreate(data,callback) {
     console.log('[squadsCreate] data:',data)
     if (!data.message) return callback({code: 500, err: 'No message provided'})
@@ -24,7 +26,7 @@ function squadsCreate(data,callback) {
                     message: `Invalid tier ${tier}`
                 })
             }
-            db.query(`INSERT INTO rb_squads (squad_id,tier,relic,members,original_host) VALUES ('${squad_id}','${tier}','${relic}','["${host}"]','${host}')`)
+            db.query(`INSERT INTO rb_squads (squad_id,tier,relic,members,original_host,channel_id) VALUES ('${squad_id}','${tier}','${relic}','["${host}"]','${host}','${data.channel_id || main_squads_channel}')`)
             .then(res => {
                 if (res.rowCount == 1) {
                     return resolve({
@@ -84,8 +86,11 @@ function squadsAddMember(data,callback) {
         THEN remove_dupes(members-'${data.discord_id}')
         ELSE remove_dupes(members||'"${data.discord_id}"') END
         WHERE status = 'active' AND squad_id = '${data.squad_id}'
+        returning*;
     `).then(res => {
         if (res.rowCount == 1) {
+            if (res.rows[0].members.length == 4)
+                db.query(`UPDATE rb_squads SET status='opened' WHERE status = 'active' AND squad_id = '${res.rows[0].squad_id}'`).catch(console.error)
             return callback({
                 code: 200
             })
@@ -96,7 +101,7 @@ function squadsAddMember(data,callback) {
     }).catch(err => {
         if (err.code == '23502') {
             // last member trying to leave
-            db.query(`UPDATE rb_squads SET status = 'abandoned' WHERE squad_id = '${data.squad_id}'`)
+            db.query(`UPDATE rb_squads SET status = 'abandoned' WHERE status = 'active' AND squad_id = '${data.squad_id}'`)
             .then(res => {
                 if (res.rowCount == 1) {
                     return callback({
