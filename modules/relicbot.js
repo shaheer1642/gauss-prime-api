@@ -1,5 +1,6 @@
 const { db } = require("./db_connection")
 const uuid = require('uuid')
+const {convertUpper, dynamicSort, dynamicSortDesc} = require('./modules/functions')
 
 const endpoints = {
     'relicbot/squads/create': squadsCreate,
@@ -53,6 +54,9 @@ function squadsCreate(data,callback) {
                     squad_type = word.substring(0,3)
                     const refinement = word[word.length - 1].replace('i','int').replace('f','flaw').replace('r','rad')
                     if (!main_refinements.includes(refinement)) main_refinements.push(refinement)
+                }
+                else if (['random','randoms','trace','traces'].includes(word)) {
+                    if (!main_relics.includes(convertUpper(word))) main_relics.push(convertUpper(word))
                 }
                 else if ((word.length == 2 || word.length == 3) && !Number(word[0]) && Number(`${word[1]}${word[2] || ''}`)) {
                     if (!main_relics.includes(word.toUpperCase())) main_relics.push(word.toUpperCase())
