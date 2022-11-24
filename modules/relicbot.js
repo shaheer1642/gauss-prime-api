@@ -92,7 +92,7 @@ function squadsCreate(data,callback) {
             if (main_refinements.length == 0) main_refinements.push('rad')
             if (is_steelpath && is_railjack) is_railjack = false
 
-            db.query(`INSERT INTO rb_squads (squad_id,tier,members,original_host,channel_id,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack) 
+            db.query(`INSERT INTO rb_squads (squad_id,tier,members,original_host,channel_id,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp) 
             VALUES 
                 ('${squad_id}',
                 '${tier}',
@@ -106,7 +106,8 @@ function squadsCreate(data,callback) {
                 '${squad_type}',
                 '${cycle_count}',
                 ${is_steelpath},
-                ${is_railjack})
+                ${is_railjack},
+                ${new Date().getTime()})
             `).then(res => {
                 if (res.rowCount == 1) {
                     return resolve({
