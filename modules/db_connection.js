@@ -32,6 +32,10 @@ db.connect().then(async res => {
 
     db.query('LISTEN rb_squads_insert').catch(err => console.log(err))
     db.query('LISTEN rb_squads_update').catch(err => console.log(err))
+
+    db.query('LISTEN tradebot_users_list_insert').catch(console.error)
+    db.query('LISTEN tradebot_users_list_update').catch(console.error)
+    db.query('LISTEN tradebot_users_list_delete').catch(console.error)
 }).catch(err => {
     console.log('DB Connection failure.\n' + err)
     process.exit()

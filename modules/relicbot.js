@@ -7,6 +7,8 @@ const endpoints = {
     'relicbot/squads/update': squadsUpdate,
     'relicbot/squads/addmember': squadsAddMember,
     'relicbot/squads/removemember': squadsRemoveMember,
+    'relicbot/squads/leaveall': squadsLeaveAll,
+    'relicbot/users/fetch': usersFetch,
 }
 
 const main_squads_channel = '1043987463049318450'
@@ -36,6 +38,8 @@ function squadsCreate(data,callback) {
             var off_refinements = []
             var squad_type = ''
             var cycle_count = ''
+            var is_steelpath = false
+            var is_railjack = false
 
             subline[0].split(' ').forEach((word,index) => {
                 if (['int','flaw','rad','intact','flawless','radiant'].includes(word)) {
@@ -57,6 +61,8 @@ function squadsCreate(data,callback) {
                     const prev_word = subline[0].split(' ')[index-1]
                     cycle_count = prev_word
                 }
+                else if (word == 'steelpath' || word == 'sp') is_steelpath = true
+                else if (word == 'railjack' || word == 'rj') is_railjack = true
             });
             if (main_relics.length == 0) return resolve({
                 code: 400,
@@ -74,12 +80,15 @@ function squadsCreate(data,callback) {
                     const prev_word = subline[1].split(' ')[index-1]
                     cycle_count = prev_word
                 }
+                else if (word == 'steelpath' || word == 'sp') is_steelpath = true
+                else if (word == 'railjack' || word == 'rj') is_railjack = true
             });
 
             if (squad_type == '') squad_type = '4b4'
             if (main_refinements.length == 0) main_refinements.push('rad')
+            if (is_steelpath && is_railjack) is_railjack = false
 
-            db.query(`INSERT INTO rb_squads (squad_id,tier,members,original_host,channel_id,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count) 
+            db.query(`INSERT INTO rb_squads (squad_id,tier,members,original_host,channel_id,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack) 
             VALUES 
                 ('${squad_id}',
                 '${tier}',
@@ -91,7 +100,9 @@ function squadsCreate(data,callback) {
                 '${JSON.stringify(off_relics)}',
                 '${JSON.stringify(off_refinements)}',
                 '${squad_type}',
-                '${cycle_count}')
+                '${cycle_count}',
+                ${is_steelpath},
+                ${is_railjack})
             `).then(res => {
                 if (res.rowCount == 1) {
                     return resolve({
@@ -122,8 +133,9 @@ function squadsCreate(data,callback) {
 
 function squadsFetch(data,callback) {
     console.log('[squadsFetch] data:',data)
-    db.query(`SELECT * FROM rb_squads WHERE status='active' ${data.tier ? `AND tier='${data.tier}'`:''}`)
-    .then(res => {
+    db.query(`
+        SELECT * FROM rb_squads WHERE status='active' ${data.tier ? `AND tier='${data.tier}'`:''};
+    `).then(res => {
         return callback({
             code: 200,
             data: res.rows
@@ -140,6 +152,7 @@ function squadsFetch(data,callback) {
 function squadsUpdate(data,callback) {
 
 }
+
 
 function squadsAddMember(data,callback) {
     console.log('[squadsAddMember] data:',data)
@@ -194,7 +207,7 @@ function squadsAddMember(data,callback) {
 function squadsRemoveMember(data,callback) {
     console.log('[squadsRemoveMember] data:',data)
     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
-    db.query(`UPDATE rb_squads SET members=remove_dupes(members-'${data.discord_id}') WHERE status='active' ${data.squad_id ? ` AND squad_id = '${data.squad_id}'`:''} ${data.tier ? ` AND tier = '${data.tier}'`:''}`)
+    db.query(`UPDATE rb_squads SET members=members-'${data.discord_id}' WHERE status='active' ${data.squad_id ? ` AND squad_id = '${data.squad_id}'`:''} ${data.tier ? ` AND tier = '${data.tier}'`:''}`)
     .then(res => {
         if (res.rowCount == 1) {
             return callback({
@@ -203,6 +216,41 @@ function squadsRemoveMember(data,callback) {
         } else return callback({
             code: 500,
             message: 'unexpected db response'
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+function squadsLeaveAll(data,callback) {
+    console.log('[squadsLeaveAll] data:',data)
+    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    db.query(`UPDATE rb_squads SET members=members-'${data.discord_id}' WHERE status='active' AND members @> '"${data.discord_id}"' ${data.tier ? ` AND tier = '${data.tier}'`:''}`)
+    .then(res => {
+        return callback({
+            code: 200
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+function usersFetch(data,callback) {
+    console.log('[usersFetch] data:',data)
+    db.query(`
+        SELECT * FROM tradebot_users_list;
+    `).then(res => {
+        return callback({
+            code: 200,
+            data: res.rows
         })
     }).catch(err => {
         console.log(err)

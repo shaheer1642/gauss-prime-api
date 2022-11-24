@@ -1296,6 +1296,10 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     `).catch(console.error)
   }
 
+  if (['tradebot_users_list_insert','tradebot_users_list_update','tradebot_users_list_delete'].includes(notification.channel)) {
+    io.emit('tradebotUsersUpdated', payload)
+  }
+
   if (notification.channel == 'rb_squads_insert') {
     for (const socket in clients) {
       if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
