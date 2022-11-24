@@ -154,8 +154,12 @@ function squadsAddMember(data,callback) {
         returning*;
     `).then(res => {
         if (res.rowCount == 1) {
-            if (res.rows[0].members.length == 4)
-                db.query(`UPDATE rb_squads SET status='opened' WHERE status = 'active' AND squad_id = '${res.rows[0].squad_id}'`).catch(console.error)
+            if (res.rows[0].members.length == 4) {
+                db.query(`
+                    UPDATE rb_squads SET status='opened' WHERE status = 'active' AND squad_id = '${res.rows[0].squad_id}';
+                    UPDATE rb_squads SET members=remove_dupes(members${res.rows[0].members.map(discord_id => `-'${discord_id}'`).join('')}) WHERE status='active' AND squad_id != '${res.rows[0].squad_id}';
+                `).catch(console.error)
+            }
             return callback({
                 code: 200
             })

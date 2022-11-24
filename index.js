@@ -297,7 +297,19 @@ io.on('connection', (socket) => {
 
     if (socket.handshake.query.bot_token && socket.handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
       Object.keys(relicbot.endpoints).forEach(key => {
-        socket.addListener(key, relicbot.endpoints[key])
+        socket.addListener(key, (data,callback) => {
+          if (data.discord_id) {
+            console.log('[middleware] checking if user exists')
+            db.query(`SELECT * FROM tradebot_users_list WHERE discord_id = ${data.discord_id}`)
+            .then(res => {
+              if (res.rowCount == 1) relicbot.endpoints[key](data,callback)
+              else return callback({
+                  code: 499,
+                  message: 'unauthorized'
+                })
+            }).catch(console.error)
+          } else relicbot.endpoints[key](data,callback)
+        })
       })
     } else {
       if (!socket.handshake.query.session_key) return
