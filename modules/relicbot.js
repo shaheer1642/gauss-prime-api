@@ -161,18 +161,12 @@ function squadsAddMember(data,callback) {
     db.query(`
         UPDATE rb_squads SET members =
         CASE WHEN members @> '"${data.discord_id}"'
-        THEN remove_dupes(members-'${data.discord_id}')
-        ELSE remove_dupes(members||'"${data.discord_id}"') END
+        THEN members-'${data.discord_id}'
+        ELSE members||'"${data.discord_id}"' END
         WHERE status = 'active' AND squad_id = '${data.squad_id}'
         returning*;
     `).then(res => {
         if (res.rowCount == 1) {
-            if (res.rows[0].members.length == 4) {
-                db.query(`
-                    UPDATE rb_squads SET status='opened' WHERE status = 'active' AND squad_id = '${res.rows[0].squad_id}';
-                    UPDATE rb_squads SET members=remove_dupes(members${res.rows[0].members.map(discord_id => `-'${discord_id}'`).join('')}) WHERE status='active' AND squad_id != '${res.rows[0].squad_id}';
-                `).catch(console.error)
-            }
             return callback({
                 code: 200
             })
@@ -181,26 +175,11 @@ function squadsAddMember(data,callback) {
             message: 'unexpected db response'
         })
     }).catch(err => {
-        if (err.code == '23502') {
-            // last member trying to leave
-            db.query(`UPDATE rb_squads SET status = 'abandoned' WHERE status = 'active' AND squad_id = '${data.squad_id}'`)
-            .then(res => {
-                if (res.rowCount == 1) {
-                    return callback({
-                        code: 200
-                    })
-                } else return callback({
-                    code: 500,
-                    message: 'unexpected db response'
-                })
-            })
-        } else {
-            console.log(err)
-            return callback({
-                code: 500,
-                message: err.stack
-            })
-        }
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
     })
 }
 
