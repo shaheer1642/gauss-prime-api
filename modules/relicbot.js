@@ -168,26 +168,11 @@ function squadsAddMember(data,callback) {
             message: 'unexpected db response'
         })
     }).catch(err => {
-        if (err.code == '23502') {
-            // last member trying to leave
-            db.query(`UPDATE rb_squads SET status = 'abandoned' WHERE status = 'active' AND squad_id = '${data.squad_id}'`)
-            .then(res => {
-                if (res.rowCount == 1) {
-                    return callback({
-                        code: 200
-                    })
-                } else return callback({
-                    code: 500,
-                    message: 'unexpected db response'
-                })
-            })
-        } else {
-            console.log(err)
-            return callback({
-                code: 500,
-                message: err.stack
-            })
-        }
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
     })
 }
 
