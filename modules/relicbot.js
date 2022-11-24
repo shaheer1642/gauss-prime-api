@@ -148,8 +148,8 @@ function squadsAddMember(data,callback) {
     db.query(`
         UPDATE rb_squads SET members =
         CASE WHEN members @> '"${data.discord_id}"'
-        THEN remove_dupes(members-'${data.discord_id}')
-        ELSE remove_dupes(members||'"${data.discord_id}"') END
+        THEN members-'${data.discord_id}'
+        ELSE members||'"${data.discord_id}"' END
         WHERE status = 'active' AND squad_id = '${data.squad_id}'
         returning*;
     `).then(res => {
