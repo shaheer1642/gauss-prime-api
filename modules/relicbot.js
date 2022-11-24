@@ -1,6 +1,6 @@
 const { db } = require("./db_connection")
 const uuid = require('uuid')
-const {convertUpper, dynamicSort, dynamicSortDesc} = require('./modules/functions')
+const {convertUpper, dynamicSort, dynamicSortDesc} = require('./functions')
 
 const endpoints = {
     'relicbot/squads/create': squadsCreate,
