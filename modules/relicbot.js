@@ -14,6 +14,11 @@ const endpoints = {
 
 const main_squads_channel = '1043987463049318450'
 
+const squad_timeout =  3600000 // in ms
+setInterval(() => {
+    db.query(`UPDATE rb_squads SET status='expired' WHERE status='active' AND creation_timestamp < ${new Date().getTime() - squad_timeout}`).catch(console.error)
+}, 900000);
+
 function squadsCreate(data,callback) {
     console.log('[squadsCreate] data:',data)
     if (!data.message) return callback({code: 500, err: 'No message provided'})
