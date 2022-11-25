@@ -113,6 +113,7 @@ function squadsCreate(data,callback) {
                 ${is_steelpath},
                 ${is_railjack},
                 ${new Date().getTime()})
+            WHERE COUNT(select * from rb_squads WHERE status='active' AND tier='${tier}') < 5
             `).then(res => {
                 if (res.rowCount == 1) {
                     return resolve({
