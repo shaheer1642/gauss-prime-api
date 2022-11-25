@@ -1314,7 +1314,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     }
     if (payload[0].members.length == 4 && payload[1].members.length < 4) {
         db.query(`
-          UPDATE rb_squads SET status='opened' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
+          UPDATE rb_squads SET status='opened',open_timestamp=${new Date().getTime()} WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
           UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}';
         `).catch(console.error)
     }
