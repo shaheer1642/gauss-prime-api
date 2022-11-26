@@ -1,6 +1,7 @@
 const { db } = require("./db_connection")
 const uuid = require('uuid')
 const {convertUpper, dynamicSort, dynamicSortDesc} = require('./functions')
+const db_modules = require('./db_modules')
 
 const endpoints = {
     'relicbot/squads/create': squadsCreate,
@@ -16,6 +17,8 @@ const main_squads_channel = '1043987463049318450'
 
 const squad_timeout =  3600000 // in ms
 const squad_is_old =  900000 // in ms
+const squad_closure = 900000 // in ms
+
 setInterval(() => {
     db.query(`UPDATE rb_squads SET status='expired' WHERE status='active' AND creation_timestamp < ${new Date().getTime() - squad_timeout}`).catch(console.error)
 }, 900000);
@@ -116,9 +119,7 @@ function squadsCreate(data,callback) {
                 ${new Date().getTime()})
             `).then(res => {
                 if (res.rowCount == 1) {
-                    setTimeout(() => {
-                        db.query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`).catch(console.error)
-                    }, squad_is_old);
+                    db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
                     return resolve({
                         code: 200
                     })
@@ -255,5 +256,6 @@ function usersFetch(data,callback) {
 }
 
 module.exports = {
-    endpoints
+    endpoints,
+    squad_closure
 }

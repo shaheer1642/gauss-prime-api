@@ -1313,10 +1313,12 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       db.query(`UPDATE rb_squads SET status = 'abandoned' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}'`).catch(console.error)
     }
     if (payload[0].members.length == 4 && payload[1].members.length < 4) {
-        db.query(`
-          UPDATE rb_squads SET status='opened',open_timestamp=${new Date().getTime()} WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
-          UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}';
-        `).catch(console.error)
+      db.query(`
+        UPDATE rb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"' `).join(' OR ')});
+        UPDATE rb_squads SET status='opened',open_timestamp=${new Date().getTime()} WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
+        UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active';
+      `).catch(console.error)
+      db_modules.schedule_query(`UPDATE rb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,relicbot.squad_closure)
     }
     for (const socket in clients) {
       if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
@@ -1331,8 +1333,3 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
 server.listen(process.env.PORT, () => {
   console.log('Server is listening to port',process.env.PORT);
 });
-
-
-function calculateSignaturePatreon() {
-  return 
-}

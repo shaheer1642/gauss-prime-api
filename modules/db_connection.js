@@ -36,6 +36,19 @@ db.connect().then(async res => {
     db.query('LISTEN tradebot_users_list_insert').catch(console.error)
     db.query('LISTEN tradebot_users_list_update').catch(console.error)
     db.query('LISTEN tradebot_users_list_delete').catch(console.error)
+
+    db.query('LISTEN scheduled_queries_insert').catch(console.error)
+
+    db.query(`SELECT * FROM scheduled_queries`).then(res => {
+        res.rows.forEach(row => {
+            setTimeout(() => {
+                db.query(`
+                ${row.query}
+                DELETE FROM scheduled_queries WHERE id=${row.id};
+                `).catch(console.error)
+            }, row.call_timestamp - row.created_timestamp);
+        })
+    })
 }).catch(err => {
     console.log('DB Connection failure.\n' + err)
     process.exit()

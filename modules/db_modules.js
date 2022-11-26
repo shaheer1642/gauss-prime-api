@@ -1,5 +1,6 @@
 const {db} = require('./db_connection')
 const axios = require('axios')
+const JSONbig = require('json-bigint');
 
 async function updateDatabaseItem(db_items_list,item,index) {
     if (!db)
@@ -364,4 +365,22 @@ async function updateDatabaseItem(db_items_list,item,index) {
     return Promise.resolve(db_items_list)
 }
 
-module.exports = {updateDatabaseItem};
+function schedule_query(query,after_ms) {
+    query += query[query.length-1] == ';'? '':';'
+    db.query(`INSERT INTO scheduled_queries (query,created_timestamp,call_timestamp) VALUES ('${query.replace(/'/g,`''`)}',${new Date().getTime()},${new Date().getTime() + after_ms});`).catch(console.error)
+}
+
+db.on('notification', (notification) => {
+    console.log('[db_notification]',notification.channel)
+    const payload = JSONbig.parse(notification.payload);
+    if (notification.channel == 'scheduled_queries_insert') {
+        setTimeout(() => {
+        db.query(`
+            ${payload.query}
+            DELETE FROM scheduled_queries WHERE id=${payload.id};
+        `).catch(console.error)
+        }, payload.call_timestamp - payload.created_timestamp);
+    }
+})
+
+module.exports = {updateDatabaseItem,schedule_query};
