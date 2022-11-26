@@ -39,6 +39,8 @@ db.connect().then(async res => {
 
     db.query('LISTEN scheduled_queries_insert').catch(console.error)
 
+    db.query('LISTEN rb_squads_messages_insert').catch(console.error)
+
     db.query(`SELECT * FROM scheduled_queries`).then(res => {
         res.rows.forEach(row => {
             setTimeout(() => {

@@ -10,6 +10,7 @@ const endpoints = {
     'relicbot/squads/addmember': squadsAddMember,
     'relicbot/squads/removemember': squadsRemoveMember,
     'relicbot/squads/leaveall': squadsLeaveAll,
+    'relicbot/squads/messageCreate': squadsMessageCreate,
     'relicbot/users/fetch': usersFetch,
 }
 
@@ -18,6 +19,25 @@ const main_squads_channel = '1043987463049318450'
 const squad_expiry =  3600000 // in ms
 const squad_is_old =  900000 // in ms
 const squad_closure = 900000 // in ms
+
+function squadsMessageCreate(data,callback) {
+    console.log('[squadsMessageCreate] data:',data)
+    if (!data.thread_id) return callback({code: 500, err: 'No thread_id provided'})
+    db.query(`
+        INSERT INTO rb_squads_messages (message_id,message,discord_id,thread_id,squad_id,squad_thread_ids)
+        VALUES (
+            '${data.message_id}',
+            '${data.message.replace(/'/g,`''`)}',
+            '${data.discord_id}',
+            '${data.thread_id}',
+            (select squad_id FROM rb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened'),
+            (select thread_ids FROM rb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')
+        )
+    `).catch(err => {
+        if (err.code != '23502') // message not sent in a tracked thread
+            console.log(err)
+    })
+}
 
 function squadsCreate(data,callback) {
     console.log('[squadsCreate] data:',data)
@@ -97,13 +117,12 @@ function squadsCreate(data,callback) {
             if (main_refinements.length == 0) main_refinements.push('rad')
             if (is_steelpath && is_railjack) is_railjack = false
 
-            db.query(`INSERT INTO rb_squads (squad_id,tier,members,original_host,channel_id,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp) 
+            db.query(`INSERT INTO rb_squads (squad_id,tier,members,original_host,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp,joined_from_channel_ids) 
             VALUES 
                 ('${squad_id}',
                 '${tier}',
                 '["${data.discord_id}"]',
                 '${data.discord_id}',
-                '${data.channel_id || main_squads_channel}',
                 '${JSON.stringify(main_relics)}',
                 '${JSON.stringify(main_refinements)}',
                 '${JSON.stringify(off_relics)}',
@@ -112,7 +131,8 @@ function squadsCreate(data,callback) {
                 '${cycle_count}',
                 ${is_steelpath},
                 ${is_railjack},
-                ${new Date().getTime()})
+                ${new Date().getTime()},
+                '${data.channel_id ? `{"${data.discord_id}":"${data.channel_id}"}`:'{}'}')
             `).then(res => {
                 if (res.rowCount == 1) {
                     db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
@@ -162,7 +182,18 @@ function squadsFetch(data,callback) {
 }
 
 function squadsUpdate(data,callback) {
-
+    if (!data.params) return callback({code: 500, err: 'No params provided'})
+    db.query(`UPDATE rb_squads SET ${data.params}`).then(res => {
+        if (!callback) return
+        if (res.rowCount == 1) {
+            return callback({
+                code: 200
+            })
+        } else return callback({
+            code: 500,
+            message: 'unexpected db response'
+        })
+    }).catch(console.error)
 }
 
 
@@ -175,6 +206,11 @@ function squadsAddMember(data,callback) {
         CASE WHEN members @> '"${data.discord_id}"'
         THEN members-'${data.discord_id}'
         ELSE members||'"${data.discord_id}"' END
+        ${data.channel_id ? `,joined_from_channel_ids = 
+        CASE WHEN members @> '"${data.discord_id}"'
+        THEN joined_from_channel_ids - '${data.discord_id}'
+        ELSE jsonb_set(joined_from_channel_ids, '{${data.discord_id}}', '"${data.channel_id}"') END
+        ` : ''}
         WHERE status = 'active' AND squad_id = '${data.squad_id}'
         returning*;
     `).then(res => {
