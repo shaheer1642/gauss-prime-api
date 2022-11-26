@@ -48,7 +48,7 @@ db.connect().then(async res => {
                     ${row.query}
                     DELETE FROM scheduled_queries WHERE id=${row.id};
                 `).catch(console.error)
-            }, row.call_timestamp < new Date().getTime() ? 0 : row.call_timestamp - row.created_timestamp);
+            }, row.call_timestamp - new Date().getTime());
         })
     })
 }).catch(err => {
