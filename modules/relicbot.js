@@ -50,12 +50,13 @@ function squadsCreate(data,callback) {
             var str = line
             str = str.toLowerCase().trim()
             str = str.replace(/^h /,'').replace(/off$/g,'').replace(/off$/g,'').replace(/offcycle$/g,'').replace(/ or /g,'')
+            .replace(/^random lith/,'lith random').replace(/^random meso/,'meso random').replace(/^random neo/,'neo random').replace(/^random axi/,'axi random');
             const tier = str.split(' ')[0]
             if (!['lith','meso','neo','axi'].includes(tier)) return resolve({
                 code: 400,
                 message: `Invalid tier **${tier}**`
             })
-            str = str.replaceAll(str.split(' ')[0],'').replace(/,/g,' ').replace(/\s+/g, ' ').trim()
+            str = str.replaceAll(tier,'').replace(/,/g,' ').replace(/\s+/g, ' ').trim()
             const subline = str.split(' with ')
 
             var main_relics = []
