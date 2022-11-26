@@ -45,10 +45,10 @@ db.connect().then(async res => {
         res.rows.forEach(row => {
             setTimeout(() => {
                 db.query(`
-                ${row.query}
-                DELETE FROM scheduled_queries WHERE id=${row.id};
+                    ${row.query}
+                    DELETE FROM scheduled_queries WHERE id=${row.id};
                 `).catch(console.error)
-            }, row.call_timestamp - row.created_timestamp);
+            }, row.call_timestamp < new Date().getTime() ? 0 : row.call_timestamp - row.created_timestamp);
         })
     })
 }).catch(err => {
