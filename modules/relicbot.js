@@ -15,6 +15,7 @@ const endpoints = {
 const main_squads_channel = '1043987463049318450'
 
 const squad_timeout =  3600000 // in ms
+const squad_is_old =  900000 // in ms
 setInterval(() => {
     db.query(`UPDATE rb_squads SET status='expired' WHERE status='active' AND creation_timestamp < ${new Date().getTime() - squad_timeout}`).catch(console.error)
 }, 900000);
@@ -115,6 +116,9 @@ function squadsCreate(data,callback) {
                 ${new Date().getTime()})
             `).then(res => {
                 if (res.rowCount == 1) {
+                    setTimeout(() => {
+                        db.query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`).catch(console.error)
+                    }, squad_is_old);
                     return resolve({
                         code: 200
                     })
