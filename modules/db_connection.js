@@ -12,45 +12,47 @@ db.connect().then(async res => {
     console.log('DB Connection established.')
 
     // Listening to triggers
-    db.query('LISTEN hubapp_messages_insert').catch(err => console.log(err))
+    db.query(`
+        LISTEN hubapp_messages_insert;
 
-    db.query('LISTEN hubapp_users_update').catch(err => console.log(err))
+        LISTEN hubapp_users_update;
 
-    db.query('LISTEN hub_recruitbot_squads_insert').catch(err => console.log(err))
-    db.query('LISTEN hub_recruitbot_squads_update').catch(err => console.log(err))
-    db.query('LISTEN hub_recruitbot_squads_delete').catch(err => console.log(err))
-    
-    db.query('LISTEN tradebot_users_orders_insert').catch(err => console.log(err))
-    db.query('LISTEN tradebot_users_orders_update').catch(err => console.log(err))
-    db.query('LISTEN tradebot_users_orders_delete').catch(err => console.log(err))
+        LISTEN hub_recruitbot_squads_insert;
+        LISTEN hub_recruitbot_squads_update;
+        LISTEN hub_recruitbot_squads_delete;
 
-    db.query('LISTEN tradebot_filled_users_orders_insert').catch(err => console.log(err))
-    db.query('LISTEN tradebot_filled_users_orders_update_new_message').catch(console.error)
-    db.query('LISTEN tradebot_filled_users_orders_update_archived').catch(console.error)
-    
-    db.query('LISTEN hubapp_messages_channels_update').catch(err => console.log(err))
+        LISTEN tradebot_users_orders_insert;
+        LISTEN tradebot_users_orders_update;
+        LISTEN tradebot_users_orders_delete;
 
-    db.query('LISTEN rb_squads_insert').catch(err => console.log(err))
-    db.query('LISTEN rb_squads_update').catch(err => console.log(err))
+        LISTEN tradebot_filled_users_orders_insert;
+        LISTEN tradebot_filled_users_orders_update_new_message;
+        LISTEN tradebot_filled_users_orders_update_archived;
 
-    db.query('LISTEN tradebot_users_list_insert').catch(console.error)
-    db.query('LISTEN tradebot_users_list_update').catch(console.error)
-    db.query('LISTEN tradebot_users_list_delete').catch(console.error)
+        LISTEN hubapp_messages_channels_update;
 
-    db.query('LISTEN scheduled_queries_insert').catch(console.error)
+        LISTEN rb_squads_insert;
+        LISTEN rb_squads_update;
 
-    db.query('LISTEN rb_squads_messages_insert').catch(console.error)
+        LISTEN tradebot_users_list_insert;
+        LISTEN tradebot_users_list_update;
+        LISTEN tradebot_users_list_delete;
 
-    db.query(`SELECT * FROM scheduled_queries`).then(res => {
-        res.rows.forEach(row => {
-            setTimeout(() => {
-                db.query(`
-                    ${row.query}
-                    DELETE FROM scheduled_queries WHERE id=${row.id};
-                `).catch(console.error)
-            }, row.call_timestamp - new Date().getTime());
-        })
-    })
+        LISTEN scheduled_queries_insert;
+
+        LISTEN rb_squads_messages_insert;
+    `).then(res => {
+        db.query(`SELECT * FROM scheduled_queries`).then(res => {
+            res.rows.forEach(row => {
+                setTimeout(() => {
+                    db.query(`
+                        ${row.query}
+                        DELETE FROM scheduled_queries WHERE id=${row.id};
+                    `).catch(console.error)
+                }, row.call_timestamp - new Date().getTime());
+            })
+        }).catch(console.error)
+    }).catch(err => console.log(err))
 }).catch(err => {
     console.log('DB Connection failure.\n' + err)
     process.exit()
