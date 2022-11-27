@@ -118,9 +118,17 @@ function squadsCreate(data,callback) {
             if (main_refinements.length == 0) main_refinements.push('rad')
             if (is_steelpath && is_railjack) is_railjack = false
 
+            /*const rb_squads = await db.query(`SELECT * FROM rb_squads WHERE tier = '${tier}'`).catch(console.error)
+
+            if (rb_squads.rowCount > 5) return resolve({
+                code: 400,
+                message: `${tier} squads limit has been reached. Please try hosting later or join an existing squad`
+            })*/
+
             db.query(`INSERT INTO rb_squads (squad_id,tier,members,original_host,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp,joined_from_channel_ids) 
             VALUES 
-                ('${squad_id}',
+                (
+                (SELECT CASE WHEN (COUNT(squad_id) >= 5) THEN NULL ELSE '${squad_id}'::uuid END AS counted FROM rb_squads WHERE tier='${tier}' AND status='active'),
                 '${tier}',
                 '["${data.discord_id}"]',
                 '${data.discord_id}',
@@ -146,6 +154,12 @@ function squadsCreate(data,callback) {
                     message: 'unexpected db response'
                 })
             }).catch(err => {
+                if (err.code == '23502') {
+                    return resolve({
+                        code: 400,
+                        message: `${tier} squads limit has been reached. Please try hosting later or join an existing squad`
+                    })
+                }
                 console.log(err)
                 return resolve({
                     code: 500,
