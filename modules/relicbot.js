@@ -2,6 +2,7 @@ const { db } = require("./db_connection")
 const uuid = require('uuid')
 const {convertUpper, dynamicSort, dynamicSortDesc} = require('./functions')
 const db_modules = require('./db_modules')
+const {event_emitter} = require('./event_emitter')
 
 const endpoints = {
     'relicbot/squads/create': squadsCreate,
@@ -20,6 +21,17 @@ const endpoints = {
 
     'relicbot/users/fetch': usersFetch,
 }
+
+const relics_list = {}
+
+event_emitter.on('db_connected', () => {
+    db.query(`SELECT * FROM items_list WHERE item_url LIKE '%relic'`)
+    .then(res => {
+        res.rows.forEach(row => {
+            relics_list[row.item_url] = row
+        })
+    }).catch(console.error)
+})
 
 const main_squads_channel = '1043987463049318450'
 
@@ -57,20 +69,26 @@ function squadsCreate(data,callback) {
             const squad = relicBotStringToSquad(line)
             if (!['lith','meso','neo','axi'].includes(squad.tier)) return resolve({
                 code: 400,
-                message: `Invalid tier **${tier}**`
+                message: `Invalid tier **${squad.tier}**`
             })
             if (squad.main_relics.length == 0) return resolve({
                 code: 400,
                 message: `Relic name could not be determined`
             })
+            for (const relic of squad.main_relics) {
+                if (!relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()]) return resolve({
+                    code: 400,
+                    message: `**${squad.tier} ${relic}** is not a valid relic`
+                })
+            }
             if (squad.squad_type == '') squad.squad_type = '4b4'
             if (squad.main_refinements.length == 0) squad.main_refinements.push('rad')
             if (squad.is_steelpath && squad.is_railjack) squad.is_railjack = false
 
-            db.query(`INSERT INTO rb_squads (squad_id,tier,members,original_host,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp,joined_from_channel_ids) 
+            db.query(`INSERT INTO rb_squads (squad_id,tier,members,original_host,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp,joined_from_channel_ids,is_vaulted) 
             VALUES 
                 (
-                (SELECT CASE WHEN (COUNT(squad_id) >= 5) THEN NULL ELSE '${squad_id}'::uuid END AS counted FROM rb_squads WHERE tier='${squad.tier}' AND status='active'),
+                (SELECT CASE WHEN (COUNT(squad_id) >= 5) THEN NULL ELSE '${squad_id}'::uuid END AS counted FROM rb_squads WHERE tier='${squad.tier}' AND status='active' AND is_vaulted=${squad.is_vaulted}),
                 '${squad.tier}',
                 '["${data.discord_id}"]',
                 '${data.discord_id}',
@@ -83,7 +101,8 @@ function squadsCreate(data,callback) {
                 ${squad.is_steelpath},
                 ${squad.is_railjack},
                 ${new Date().getTime()},
-                '${data.channel_id ? `{"${data.discord_id}":"${data.channel_id}"}`:'{}'}')
+                '${data.channel_id ? `{"${data.discord_id}":"${data.channel_id}"}`:'{}'}',
+                ${squad.is_vaulted})
             `).then(res => {
                 if (res.rowCount == 1) {
                     db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
@@ -99,7 +118,7 @@ function squadsCreate(data,callback) {
                 if (err.code == '23502') {
                     return resolve({
                         code: 400,
-                        message: `${tier} squads limit has been reached. Please try hosting later or join an existing squad`
+                        message: `${squad.tier} squads limit has been reached. Please try hosting later or join an existing squad`
                     })
                 }
                 console.log(err)
@@ -238,7 +257,7 @@ function trackersCreate(data,callback) {
             const squad = relicBotStringToSquad(line)
             if (!['lith','meso','neo','axi'].includes(squad.tier)) return resolve({
                 code: 400,
-                message: `Invalid tier **${tier}**`
+                message: `Invalid tier **${squad.tier}**`
             })
             if (squad.main_relics.length == 0) return resolve({
                 code: 400,
@@ -388,7 +407,8 @@ function relicBotStringToSquad(str) {
         squad_type: '',
         cycle_count: '',
         is_steelpath: false,
-        is_railjack: false
+        is_railjack: false,
+        is_vaulted: true
     }
     str = str.toLowerCase().trim()
     str = str.replace(/^h /,'').replace(/off$/g,'').replace(/off$/g,'').replace(/offcycle$/g,'').replace(/ or /g,'')
@@ -441,8 +461,13 @@ function relicBotStringToSquad(str) {
         else if (word == 'steelpath' || word == 'sp') squad.is_steelpath = true
         else if (word == 'railjack' || word == 'rj') squad.is_railjack = true
     });
+    for (const relic of squad.main_relics) {
+        console.log(relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()]?.vault_status)
+        if (!['V','B'].includes(relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()]?.vault_status)) squad.is_vaulted = false
+    }
     return squad;
 }
+
 function relicBotSquadToString(squad,include_sp_rj) {
     return `${convertUpper(squad.tier)} ${squad.main_relics.join(' ')} ${squad.squad_type} ${squad.main_refinements.join(' ')} ${squad.off_relics.length > 0 ? 'with':''} ${squad.off_relics.join(' ')} ${squad.off_refinements.join(' ')} ${include_sp_rj ? (squad.is_steelpath ? 'Steelpath':squad.is_railjack ? 'Railjack':''):''} ${squad.cycle_count == '' ? '':`(${squad.cycle_count} cycles)`}`.replace(/\s+/g, ' ').trim()
 }

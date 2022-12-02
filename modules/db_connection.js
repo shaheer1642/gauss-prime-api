@@ -1,4 +1,5 @@
 const DB = require('pg');
+const {event_emitter} = require('./event_emitter')
 
 const db = new DB.Client({
     connectionString: process.env.DATABASE_URL,
@@ -10,7 +11,7 @@ const db = new DB.Client({
 
 db.connect().then(async res => {
     console.log('DB Connection established.')
-
+    event_emitter.emit('db_connected')
     // Listening to triggers
     db.query(`
         LISTEN hubapp_messages_insert;

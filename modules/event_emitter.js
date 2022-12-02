@@ -1,4 +1,4 @@
-const { EventEmitter } = require("undici/types/readable");
+const { EventEmitter } = require("events");
 
 const event_emitter = new EventEmitter
 
