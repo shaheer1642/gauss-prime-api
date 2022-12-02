@@ -70,7 +70,7 @@ function squadsCreate(data,callback) {
             const squad = relicBotStringToSquad(line)
             if (!['lith','meso','neo','axi'].includes(squad.tier)) return resolve({
                 code: 400,
-                message: `Invalid tier **${squad.tier}**`
+                message: `Invalid tier **${squad.tier}**\nPlease include lith, meso, neo, or axi`
             })
             if (squad.main_relics.length == 0) return resolve({
                 code: 400,
