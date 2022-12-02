@@ -62,6 +62,7 @@ function squadsCreate(data,callback) {
     console.log('[squadsCreate] data:',data)
     if (!data.message) return callback({code: 500, err: 'No message provided'})
     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.channel_vaulted) return callback({code: 500, err: 'No channel_vaulted provided'})
     const lines = data.message.toLowerCase().trim().split('\n')
     Promise.all(lines.map(line => {
         return new Promise((resolve,reject) => {
@@ -76,10 +77,14 @@ function squadsCreate(data,callback) {
                 message: `Relic name could not be determined`
             })
             for (const relic of squad.main_relics) {
-                if (!relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()]) return resolve({
-                    code: 400,
-                    message: `**${squad.tier} ${relic}** is not a valid relic`
-                })
+                if (!['random','randoms','trace','traces'].includes(relic)) {
+                    if (!relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()]) return resolve({
+                        code: 400,
+                        message: `**${squad.tier} ${relic}** is not a valid relic`
+                    })
+                } else {
+                    squad.is_vaulted = data.channel_vaulted
+                }
             }
             if (squad.squad_type == '') squad.squad_type = '4b4'
             if (squad.main_refinements.length == 0) squad.main_refinements.push('rad')
