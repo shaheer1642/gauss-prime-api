@@ -62,7 +62,7 @@ function squadsCreate(data,callback) {
     console.log('[squadsCreate] data:',data)
     if (!data.message) return callback({code: 500, err: 'No message provided'})
     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
-    if (!data.channel_vaulted) return callback({code: 500, err: 'No channel_vaulted provided'})
+    if (data.channel_vaulted == undefined) return callback({code: 500, err: 'No channel_vaulted provided'})
     const lines = data.message.toLowerCase().trim().split('\n')
     Promise.all(lines.map(line => {
         return new Promise((resolve,reject) => {
