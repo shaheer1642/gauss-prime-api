@@ -77,7 +77,7 @@ function squadsCreate(data,callback) {
                 message: `Relic name could not be determined`
             })
             for (const relic of squad.main_relics) {
-                if (!['random','randoms','trace','traces'].includes(relic)) {
+                if (!['random','randoms','trace','traces'].includes(relic.toLowerCase())) {
                     if (!relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()]) return resolve({
                         code: 400,
                         message: `**${squad.tier} ${relic}** is not a valid relic`
