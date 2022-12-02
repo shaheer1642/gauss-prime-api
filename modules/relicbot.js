@@ -101,7 +101,7 @@ function squadsCreate(data,callback) {
             db.query(`INSERT INTO rb_squads (squad_id,tier,members,original_host,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp,joined_from_channel_ids,is_vaulted) 
             VALUES 
                 (
-                (SELECT CASE WHEN (COUNT(squad_id) >= 5) THEN NULL ELSE '${squad_id}'::uuid END AS counted FROM rb_squads WHERE tier='${squad.tier}' AND status='active' AND is_vaulted=${squad.is_vaulted}),
+                (SELECT CASE WHEN (COUNT(squad_id) >= 24) THEN NULL ELSE '${squad_id}'::uuid END AS counted FROM rb_squads WHERE tier='${squad.tier}' AND status='active' AND is_vaulted=${squad.is_vaulted}),
                 '${squad.tier}',
                 '["${data.discord_id}"]',
                 '${data.discord_id}',
