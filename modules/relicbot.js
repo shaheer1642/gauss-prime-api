@@ -86,6 +86,14 @@ function squadsCreate(data,callback) {
                     squad.is_vaulted = data.channel_vaulted
                 }
             }
+            if (squad.squad_type == '2b2' && !squad.is_vaulted) return resolve({
+                code: 400,
+                message: `Cannot host **2b2** squad type for non-vaulted relics`
+            })
+            if (['1b1','3b3'].includes(squad.squad_type)) return resolve({
+                code: 400,
+                message: `Cannot host **${squad.squad_type}** squad type`
+            })
             if (squad.squad_type == '') squad.squad_type = '4b4'
             if (squad.main_refinements.length == 0) squad.main_refinements.push('rad')
             if (squad.is_steelpath && squad.is_railjack) squad.is_railjack = false
@@ -430,10 +438,10 @@ function relicBotStringToSquad(str) {
             word = word.replace('intact','int').replace('flawless','flaw').replace('radiant','rad')
             if (!squad.main_refinements.includes(word)) squad.main_refinements.push(word)
         }
-        else if (['2b2','4b4'].includes(word)) {
+        else if (['1b1','2b2','3b3','4b4'].includes(word)) {
             squad.squad_type = word
         }
-        else if (['2b2i','4b4i','2b2f','4b4f','2b2r','4b4r',].includes(word)) {
+        else if (['1b1i','1b1f','1b1r','2b2i','2b2f','2b2r','3b3i','3b3f','3b3r','4b4i','4b4f','4b4r',].includes(word)) {
             squad.squad_type = word.substring(0,3)
             const refinement = word[word.length - 1].replace('i','int').replace('f','flaw').replace('r','rad')
             if (!squad.main_refinements.includes(refinement)) squad.main_refinements.push(refinement)
