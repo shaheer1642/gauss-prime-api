@@ -1320,6 +1320,9 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       `).catch(console.error)
       db_modules.schedule_query(`UPDATE rb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,relicbot.squad_closure)
     }
+    if (payload[0].status != 'active' && payload[1].status == 'active') {
+      db.query(`UPDATE rb_squads SET squad_code='${payload[0].squad_code}_${payload[0].creation_timestamp}' WHERE squad_id='${payload[0].squad_id}'`).catch(console.error)
+    }
     for (const socket in clients) {
       if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
         clients[socket].emit('squadUpdate', payload)

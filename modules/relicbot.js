@@ -66,7 +66,6 @@ function squadsCreate(data,callback) {
     const lines = data.message.toLowerCase().trim().split('\n')
     Promise.all(lines.map(line => {
         return new Promise((resolve,reject) => {
-            const squad_id = uuid.v4()
             const squad = relicBotStringToSquad(line)
             if (!['lith','meso','neo','axi'].includes(squad.tier)) return resolve({
                 code: 400,
@@ -98,10 +97,15 @@ function squadsCreate(data,callback) {
             if (squad.main_refinements.length == 0) squad.main_refinements.push('rad')
             if (squad.is_steelpath && squad.is_railjack) squad.is_railjack = false
 
-            db.query(`INSERT INTO rb_squads (squad_id,tier,members,original_host,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp,joined_from_channel_ids,is_vaulted) 
+            const squad_id = uuid.v4()
+            const squad_code = `${relicBotSquadToString(squad).toLowerCase().replace(/ /g,'_')}_${data.merge_squad == false ? `${new Date().getTime()}`:`${new Date(new Date().setHours(0,0,0,0)).getTime()}`}`
+            console.log('squad_code:',squad_code)
+
+            db.query(`INSERT INTO rb_squads (squad_id,squad_code,tier,members,original_host,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp,joined_from_channel_ids,is_vaulted) 
             VALUES 
                 (
-                (SELECT CASE WHEN (COUNT(squad_id) >= 24) THEN NULL ELSE '${squad_id}'::uuid END AS counted FROM rb_squads WHERE tier='${squad.tier}' AND status='active' AND is_vaulted=${squad.is_vaulted}),
+                (SELECT CASE WHEN (COUNT(squad_id) >= 5) THEN NULL ELSE '${squad_id}'::uuid END AS counted FROM rb_squads WHERE tier='${squad.tier}' AND status='active' AND is_vaulted=${squad.is_vaulted}),
+                '${squad_code}',
                 '${squad.tier}',
                 '["${data.discord_id}"]',
                 '${data.discord_id}',
@@ -133,12 +137,25 @@ function squadsCreate(data,callback) {
                         code: 400,
                         message: `${squad.tier} squads limit has been reached. Please try hosting later or join an existing squad`
                     })
+                } else if (err.code == '23505') {
+                    db.query(`SELECT * FROM rb_squads WHERE squad_code='${squad_code}' AND status='active'`)
+                    .then(res => {
+                        if (res.rowCount > 0) {
+                            return resolve({
+                                code: 399,
+                                message: `**${relicBotSquadToString(squad)}** already exists. Would you like to *join existing squad* or *host a new one*?`,
+                                squad_id: res.rows[0].squad_id,
+                                squad_code: res.rows[0].squad_code
+                            })
+                        }
+                    }).catch(console.error)
+                } else {
+                    console.log(err)
+                    return resolve({
+                        code: 500,
+                        message: err.stack
+                    })
                 }
-                console.log(err)
-                return resolve({
-                    code: 500,
-                    message: err.stack
-                })
             })
         })
     })).then(res => {
