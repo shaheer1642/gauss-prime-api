@@ -23,6 +23,10 @@ const endpoints = {
     'relicbot/users/fetch': usersFetch,
 
     'relicbot/stats/fetch': statsFetch,
+
+    'relicbot/defaultHostingTable/create': defaultHostingTableCreate,
+    'relicbot/defaultHostingTable/fetch': defaultHostingTableFetch,
+    'relicbot/defaultHostingTable/delete': defaultHostingTableDelete,
 }
 
 const relics_list = {}
@@ -474,6 +478,93 @@ function statsFetch(data,callback) {
     })
 }
 
+function defaultHostingTableCreate(data, callback) {
+    console.log('[defaultHostingTableCreate] data:',data)
+    if (!data.tier) return callback({code: 400, message: 'No tier provided'})
+    if (!data.main_relics) return callback({code: 400, message: 'No main_relics provided'})
+    if (!data.main_refinements) return callback({code: 400, message: 'No main_refinements provided'})
+    if (!data.squad_type) return callback({code: 400, message: 'No squad_type provided'})
+    db.query(`
+        INSERT INTO rb_hosting_table (
+            tier,
+            main_relics,
+            main_refinements,
+            squad_type
+        ) VALUES (
+            '${data.tier.toLowerCase()}',
+            '${JSON.stringify(data.main_relics).toLowerCase()}',
+            '${JSON.stringify(data.main_refinements).toLowerCase()}',
+            '${data.squad_type.toLowerCase()}'
+        )
+    `).then(res => {
+        if (res.rowCount == 1) {
+            return callback({
+                code: 200,
+                message: 'Success'
+            })
+        } else {
+            return callback({
+                code: 500,
+                message: 'Unexpected error'
+            })
+        }
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+function defaultHostingTableFetch(data,callback) {
+    console.log('[defaultHostingTableFetch] data:',data)
+    db.query(`
+        SELECT * FROM rb_hosting_table;
+    `).then(res => {
+        return callback({
+            code: 200,
+            data: res.rows
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+function defaultHostingTableDelete(data,callback) {
+    console.log('[defaultHostingTableDelete] data:',data)
+    if (!data.id) {
+        if (callback) callback({code: 400, message: 'No id provided'})
+        return
+    }
+    db.query(`DELETE FROM rb_hosting_table WHERE id=${data.id}`)
+    .then(res => {
+        if (!callback) return
+        if (res.rowCount == 0) {
+            return callback({
+                code: 500,
+                message: 'Unexpected error'
+            })
+        } else {
+            return callback({
+                code: 200,
+                message: 'Record deleted'
+            })
+        }
+    }).catch(err => {
+        console.log(err)
+        if (!callback) return
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
 function relicBotStringToSquad(str) {
     var squad = {
         tier: '',
@@ -575,7 +666,7 @@ db.on('notification',(notification) => {
                 })
             })
         }).catch(console.error)
-    } 
+    }
 })
 
 module.exports = {

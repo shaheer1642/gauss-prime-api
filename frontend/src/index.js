@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import PaypalPaymentForm from './modules/PaypalPaymentForm';
+import DiscordAdminPanel from './modules/DiscordAdminPanel';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 
 export default function Router() {
   return (
@@ -19,7 +22,22 @@ export default function Router() {
   );
 }
 
+
+const darkTheme = createTheme({
+  palette: {
+    primary: {
+      main: '#651fff',
+    },
+    secondary: {
+      main: '#f50057',
+    },
+  },
+});
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <Router />
+  <ThemeProvider theme={darkTheme}>
+    <CssBaseline />
+    <Router />
+  </ThemeProvider>
 );
