@@ -25,13 +25,21 @@ const endpoints = {
 }
 
 const relics_list = {}
+const hosting_table = []
 
 event_emitter.on('db_connected', () => {
-    db.query(`SELECT * FROM items_list WHERE item_url LIKE '%relic'`)
+    db.query(`SELECT * FROM items_list WHERE item_url LIKE '%relic';SELECT * FROM rb_hosting_table`)
     .then(res => {
-        res.rows.forEach(row => {
+        res[0].rows.forEach(row => {
             relics_list[row.item_url] = row
         })
+        res[1].rows.forEach(row => {
+            hosting_table.push({
+                match_string: `${row.tier}_${row.main_relics.join('_')}_`,
+                ...row
+            })
+        })
+        console.log('hosting table',hosting_table)
     }).catch(console.error)
 })
 
@@ -503,10 +511,10 @@ function relicBotStringToSquad(str) {
             if (!squad.main_refinements.includes(refinement)) squad.main_refinements.push(refinement)
         }
         else if (['random','randoms','trace','traces'].includes(word)) {
-            if (!squad.main_relics.includes(convertUpper(word))) squad.main_relics.push(convertUpper(word))
+            if (!squad.main_relics.includes(word)) squad.main_relics.push(word)
         }
         else if ((word.length == 2 || word.length == 3) && !Number(word[0]) && Number(`${word[1]}${word[2] || ''}`)) {
-            if (!squad.main_relics.includes(word.toUpperCase())) squad.main_relics.push(word.toUpperCase())
+            if (!squad.main_relics.includes(word)) squad.main_relics.push(word)
         }
         else if (word.match('cycle') || word.match('cycles')) {
             const prev_word = subline[0].split(' ')[index-1]
@@ -521,7 +529,7 @@ function relicBotStringToSquad(str) {
             if (!squad.off_refinements.includes(word)) squad.off_refinements.push(word)
         }
         else if ((word.length == 2 || word.length == 3) && !Number(word[0]) && Number(`${word[1]}${word[2] || ''}`)) {
-            if (!squad.off_relics.includes(word.toUpperCase())) squad.off_relics.push(word.toUpperCase())
+            if (!squad.off_relics.includes(word)) squad.off_relics.push(word)
         }
         else if (word.match('cycle') || word.match('cycles')) {
             const prev_word = subline[1].split(' ')[index-1]
@@ -534,11 +542,24 @@ function relicBotStringToSquad(str) {
         console.log(relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()]?.vault_status)
         if (!['V','B'].includes(relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()]?.vault_status)) squad.is_vaulted = false
     }
+    for (const host of hosting_table) {
+        if (host.match_string.match(`${squad.tier}_`)) {
+            squad.main_relics.forEach(relic => {
+                if (host.match_string.match(`_${relic}_`)) {
+                    squad.main_relics = host.main_relics
+                    if (squad.squad_type == '')
+                        squad.squad_type = host.squad_type
+                    if (squad.main_refinements.length == 0)
+                        squad.main_refinements = host.main_refinements
+                }
+            })
+        }
+    }
     return squad;
 }
 
 function relicBotSquadToString(squad,include_sp_rj) {
-    return `${convertUpper(squad.tier)} ${squad.main_relics.join(' ')} ${squad.squad_type} ${squad.main_refinements.join(' ')} ${squad.off_relics.length > 0 ? 'with':''} ${squad.off_relics.join(' ')} ${squad.off_refinements.join(' ')} ${include_sp_rj ? (squad.is_steelpath ? 'Steelpath':squad.is_railjack ? 'Railjack':''):''} ${squad.cycle_count == '' ? '':`(${squad.cycle_count} cycles)`}`.replace(/\s+/g, ' ').trim()
+    return `${convertUpper(squad.tier)} ${squad.main_relics.join(' ').toUpperCase()} ${squad.squad_type} ${squad.main_refinements.join(' ')} ${squad.off_relics.length > 0 ? 'with':''} ${squad.off_relics.join(' ').toUpperCase()} ${squad.off_refinements.join(' ')} ${include_sp_rj ? (squad.is_steelpath ? 'Steelpath':squad.is_railjack ? 'Railjack':''):''} ${squad.cycle_count == '' ? '':`(${squad.cycle_count} cycles)`}`.replace(/\s+/g, ' ').trim()
 }
 
 module.exports = {
