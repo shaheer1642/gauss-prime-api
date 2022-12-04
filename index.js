@@ -1307,7 +1307,6 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       }
     }
   }
-
   if (notification.channel == 'rb_squads_update') {
     if (payload[0].members.length == 0 && payload[1].members.length > 0) {
       db.query(`UPDATE rb_squads SET status = 'abandoned' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}'`).catch(console.error)

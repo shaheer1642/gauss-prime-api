@@ -11,6 +11,9 @@ export default function Router() {
         <Route path="/warframehub/purchase/vip/sandbox" element={<PaypalPaymentForm />}>
           <Route index element={<PaypalPaymentForm />} />
         </Route>
+        <Route path="/admin" element={<DiscordAdminPanel />}>
+          <Route index element={<DiscordAdminPanel />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

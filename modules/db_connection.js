@@ -42,6 +42,10 @@ db.connect().then(async res => {
         LISTEN scheduled_queries_insert;
 
         LISTEN rb_squads_messages_insert;
+
+        LISTEN rb_hosting_table_insert;
+        LISTEN rb_hosting_table_update;
+        LISTEN rb_hosting_table_delete;
     `).then(res => {
         db.query(`SELECT * FROM scheduled_queries`).then(res => {
             res.rows.forEach(row => {

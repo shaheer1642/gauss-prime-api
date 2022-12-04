@@ -3,6 +3,7 @@ const uuid = require('uuid')
 const {convertUpper, dynamicSort, dynamicSortDesc} = require('./functions')
 const db_modules = require('./db_modules')
 const {event_emitter} = require('./event_emitter')
+const JSONbig = require('json-bigint');
 
 const endpoints = {
     'relicbot/squads/create': squadsCreate,
@@ -25,7 +26,7 @@ const endpoints = {
 }
 
 const relics_list = {}
-const hosting_table = []
+var hosting_table = []
 
 event_emitter.on('db_connected', () => {
     db.query(`SELECT * FROM items_list WHERE item_url LIKE '%relic';SELECT * FROM rb_hosting_table`)
@@ -39,7 +40,6 @@ event_emitter.on('db_connected', () => {
                 ...row
             })
         })
-        console.log('hosting table',hosting_table)
     }).catch(console.error)
 })
 
@@ -561,6 +561,22 @@ function relicBotStringToSquad(str) {
 function relicBotSquadToString(squad,include_sp_rj) {
     return `${convertUpper(squad.tier)} ${squad.main_relics.join(' ').toUpperCase()} ${squad.squad_type} ${squad.main_refinements.join(' ')} ${squad.off_relics.length > 0 ? 'with':''} ${squad.off_relics.join(' ').toUpperCase()} ${squad.off_refinements.join(' ')} ${include_sp_rj ? (squad.is_steelpath ? 'Steelpath':squad.is_railjack ? 'Railjack':''):''} ${squad.cycle_count == '' ? '':`(${squad.cycle_count} cycles)`}`.replace(/\s+/g, ' ').trim()
 }
+
+db.on('notification',(notification) => {
+    const payload = JSONbig.parse(notification.payload);
+    if (['rb_hosting_table_insert','rb_hosting_table_update','rb_hosting_table_delete'].includes(notification.channel)) {
+        db.query(`SELECT * FROM rb_hosting_table;`)
+        .then(res => {
+            hosting_table = []
+            res.rows.forEach(row => {
+                hosting_table.push({
+                    match_string: `${row.tier}_${row.main_relics.join('_')}_`,
+                    ...row
+                })
+            })
+        }).catch(console.error)
+    } 
+})
 
 module.exports = {
     endpoints,
