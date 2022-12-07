@@ -129,7 +129,7 @@ app.get('/api/discordOAuth2/authorize', async (req, res) => {
       client_secret: process.env.BOT_CLIENT_SECRET,
       code: req.query.code,
       grant_type: 'authorization_code',
-      redirect_uri: `${process.env.API_URL}discordOAuth2/authorize`,
+      redirect_uri: `${process.env.API_URL}api/discordOAuth2/authorize`,
       scope: 'identify',
     }).toString(),
     headers: {
