@@ -446,9 +446,11 @@ function statsFetch(data,callback) {
     db.query(`
         SELECT * FROM tradebot_users_list ${data.discord_id ? `WHERE discord_id=${data.discord_id}`:''};
         SELECT * FROM rb_squads ${data.discord_id ? `WHERE members @> '"${data.discord_id}"'`:''};
+        SELECT * FROM wfhub_squads_data;
     `).then(res => {
         const db_users = res[0].rows
-        const db_squads = res[1].rows
+        const db_squads_relics = res[1].rows
+        const db_squads_general = res[2].rows[0].history.payload
         const users_list = {}
         db_users.forEach(user => {
             users_list[user.discord_id] = user
@@ -456,8 +458,13 @@ function statsFetch(data,callback) {
         })
         var stats = []
         for (const discord_id in users_list) {
-            db_squads.forEach(squad => {
+            db_squads_relics.forEach(squad => {
                 if (squad.members.includes(discord_id) && squad.status == 'closed') {
+                    users_list[discord_id].squads_completed++
+                }
+            })
+            db_squads_general.forEach(squad => {
+                if (squad.members.includes(discord_id)) {
                     users_list[discord_id].squads_completed++
                 }
             })
@@ -512,7 +519,7 @@ function defaultHostingTableCreate(data, callback) {
         console.log(err)
         return callback({
             code: 500,
-            message: err.stack
+            message: err.detail || err.stack
         })
     })
 }

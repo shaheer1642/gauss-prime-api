@@ -23,7 +23,7 @@ export default function Router() {
 }
 
 
-const darkTheme = createTheme({
+const theme = createTheme({
   palette: {
     primary: {
       main: '#651fff',
@@ -36,7 +36,7 @@ const darkTheme = createTheme({
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <ThemeProvider theme={darkTheme}>
+  <ThemeProvider theme={theme}>
     <CssBaseline />
     <Router />
   </ThemeProvider>

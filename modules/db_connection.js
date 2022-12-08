@@ -46,6 +46,10 @@ db.connect().then(async res => {
         LISTEN rb_hosting_table_insert;
         LISTEN rb_hosting_table_update;
         LISTEN rb_hosting_table_delete;
+
+        LISTEN wfhub_keywords_insert;
+        LISTEN wfhub_keywords_update;
+        LISTEN wfhub_keywords_delete;
     `).then(res => {
         db.query(`SELECT * FROM scheduled_queries`).then(res => {
             res.rows.forEach(row => {

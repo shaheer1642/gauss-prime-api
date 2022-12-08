@@ -89,33 +89,35 @@ export default class DefaultHostingTable extends React.Component {
             sx={{ flexGrow: 1, bgcolor: 'background.default', p: 3 }}
         >
             <Toolbar />
-            <TableContainer component={Paper} sx={{backgroundColor: 'primary'}}>
-            <Table sx={{ minWidth: 400 }} aria-label="simple table">
-                <TableHead>
-                <StyledTableRow>
-                    <StyledTableCell>Relics</StyledTableCell>
-                    <StyledTableCell>Squad Type</StyledTableCell>
-                    <StyledTableCell>Refinement(s)</StyledTableCell>
-                    <StyledTableCell></StyledTableCell>
-                </StyledTableRow>
-                </TableHead>
-                <TableBody>
-                {this.state.defaultHosts.map((host,index) => (
-                    <StyledTableRow
-                        key={index}
-                        sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                    >
-                        <StyledTableCell>{`${host.tier} ${host.main_relics.join(' ')}`}</StyledTableCell>
-                        <StyledTableCell>{host.squad_type}</StyledTableCell>
-                        <StyledTableCell>{host.main_refinements.join(' ')}</StyledTableCell>
-                        <StyledTableCell>
-                            <Button onClick={() => socket.emit('relicbot/defaultHostingTable/delete', {id: host.id})}><Delete sx={{ color: Colors.red[900] }} /></Button>
-                        </StyledTableCell>
-                    </StyledTableRow>
-                ))}
-                </TableBody>
-            </Table>
-            </TableContainer>
+            {this.state.defaultHosts.length == 0 ? <div style={{display: 'flex', justifyContent: 'center', width: '100%'}}><CircularProgress /></div>:
+                <TableContainer component={Paper} sx={{backgroundColor: 'primary', minWidth: 400, maxHeight: '80vh'}}>
+                    <Table stickyHeader>
+                        <TableHead>
+                        <StyledTableRow>
+                            <StyledTableCell>Relics</StyledTableCell>
+                            <StyledTableCell>Squad Type</StyledTableCell>
+                            <StyledTableCell>Refinement(s)</StyledTableCell>
+                            <StyledTableCell></StyledTableCell>
+                        </StyledTableRow>
+                        </TableHead>
+                        <TableBody>
+                        {this.state.defaultHosts.map((host,index) => (
+                            <StyledTableRow
+                                key={index}
+                                sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                            >
+                                <StyledTableCell>{`${host.tier} ${host.main_relics.join(' ')}`}</StyledTableCell>
+                                <StyledTableCell>{host.squad_type}</StyledTableCell>
+                                <StyledTableCell>{host.main_refinements.join(' ')}</StyledTableCell>
+                                <StyledTableCell>
+                                    <Button onClick={() => socket.emit('relicbot/defaultHostingTable/delete', {id: host.id})}><Delete sx={{ color: Colors.red[900] }} /></Button>
+                                </StyledTableCell>
+                            </StyledTableRow>
+                        ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            }
             <Button variant="contained" style={{marginTop: '10px'}} onClick={() => this.setState({modalShow: true})}>+ Add New</Button>
             
             <Modal

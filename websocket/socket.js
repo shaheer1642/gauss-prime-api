@@ -7,6 +7,7 @@ const JSONbig = require('json-bigint');
 const {convertUpper, dynamicSort, dynamicSortDesc} = require('../modules/functions')
 const db_modules = require('../modules/db_modules')
 const relicbot = require('../modules/relicbot')
+const squadbot = require('../modules/squadbot')
 
 var clients = {}
 io.on('connection', (socket) => {
@@ -35,6 +36,22 @@ io.on('connection', (socket) => {
                 })
             }).catch(console.error)
           } else relicbot.endpoints[key](data,callback)
+        })
+      })
+      Object.keys(squadbot.endpoints).forEach(key => {
+        console.log('adding listener',key)
+        socket.addListener(key, (data,callback) => {
+          if (data.discord_id) {
+            console.log('[middleware] checking if user exists')
+            db.query(`SELECT * FROM tradebot_users_list WHERE discord_id = ${data.discord_id}`)
+            .then(res => {
+              if (res.rowCount == 1) squadbot.endpoints[key](data,callback)
+              else return callback({
+                  code: 499,
+                  message: 'unauthorized'
+                })
+            }).catch(console.error)
+          } else squadbot.endpoints[key](data,callback)
         })
       })
     } else {
@@ -1023,6 +1040,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
   }
 
   if (['tradebot_users_list_insert','tradebot_users_list_update','tradebot_users_list_delete'].includes(notification.channel)) {
+    console.log('emitting tradebotUsersUpdated')
     io.emit('tradebotUsersUpdated', payload)
   }
 
@@ -1073,6 +1091,14 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     for (const socket in clients) {
       if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
         clients[socket].emit('defaultHostingTableUpdate', payload)
+      }
+    }
+  }
+
+  if (['wfhub_keywords_insert','wfhub_keywords_update','wfhub_keywords_delete'].includes(notification.channel)) {
+    for (const socket in clients) {
+      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+        clients[socket].emit('squadKeywordsUpdate', payload)
       }
     }
   }
