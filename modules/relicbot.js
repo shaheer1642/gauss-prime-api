@@ -138,9 +138,17 @@ function squadsCreate(data,callback) {
                 if (res.rowCount == 1) {
                     db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
                     db_modules.schedule_query(`UPDATE rb_squads SET status='expired' WHERE squad_id = '${squad_id}' AND status='active'`,squad_expiry)
-                    return resolve({
-                        code: 200
-                    })
+                    if (squad.is_vaulted == true && data.channel_vaulted == false) {
+                        return resolve({
+                            code: 299,
+                            message: 'Your squad has been hosted in the **vaulted** channel'
+                        })
+                    } else if (squad.is_vaulted == false && data.channel_vaulted == true) {
+                        return resolve({
+                            code: 299,
+                            message: 'Your squad has been hosted in the **non-vaulted** channel'
+                        })
+                    } else return resolve({code: 200})
                 } else return resolve({
                     code: 500,
                     message: 'unexpected db response'

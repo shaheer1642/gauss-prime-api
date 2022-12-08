@@ -47,7 +47,7 @@ export default class DiscordAdminPanel extends React.Component {
     render() {
         return (
             <Box sx={{ display: 'flex' }}>
-            {this.state.socketConnecting ? <h1>Establishing connection...</h1> :
+            {this.state.socketConnecting ? <div style={{display: 'flex', alignContent: 'center', justifyContent: 'center'}}><h1>Establishing connection...</h1></div> :
             <React.Fragment>
                 <CssBaseline />
                 <AppBar
