@@ -8,6 +8,7 @@ const {convertUpper, dynamicSort, dynamicSortDesc} = require('../modules/functio
 const db_modules = require('../modules/db_modules')
 const relicbot = require('../modules/relicbot')
 const squadbot = require('../modules/squadbot')
+const allsquads = require('../modules/allsquads')
 
 var clients = {}
 io.on('connection', (socket) => {
@@ -39,7 +40,6 @@ io.on('connection', (socket) => {
         })
       })
       Object.keys(squadbot.endpoints).forEach(key => {
-        console.log('adding listener',key)
         socket.addListener(key, (data,callback) => {
           if (data.discord_id) {
             console.log('[middleware] checking if user exists')
@@ -52,6 +52,21 @@ io.on('connection', (socket) => {
                 })
             }).catch(console.error)
           } else squadbot.endpoints[key](data,callback)
+        })
+      })
+      Object.keys(allsquads.endpoints).forEach(key => {
+        socket.addListener(key, (data,callback) => {
+          if (data.discord_id) {
+            console.log('[middleware] checking if user exists')
+            db.query(`SELECT * FROM tradebot_users_list WHERE discord_id = ${data.discord_id}`)
+            .then(res => {
+              if (res.rowCount == 1) allsquads.endpoints[key](data,callback)
+              else return callback({
+                  code: 499,
+                  message: 'unauthorized'
+                })
+            }).catch(console.error)
+          } else allsquads.endpoints[key](data,callback)
         })
       })
     } else {
