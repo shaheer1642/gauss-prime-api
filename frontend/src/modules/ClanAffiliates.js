@@ -86,7 +86,7 @@ export default class ClanAffiliates extends React.Component {
                         return (
                             <Grid container style={{ border: '5px solid #651fff', borderRadius: '20px', padding: '20px'}} xs={6}>
                                 <Grid item xs={10}>
-                                    <Typography sx={{mx:'10px',my:'20px'}} variant="h3" component="h2" style={{color: '#651fff'}}>
+                                    <Typography sx={{mx:'10px',my:'20px'}} variant="h4" style={{color: '#651fff'}}>
                                         {clan.clan_name}
                                     </Typography>
                                 </Grid>
@@ -96,7 +96,7 @@ export default class ClanAffiliates extends React.Component {
                                 <Grid item xs={12}>
                                     {clan.description.split('\n').map(line => {
                                         return (
-                                            <Typography sx={{mx:'10px',my:'20px'}}>
+                                            <Typography>
                                                 {line}
                                             </Typography>
                                         )
@@ -108,7 +108,7 @@ export default class ClanAffiliates extends React.Component {
                                     </Typography>
                                         {clan.requirements.split('\n').map(line => {
                                             return (
-                                                <Typography sx={{mx:'10px',my:'20px'}}>
+                                                <Typography>
                                                     {line}
                                                 </Typography>
                                             )
@@ -120,7 +120,7 @@ export default class ClanAffiliates extends React.Component {
                                     </Typography>
                                         {clan.stats.split('\n').map(line => {
                                             return (
-                                                <Typography sx={{mx:'10px',my:'20px'}}>
+                                                <Typography>
                                                     {line}
                                                 </Typography>
                                             )
