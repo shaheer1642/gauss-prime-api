@@ -32,7 +32,7 @@ const modalStyle = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    width: 400,
+    width: '80vw',
     bgcolor: 'background.paper',
     border: '2px solid #000',
     boxShadow: 24,
@@ -134,7 +134,7 @@ export default class ClanAffiliates extends React.Component {
             }
             <Button variant="contained" style={{marginTop: '10px'}} onClick={() => this.setState({modalShow: true})}>+ Add New</Button>
 
-            <Modal disableEnforceFocus
+            <Modal
                 open={this.state.modalShow}
             >
                 <Box sx={modalStyle}>
