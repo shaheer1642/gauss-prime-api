@@ -94,35 +94,33 @@ export default class ClanAffiliates extends React.Component {
                                     <Button size='large' onClick={() => socket.emit('allsquads/clans/delete', {id: clan.id},(res) => this.fetchClans())}><Delete fontSize='large' sx={{ color: Colors.red[900] }} /></Button>
                                 </Grid>
                                 <Grid item xs={12}>
-                                    <Typography sx={{mx:'10px',my:'20px'}} variant="h6" component="h2">
-                                        {clan.description.split('\n').map(line => {
-                                            return (
-                                                <Typography sx={{mx:'10px',my:'20px'}} variant="h6" component="h2">
-                                                    {line}
-                                                </Typography>
-                                            )
-                                        })}
-                                    </Typography>
+                                    {clan.description.split('\n').map(line => {
+                                        return (
+                                            <Typography sx={{mx:'10px',my:'20px'}}>
+                                                {line}
+                                            </Typography>
+                                        )
+                                    })}
                                 </Grid>
                                 <Grid item xs={6}>
-                                    <Typography sx={{mx:'10px',my:'20px'}} variant="h6" component="h2">
+                                    <Typography sx={{mx:'10px',my:'20px'}} variant="h6">
                                         -- Requirements --
                                     </Typography>
                                         {clan.requirements.split('\n').map(line => {
                                             return (
-                                                <Typography sx={{mx:'10px',my:'20px'}} variant="h6" component="h2">
+                                                <Typography sx={{mx:'10px',my:'20px'}}>
                                                     {line}
                                                 </Typography>
                                             )
                                         })}
                                 </Grid>
                                 <Grid item xs={6}>
-                                    <Typography sx={{mx:'10px',my:'20px'}} variant="h6" component="h2">
+                                    <Typography sx={{mx:'10px',my:'20px'}} variant="h6">
                                         -- Stats --
                                     </Typography>
                                         {clan.stats.split('\n').map(line => {
                                             return (
-                                                <Typography sx={{mx:'10px',my:'20px'}} variant="h6" component="h2">
+                                                <Typography sx={{mx:'10px',my:'20px'}}>
                                                     {line}
                                                 </Typography>
                                             )
