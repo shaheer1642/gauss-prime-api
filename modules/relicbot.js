@@ -50,7 +50,8 @@ event_emitter.on('db_connected', () => {
         })
         pa_relics_list.map(relic_url => {
             relics_list[relic_url] = {
-                vault_status: null
+                vault_status: null,
+                is_pa: true
             }
         })
         res[1].rows.forEach(row => {
@@ -114,7 +115,7 @@ function squadsCreate(data,callback) {
                     squad.is_vaulted = data.channel_vaulted
                 }
             }
-            if (squad.squad_type == '2b2' && !squad.is_vaulted) return resolve({
+            if (squad.squad_type == '2b2' && !squad.is_vaulted && !relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()].is_pa) return resolve({
                 code: 400,
                 message: `Cannot host **2b2** squad type for non-vaulted relics`
             })
