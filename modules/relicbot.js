@@ -118,11 +118,11 @@ function squadsCreate(data,callback) {
                 } else {
                     squad.is_vaulted = data.channel_vaulted
                 }
+                if (squad.squad_type == '2b2' && !squad.is_vaulted && !relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()].is_pa) return resolve({
+                    code: 400,
+                    message: `Cannot host **2b2** squad type for non-vaulted relics`
+                })
             }
-            if (squad.squad_type == '2b2' && !squad.is_vaulted && !relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()].is_pa) return resolve({
-                code: 400,
-                message: `Cannot host **2b2** squad type for non-vaulted relics`
-            })
             if (['1b1','3b3'].includes(squad.squad_type)) return resolve({
                 code: 400,
                 message: `Cannot host **${squad.squad_type}** squad type`
