@@ -156,7 +156,7 @@ function squadsCreate(data,callback) {
                 ${squad.is_vaulted})
             `).then(res => {
                 if (res.rowCount == 1) {
-                    db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
+                    //db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
                     db_modules.schedule_query(`UPDATE rb_squads SET status='expired' WHERE squad_id = '${squad_id}' AND status='active'`,squad_expiry)
                     if (squad.is_vaulted == true && data.channel_vaulted == false) {
                         return resolve({
