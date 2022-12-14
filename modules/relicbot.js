@@ -32,12 +32,16 @@ const endpoints = {
 const pa_relics_list = [
     'lith_b10_relic',
     'lith_h7_relic',
+    'lith_g6_relic',
+    'meso_a4_relic',
     'meso_r5_relic',
     'meso_k5_relic',
     'neo_a8_relic',
     'neo_c3_relic',
+    'neo_k5_relic',
     'axi_b5_relic',
     'axi_g9_relic',
+    'axi_n10_relic',
 ]
 const relics_list = {}
 var hosting_table = []
