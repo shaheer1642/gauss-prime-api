@@ -29,6 +29,16 @@ const endpoints = {
     'relicbot/defaultHostingTable/delete': defaultHostingTableDelete,
 }
 
+const pa_relics_list = [
+    'lith_b10_relic',
+    'lith_h7_relic',
+    'meso_r5_relic',
+    'meso_k5_relic',
+    'neo_a8_relic',
+    'neo_c3_relic',
+    'axi_b5_relic',
+    'axi_g9_relic',
+]
 const relics_list = {}
 var hosting_table = []
 
@@ -37,6 +47,11 @@ event_emitter.on('db_connected', () => {
     .then(res => {
         res[0].rows.forEach(row => {
             relics_list[row.item_url] = row
+        })
+        pa_relics_list.map(relic_url => {
+            relics_list[relic_url] = {
+                vault_status: null
+            }
         })
         res[1].rows.forEach(row => {
             hosting_table.push({
@@ -112,7 +127,7 @@ function squadsCreate(data,callback) {
             if (squad.is_steelpath && squad.is_railjack) squad.is_railjack = false
 
             const squad_id = uuid.v4()
-            const squad_code = `${relicBotSquadToString(squad).toLowerCase().replace(/ /g,'_')}_${data.merge_squad == false ? `${new Date().getTime()}`:`${new Date(new Date().setHours(0,0,0,0)).getTime()}`}`
+            const squad_code = `${relicBotSquadToString(squad,true).toLowerCase().replace(/ /g,'_')}_${data.merge_squad == false ? `${new Date().getTime()}`:`${new Date(new Date().setHours(0,0,0,0)).getTime()}`}`
             console.log('squad_code:',squad_code)
 
             db.query(`INSERT INTO rb_squads (squad_id,squad_code,tier,members,original_host,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp,joined_from_channel_ids,is_vaulted) 
@@ -165,7 +180,7 @@ function squadsCreate(data,callback) {
                         if (res.rowCount > 0) {
                             return resolve({
                                 code: 399,
-                                message: `**${relicBotSquadToString(squad)}** already exists. Would you like to *join existing squad* or *host a new one*?`,
+                                message: `**${relicBotSquadToString(squad,true)}** already exists. Would you like to *join existing squad* or *host a new one*?`,
                                 squad_id: res.rows[0].squad_id,
                                 squad_code: res.rows[0].squad_code
                             })
