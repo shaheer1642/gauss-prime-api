@@ -499,7 +499,7 @@ function statsFetch(data,callback) {
             stats.push(users_list[discord_id])
         }
         stats = stats.sort(dynamicSortDesc("squads_completed"))
-        stats = stats.map((stat,index) => index < 5 ? stat:null).filter(o => o != null)
+        stats = stats.map((stat,index) => index < 10 ? stat:null).filter(o => o != null)
         console.log(stats)
         return callback({
             code: 200,
