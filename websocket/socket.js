@@ -1118,4 +1118,37 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       }
     }
   }
+
+  
+  if (notification.channel == 'as_sb_squads_insert') {
+    for (const socket in clients) {
+      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+        clients[socket].emit('squadbot/squadCreate', payload)
+      }
+    }
+  }
+  if (notification.channel == 'as_sb_squads_update') {
+    if (payload[0].members.length == 0 && payload[1].members.length > 0) {
+      db.query(`UPDATE as_sb_squads SET status = 'abandoned' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}'`).catch(console.error)
+    }
+    if (payload[0].members.length == payload[0].spots && payload[1].members.length < payload[0].spots) {
+      db.query(`
+        UPDATE as_sb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
+        UPDATE as_sb_squads SET status='opened',open_timestamp=${new Date().getTime()} WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
+        UPDATE as_sb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}';
+      `).catch(console.error)
+      db_modules.schedule_query(`UPDATE as_sb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,squadbot.squad_closure)
+    }
+    for (const socket in clients) {
+      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+        clients[socket].emit('squadbot/squadUpdate', payload)
+        if (payload[0].status == 'opened' && payload[1].status == 'active')
+          clients[socket].emit('squadbot/squads/opened', payload[0])
+        if (payload[0].status == 'closed' && payload[1].status == 'opened')
+          clients[socket].emit('squadbot/squads/closed', payload[0])
+        if (payload[0].status == 'disbanded' && payload[1].status == 'opened')
+          clients[socket].emit('squadbot/squads/disbanded', payload[0])
+      }
+    }
+  }
 })

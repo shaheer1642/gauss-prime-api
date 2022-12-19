@@ -50,6 +50,9 @@ db.connect().then(async res => {
         LISTEN wfhub_keywords_insert;
         LISTEN wfhub_keywords_update;
         LISTEN wfhub_keywords_delete;
+
+        LISTEN as_sb_squads_insert;
+        LISTEN as_sb_squads_update;
     `).then(res => {
         db.query(`SELECT * FROM scheduled_queries`).then(res => {
             res.rows.forEach(row => {
