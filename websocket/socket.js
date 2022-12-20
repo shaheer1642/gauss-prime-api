@@ -1139,6 +1139,9 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       `).catch(console.error)
       db_modules.schedule_query(`UPDATE as_sb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,squadbot.squad_closure)
     }
+    if (payload[0].status != 'active' && payload[1].status == 'active') {
+      db.query(`UPDATE as_sb_squads SET squad_code='${payload[0].squad_code}_${payload[0].creation_timestamp}' WHERE squad_id='${payload[0].squad_id}'`).catch(console.error)
+    }
     for (const socket in clients) {
       if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
         clients[socket].emit('squadbot/squadUpdate', payload)
@@ -1148,6 +1151,14 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
           clients[socket].emit('squadbot/squads/closed', payload[0])
         if (payload[0].status == 'disbanded' && payload[1].status == 'opened')
           clients[socket].emit('squadbot/squads/disbanded', payload[0])
+      }
+    }
+  }
+  
+  if (notification.channel == 'as_sb_squads_messages_insert') {
+    for (const socket in clients) {
+      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+        clients[socket].emit('squadbot/squadMessageCreate', payload)
       }
     }
   }

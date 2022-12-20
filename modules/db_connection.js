@@ -42,6 +42,7 @@ db.connect().then(async res => {
         LISTEN scheduled_queries_insert;
 
         LISTEN rb_squads_messages_insert;
+        LISTEN as_sb_squads_messages_insert;
 
         LISTEN rb_hosting_table_insert;
         LISTEN rb_hosting_table_update;

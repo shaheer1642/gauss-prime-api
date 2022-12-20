@@ -8,12 +8,12 @@ const JSONbig = require('json-bigint');
 const endpoints = {
     'squadbot/squads/create': squadsCreate,
     'squadbot/squads/fetch': squadsFetch,
-    // 'squadbot/squads/update': squadsUpdate,
+    'squadbot/squads/update': squadsUpdate,
     'squadbot/squads/addmember': squadsAddMember,
     // 'squadbot/squads/removemember': squadsRemoveMember,
-    // 'squadbot/squads/leaveall': squadsLeaveAll,
+    'squadbot/squads/leaveall': squadsLeaveAll,
 
-    // 'squadbot/squads/messageCreate': squadsMessageCreate,
+    'squadbot/squads/messageCreate': squadsMessageCreate,
 
     // 'squadbot/trackers/create': trackersCreate,
     // 'squadbot/trackers/fetch': trackersFetch,
@@ -24,10 +24,6 @@ const endpoints = {
 
     // 'squadbot/stats/fetch': statsFetch,
 
-    // 'squadbot/defaultHostingTable/create': defaultHostingTableCreate,
-    // 'squadbot/defaultHostingTable/fetch': defaultHostingTableFetch,
-    // 'squadbot/defaultHostingTable/delete': defaultHostingTableDelete,
-
     'squadbot/keywords/create': keywordsCreate,
     'squadbot/keywords/fetch': keywordsFetch,
     'squadbot/keywords/delete': keywordsDelete,
@@ -35,7 +31,7 @@ const endpoints = {
 
 const squad_expiry =  3600000 // in ms
 // const squad_is_old =  900000 // in ms
-const squad_closure = 900000 // in ms
+const squad_closure = 1800000 // in ms
 
 var keywords_list = []
 var explicitwords_list = []
@@ -153,24 +149,24 @@ module.exports = {
     squad_closure
 }
 
-// function squadsMessageCreate(data,callback) {
-//     console.log('[squadsMessageCreate] data:',data)
-//     if (!data.thread_id) return callback({code: 500, err: 'No thread_id provided'})
-//     db.query(`
-//         INSERT INTO rb_squads_messages (message_id,message,discord_id,thread_id,squad_id,squad_thread_ids)
-//         VALUES (
-//             '${data.message_id}',
-//             '${data.message.replace(/'/g,`''`)}',
-//             '${data.discord_id}',
-//             '${data.thread_id}',
-//             (select squad_id FROM rb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened'),
-//             (select thread_ids FROM rb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')
-//         )
-//     `).catch(err => {
-//         if (err.code != '23502') // message not sent in a tracked thread
-//             console.log(err)
-//     })
-// }
+function squadsMessageCreate(data,callback) {
+    console.log('[squadbot/squadsMessageCreate] data:',data)
+    if (!data.thread_id) return callback({code: 500, err: 'No thread_id provided'})
+    db.query(`
+        INSERT INTO as_sb_squads_messages (message_id,message,discord_id,thread_id,squad_id,squad_thread_ids)
+        VALUES (
+            '${data.message_id}',
+            '${data.message.replace(/'/g,`''`)}',
+            '${data.discord_id}',
+            '${data.thread_id}',
+            (select squad_id FROM as_sb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened'),
+            (select thread_ids FROM as_sb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')
+        )
+    `).catch(err => {
+        if (err.code != '23502') // message not sent in a tracked thread
+            console.log(err)
+    })
+}
 
 function squadsCreate(data,callback) {
     console.log('[squadbot/squadsCreate] data:',data)
@@ -209,7 +205,7 @@ function squadsCreate(data,callback) {
             }
 
             const squad_id = uuid.v4()
-            const squad_code = `${squad_string}_${data.merge_squad == false ? `${new Date().getTime()}`:`${new Date(new Date().setHours(0,0,0,0)).getTime()}`}`
+            const squad_code = `${squad_string}_${spots}_${data.merge_squad == false ? `${new Date().getTime()}`:`${new Date(new Date().setHours(0,0,0,0)).getTime()}`}`
             console.log('squad_code:',squad_code)
 
             db.query(`INSERT INTO as_sb_squads (squad_id,squad_code,squad_string,spots,members,original_host,joined_from_channel_ids)
@@ -245,7 +241,8 @@ function squadsCreate(data,callback) {
                                 code: 399,
                                 message: `**${convertUpper(squad_string)}** already exists. Would you like to *join existing squad* or *host a new one*?`,
                                 squad_id: res.rows[0].squad_id,
-                                squad_code: res.rows[0].squad_code
+                                squad_code: res.rows[0].squad_code,
+                                squad_string: squad_string
                             })
                         }
                     }).catch(console.error)
@@ -287,20 +284,20 @@ function squadsFetch(data,callback) {
     })
 }
 
-// function squadsUpdate(data,callback) {
-//     if (!data.params) return callback({code: 500, err: 'No params provided'})
-//     db.query(`UPDATE rb_squads SET ${data.params}`).then(res => {
-//         if (!callback) return
-//         if (res.rowCount == 1) {
-//             return callback({
-//                 code: 200
-//             })
-//         } else return callback({
-//             code: 500,
-//             message: 'unexpected db response'
-//         })
-//     }).catch(console.error)
-// }
+function squadsUpdate(data,callback) {
+    if (!data.params) return callback({code: 500, err: 'No params provided'})
+    db.query(`UPDATE as_sb_squads SET ${data.params}`).then(res => {
+        if (!callback) return
+        if (res.rowCount == 1) {
+            return callback({
+                code: 200
+            })
+        } else return callback({
+            code: 500,
+            message: 'unexpected db response'
+        })
+    }).catch(console.error)
+}
 
 function squadsAddMember(data,callback) {
     console.log('[squadsAddMember] data:',data)
@@ -358,22 +355,22 @@ function squadsAddMember(data,callback) {
 //     })
 // }
 
-// function squadsLeaveAll(data,callback) {
-//     console.log('[squadsLeaveAll] data:',data)
-//     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
-//     db.query(`UPDATE rb_squads SET members=members-'${data.discord_id}' WHERE status='active' AND members @> '"${data.discord_id}"' ${data.tier ? ` AND tier = '${data.tier}'`:''}`)
-//     .then(res => {
-//         return callback({
-//             code: 200
-//         })
-//     }).catch(err => {
-//         console.log(err)
-//         return callback({
-//             code: 500,
-//             message: err.stack
-//         })
-//     })
-// }
+function squadsLeaveAll(data,callback) {
+    console.log('[squadbot/squadsLeaveAll] data:',data)
+    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    db.query(`UPDATE as_sb_squads SET members=members-'${data.discord_id}' WHERE status='active' AND members @> '"${data.discord_id}"'`)
+    .then(res => {
+        return callback({
+            code: 200
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
 
 // function trackersCreate(data,callback) {
 //     console.log('[trackersCreate] data:',data)
@@ -507,244 +504,6 @@ function squadsAddMember(data,callback) {
 //             message: err.stack
 //         })
 //     })
-// }
-
-// function usersFetch(data,callback) {
-//     console.log('[usersFetch] data:',data)
-//     db.query(`
-//         SELECT * FROM tradebot_users_list;
-//     `).then(res => {
-//         return callback({
-//             code: 200,
-//             data: res.rows
-//         })
-//     }).catch(err => {
-//         console.log(err)
-//         return callback({
-//             code: 500,
-//             message: err.stack
-//         })
-//     })
-// }
-
-// function statsFetch(data,callback) {
-//     console.log('[statsFetch] data:',data)
-//     db.query(`
-//         SELECT * FROM tradebot_users_list ${data.discord_id ? `WHERE discord_id=${data.discord_id}`:''};
-//         SELECT * FROM rb_squads ${data.discord_id ? `WHERE members @> '"${data.discord_id}"'`:''};
-//         SELECT * FROM wfhub_squads_data;
-//     `).then(res => {
-//         const db_users = res[0].rows
-//         const db_squads_relics = res[1].rows
-//         const db_squads_general = res[2].rows[0].history.payload
-//         const users_list = {}
-//         db_users.forEach(user => {
-//             users_list[user.discord_id] = user
-//             users_list[user.discord_id].squads_completed = 0
-//         })
-//         var stats = []
-//         for (const discord_id in users_list) {
-//             db_squads_relics.forEach(squad => {
-//                 if (squad.members.includes(discord_id) && squad.status == 'closed') {
-//                     users_list[discord_id].squads_completed++
-//                 }
-//             })
-//             db_squads_general.forEach(squad => {
-//                 if (squad.members.includes(discord_id)) {
-//                     users_list[discord_id].squads_completed++
-//                 }
-//             })
-//             stats.push(users_list[discord_id])
-//         }
-//         stats = stats.sort(dynamicSortDesc("squads_completed"))
-//         stats = stats.map((stat,index) => index < 10 ? stat:null).filter(o => o != null)
-//         console.log(stats)
-//         return callback({
-//             code: 200,
-//             data: stats
-//         })
-//     }).catch(err => {
-//         console.log(err)
-//         return callback({
-//             code: 500,
-//             message: err.stack
-//         })
-//     })
-// }
-
-// function defaultHostingTableCreate(data, callback) {
-//     console.log('[defaultHostingTableCreate] data:',data)
-//     if (!data.tier) return callback({code: 400, message: 'No tier provided'})
-//     if (!data.main_relics) return callback({code: 400, message: 'No main_relics provided'})
-//     if (!data.main_refinements) return callback({code: 400, message: 'No main_refinements provided'})
-//     if (!data.squad_type) return callback({code: 400, message: 'No squad_type provided'})
-//     db.query(`
-//         INSERT INTO rb_hosting_table (
-//             tier,
-//             main_relics,
-//             main_refinements,
-//             squad_type
-//         ) VALUES (
-//             '${data.tier.toLowerCase()}',
-//             '${JSON.stringify(data.main_relics).toLowerCase()}',
-//             '${JSON.stringify(data.main_refinements).toLowerCase()}',
-//             '${data.squad_type.toLowerCase()}'
-//         )
-//     `).then(res => {
-//         if (res.rowCount == 1) {
-//             return callback({
-//                 code: 200,
-//                 message: 'Success'
-//             })
-//         } else {
-//             return callback({
-//                 code: 500,
-//                 message: 'Unexpected error'
-//             })
-//         }
-//     }).catch(err => {
-//         console.log(err)
-//         return callback({
-//             code: 500,
-//             message: err.detail || err.stack
-//         })
-//     })
-// }
-
-// function defaultHostingTableFetch(data,callback) {
-//     console.log('[defaultHostingTableFetch] data:',data)
-//     db.query(`
-//         SELECT * FROM rb_hosting_table;
-//     `).then(res => {
-//         return callback({
-//             code: 200,
-//             data: res.rows
-//         })
-//     }).catch(err => {
-//         console.log(err)
-//         return callback({
-//             code: 500,
-//             message: err.stack
-//         })
-//     })
-// }
-
-// function defaultHostingTableDelete(data,callback) {
-//     console.log('[defaultHostingTableDelete] data:',data)
-//     if (!data.id) {
-//         if (callback) callback({code: 400, message: 'No id provided'})
-//         return
-//     }
-//     db.query(`DELETE FROM rb_hosting_table WHERE id=${data.id}`)
-//     .then(res => {
-//         if (!callback) return
-//         if (res.rowCount == 0) {
-//             return callback({
-//                 code: 500,
-//                 message: 'Unexpected error'
-//             })
-//         } else {
-//             return callback({
-//                 code: 200,
-//                 message: 'Record deleted'
-//             })
-//         }
-//     }).catch(err => {
-//         console.log(err)
-//         if (!callback) return
-//         return callback({
-//             code: 500,
-//             message: err.stack
-//         })
-//     })
-// }
-
-// function relicBotStringToSquad(str) {
-//     var squad = {
-//         tier: '',
-//         main_relics: [],
-//         main_refinements: [],
-//         off_relics: [],
-//         off_refinements: [],
-//         squad_type: '',
-//         cycle_count: '',
-//         is_steelpath: false,
-//         is_railjack: false,
-//         is_vaulted: true
-//     }
-//     str = str.toLowerCase().trim()
-//     str = str.replace(/^h /,'').replace(/off$/g,'').replace(/off$/g,'').replace(/offcycle$/g,'').replace(/ or /g,'').replace(/ or /g,' ').replace(/steel path/,'steelpath').replace(/rail jack/,'railjack')
-//     .replace(/^random lith/,'lith random').replace(/^random meso/,'meso random').replace(/^random neo/,'neo random').replace(/^random axi/,'axi random')
-//     .replace(/^randoms lith/,'lith random').replace(/^randoms meso/,'meso random').replace(/^randoms neo/,'neo random').replace(/^randoms axi/,'axi random')
-//     .replace(/^trace lith/,'lith trace').replace(/^trace meso/,'meso trace').replace(/^trace neo/,'neo trace').replace(/^trace axi/,'axi trace')
-//     .replace(/^traces lith/,'lith trace').replace(/^traces meso/,'meso trace').replace(/^traces neo/,'neo trace').replace(/^traces axi/,'axi trace');
-//     squad.tier = str.split(' ')[0]
-//     str = str.replaceAll(squad.tier,'').replace(/,/g,' ').replace(/\s+/g, ' ').trim()
-//     const subline = str.split(' with ')
-
-//     subline[0].split(' ').forEach((word,index) => {
-//         if (['int','flaw','rad','intact','flawless','radiant'].includes(word)) {
-//             word = word.replace('intact','int').replace('flawless','flaw').replace('radiant','rad')
-//             if (!squad.main_refinements.includes(word)) squad.main_refinements.push(word)
-//         }
-//         else if (['1b1','2b2','3b3','4b4'].includes(word)) {
-//             squad.squad_type = word
-//         }
-//         else if (['1b1i','1b1f','1b1r','2b2i','2b2f','2b2r','3b3i','3b3f','3b3r','4b4i','4b4f','4b4r',].includes(word)) {
-//             squad.squad_type = word.substring(0,3)
-//             const refinement = word[word.length - 1].replace('i','int').replace('f','flaw').replace('r','rad')
-//             if (!squad.main_refinements.includes(refinement)) squad.main_refinements.push(refinement)
-//         }
-//         else if (['random','randoms','trace','traces'].includes(word)) {
-//             if (!squad.main_relics.includes(word)) squad.main_relics.push(word)
-//         }
-//         else if ((word.length == 2 || word.length == 3) && !Number(word[0]) && Number(`${word[1]}${word[2] || ''}`)) {
-//             if (!squad.main_relics.includes(word)) squad.main_relics.push(word)
-//         }
-//         else if (word.match('cycle') || word.match('cycles')) {
-//             const prev_word = subline[0].split(' ')[index-1]
-//             squad.cycle_count = prev_word
-//         }
-//         else if (word == 'steelpath' || word == 'sp') squad.is_steelpath = true
-//         else if (word == 'railjack' || word == 'rj') squad.is_railjack = true
-//     });
-//     subline[1]?.split(' ').forEach((word,index) => {
-//         if (['int','flaw','rad','intact','flawless','radiant'].includes(word)) {
-//             word = word.replace('intact','int').replace('flawless','flaw').replace('radiant','rad')
-//             if (!squad.off_refinements.includes(word)) squad.off_refinements.push(word)
-//         }
-//         else if ((word.length == 2 || word.length == 3) && !Number(word[0]) && Number(`${word[1]}${word[2] || ''}`)) {
-//             if (!squad.off_relics.includes(word)) squad.off_relics.push(word)
-//         }
-//         else if (word.match('cycle') || word.match('cycles')) {
-//             const prev_word = subline[1].split(' ')[index-1]
-//             squad.cycle_count = prev_word
-//         }
-//         else if (word == 'steelpath' || word == 'sp') squad.is_steelpath = true
-//         else if (word == 'railjack' || word == 'rj') squad.is_railjack = true
-//     });
-//     for (const relic of squad.main_relics) {
-//         console.log(relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()]?.vault_status)
-//         if (!['V','B'].includes(relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()]?.vault_status)) squad.is_vaulted = false
-//     }
-//     for (const host of hosting_table) {
-//         if (host.match_string.match(`${squad.tier}_`)) {
-//             squad.main_relics.forEach(relic => {
-//                 if (host.match_string.match(`_${relic}_`)) {
-//                     squad.main_relics = host.main_relics
-//                     if (squad.squad_type == '')
-//                         squad.squad_type = host.squad_type
-//                     if (squad.main_refinements.length == 0)
-//                         squad.main_refinements = host.main_refinements
-//                 }
-//             })
-//         }
-//     }
-//     return squad;
-// }
-
-// function relicBotSquadToString(squad,include_sp_rj) {
-//     return `${convertUpper(squad.tier)} ${squad.main_relics.join(' ').toUpperCase()} ${squad.squad_type} ${squad.main_refinements.join(' ')} ${squad.off_relics.length > 0 ? 'with':''} ${squad.off_relics.join(' ').toUpperCase()} ${squad.off_refinements.join(' ')} ${include_sp_rj ? (squad.is_steelpath ? 'Steelpath':squad.is_railjack ? 'Railjack':''):''} ${squad.cycle_count == '' ? '':`(${squad.cycle_count} cycles)`}`.replace(/\s+/g, ' ').trim()
 // }
 
 // db.on('notification',(notification) => {
