@@ -500,7 +500,7 @@ function statsFetch(data,callback) {
         }
         stats = stats.sort(dynamicSortDesc("squads_completed"))
         stats = stats.map((stat,index) => index < 10 ? stat:null).filter(o => o != null)
-        console.log(stats)
+        //console.log(stats)
         return callback({
             code: 200,
             data: stats

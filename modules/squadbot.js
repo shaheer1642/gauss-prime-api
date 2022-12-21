@@ -15,10 +15,10 @@ const endpoints = {
 
     'squadbot/squads/messageCreate': squadsMessageCreate,
 
-    // 'squadbot/trackers/create': trackersCreate,
-    // 'squadbot/trackers/fetch': trackersFetch,
-    // 'squadbot/trackers/delete': trackersDelete,
-    // 'squadbot/trackers/fetchSubscribers': trackersfetchSubscribers,
+    'squadbot/trackers/create': trackersCreate,
+    'squadbot/trackers/fetch': trackersFetch,
+    'squadbot/trackers/delete': trackersDelete,
+    'squadbot/trackers/fetchSubscribers': trackersfetchSubscribers,
 
     // 'squadbot/users/fetch': usersFetch,
 
@@ -177,6 +177,12 @@ function squadsCreate(data,callback) {
         return new Promise((resolve,reject) => {
             const spots = line.match('/4') ? 4 : line.match('/3') ? 3 : line.match('/2') ? 2 : 4
             const squad_string = line.replace(/ [1-9]\/4/g,'').replace(/ [1-9]\/3/g,'').replace(/ [1-9]\/2/g,'').replace(/ [1-9]\/1/g,'').trim().replace(/ /g,'_')
+            if (squad_string.length > 70) {
+                return resolve({
+                    code: 400,
+                    message: `Squad name must be less than 70 characters long`
+                })
+            }
             var hasKeyword = false
             for (const word of keywords_list) {
                 if (line.match(word)) {
@@ -372,139 +378,126 @@ function squadsLeaveAll(data,callback) {
     })
 }
 
-// function trackersCreate(data,callback) {
-//     console.log('[trackersCreate] data:',data)
-//     if (!data.message) return callback({code: 400, err: 'No message provided'})
-//     if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
-//     if (!data.channel_id) return callback({code: 400, err: 'No channel_id provided'})
-//     const lines = data.message.toLowerCase().trim().split('\n')
-//     Promise.all(lines.map(line => {
-//         return new Promise((resolve,reject) => {
-//             const tracker_id = uuid.v4()
-//             const squad = relicBotStringToSquad(line)
-//             if (!['lith','meso','neo','axi'].includes(squad.tier)) return resolve({
-//                 code: 400,
-//                 message: `Invalid tier **${squad.tier}**`
-//             })
-//             if (squad.main_relics.length == 0) return resolve({
-//                 code: 400,
-//                 message: `Relic name could not be determined`
-//             })
-//             if (squad.squad_type == '') squad.squad_type = '4b4'
-//             if (squad.main_refinements.length == 0) squad.main_refinements.push('rad')
-//             if (squad.is_steelpath && squad.is_railjack) squad.is_railjack = false
+function trackersCreate(data,callback) {
+    console.log('[squadbot/trackersCreate] data:',data)
+    if (!data.message) return callback({code: 400, err: 'No message provided'})
+    if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
+    if (!data.channel_id) return callback({code: 400, err: 'No channel_id provided'})
+    const lines = Array.isArray(data.message) ? data.message : data.message.split('\n')
+    Promise.all(lines.map(line => {
+        return new Promise((resolve,reject) => {
+            const tracker_id = uuid.v4()
+            const squad_string = line.toLowerCase().trim().replace(/ /g,'_')
 
-//             db.query(`INSERT INTO rb_trackers (tracker_id,discord_id,channel_id,tier,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack) 
-//             VALUES (
-//                 '${tracker_id}',
-//                 '${data.discord_id}',
-//                 '${data.channel_id}',
-//                 '${squad.tier}',
-//                 '${JSON.stringify(squad.main_relics)}',
-//                 '${JSON.stringify(squad.main_refinements)}',
-//                 '${JSON.stringify(squad.off_relics)}',
-//                 '${JSON.stringify(squad.off_refinements)}',
-//                 '${squad.squad_type}',
-//                 '${squad.cycle_count}',
-//                 ${squad.is_steelpath},
-//                 ${squad.is_railjack}
-//             )`).then(res => {
-//                 if (res.rowCount == 1) {
-//                     return resolve({
-//                         code: 200
-//                     })
-//                 } else return resolve({
-//                     code: 500,
-//                     message: 'unexpected db response'
-//                 })
-//             }).catch(err => {
-//                 console.log(err)
-//                 return resolve({
-//                     code: 500,
-//                     message: err.stack
-//                 })
-//             })
-//         })
-//     })).then(res => {
-//         return callback(res)
-//     }).catch(err => {
-//         console.log(err)
-//         return callback({
-//             code: 500,
-//             message: err.stack
-//         })
-//     })
-// }
+            db.query(`INSERT INTO as_sb_trackers (tracker_id,discord_id,channel_id,squad_string) 
+            VALUES (
+                '${tracker_id}',
+                '${data.discord_id}',
+                '${data.channel_id}',
+                '${squad_string}'
+            )`).then(res => {
+                if (res.rowCount == 1) {
+                    return resolve({
+                        code: 200
+                    })
+                } else return resolve({
+                    code: 500,
+                    message: 'unexpected db response'
+                })
+            }).catch(err => {
+                if (err.code == '23505') {
+                    return resolve({
+                        code: 200
+                    })
+                } else {
+                    console.log(err)
+                    return resolve({
+                        code: 500,
+                        message: err.stack
+                    })
+                }
+            })
+        })
+    })).then(res => {
+        return callback(res)
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
 
-// function trackersFetch(data,callback) {
-//     console.log('[trackersFetch] data:',data)
-//     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
-//     db.query(`
-//         SELECT * FROM rb_trackers WHERE discord_id='${data.discord_id}';
-//     `).then(res => {
-//         return callback({
-//             code: 200,
-//             data: res.rows
-//         })
-//     }).catch(err => {
-//         console.log(err)
-//         return callback({
-//             code: 500,
-//             message: err.stack
-//         })
-//     })
-// }
+function trackersFetch(data,callback) {
+    console.log('[squadbot/trackersFetch] data:',data)
+    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    db.query(`
+        SELECT * FROM as_sb_trackers WHERE discord_id='${data.discord_id}';
+    `).then(res => {
+        return callback({
+            code: 200,
+            data: res.rows
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
 
-// function trackersfetchSubscribers(data,callback) {
-//     console.log('[trackersfetchSubscribers] data:',data)
-//     if (!data.squad) return callback({code: 500, err: 'No squad obj provided'})
-//     const squad = data.squad
-//     db.query(`SELECT * FROM rb_trackers WHERE discord_id != '${squad.original_host}';`)
-//     .then(res => {
-//         const channel_ids = {};
-//         const hosted_squad = relicBotSquadToString(squad,true)
-//         res.rows.forEach(tracker => {
-//             if (hosted_squad == relicBotSquadToString(tracker,true)) {
-//                 if (!channel_ids[tracker.channel_id]) channel_ids[tracker.channel_id] = []
-//                 channel_ids[tracker.channel_id].push(tracker.discord_id)
-//             }
-//         })
-//         return callback({
-//             code: 200,
-//             data: channel_ids
-//         })
-//     }).catch(err => {
-//         console.log(err)
-//         return callback({
-//             code: 500,
-//             message: err.stack
-//         })
-//     })
-// }
+function trackersfetchSubscribers(data,callback) {
+    console.log('[squadbot/trackersfetchSubscribers] data:',data)
+    if (!data.squad) return callback({code: 500, err: 'No squad obj provided'})
+    const squad = data.squad
+    db.query(`SELECT * FROM as_sb_trackers WHERE discord_id != '${squad.original_host}';`)
+    .then(res => {
+        const channel_ids = {};
+        const hosted_squad = squad.squad_string
+        res.rows.forEach(tracker => {
+            if (tracker.squad_string.match(hosted_squad)) {
+                if (!channel_ids[tracker.channel_id]) channel_ids[tracker.channel_id] = []
+                channel_ids[tracker.channel_id].push(tracker.discord_id)
+            }
+        })
+        return callback({
+            code: 200,
+            data: channel_ids
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
 
-// function trackersDelete(data,callback) {
-//     console.log('[trackersDelete] data:',data)
-//     if (!data.discord_id && !data.tracker_ids) return callback({code: 500, err: 'No discord_id or tracker_ids provided'})
-//     var query = ''
-//     if (data.discord_id) {
-//         query = `DELETE FROM rb_trackers WHERE discord_id='${data.discord_id}';`
-//     } else {
-//         data.tracker_ids.forEach(tracker_id => {
-//             query += `DELETE FROM rb_trackers WHERE tracker_id='${tracker_id}';`
-//         })
-//     }
-//     db.query(query).then(res => {
-//         return callback({
-//             code: 200,
-//         })
-//     }).catch(err => {
-//         console.log(err)
-//         return callback({
-//             code: 500,
-//             message: err.stack
-//         })
-//     })
-// }
+function trackersDelete(data,callback) {
+    console.log('[squadbot/trackersDelete] data:',data)
+    if (!data.discord_id && !data.tracker_ids) return callback({code: 500, err: 'No discord_id or tracker_ids provided'})
+    var query = ''
+    if (data.discord_id) {
+        query = `DELETE FROM as_sb_trackers WHERE discord_id='${data.discord_id}';`
+    } else {
+        data.tracker_ids.forEach(tracker_id => {
+            query += `DELETE FROM as_sb_trackers WHERE tracker_id='${tracker_id}';`
+        })
+    }
+    db.query(query).then(res => {
+        return callback({
+            code: 200,
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
 
 // db.on('notification',(notification) => {
 //     const payload = JSONbig.parse(notification.payload);
