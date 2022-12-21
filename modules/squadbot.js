@@ -130,20 +130,6 @@ function keywordsDelete(data,callback) {
     })
 }
 
-
-db.on('notification',(notification) => {
-    const payload = JSONbig.parse(notification.payload);
-    if (['wfhub_keywords_insert','wfhub_keywords_update','wfhub_keywords_delete'].includes(notification.channel)) {
-        db.query(`SELECT * FROM wfhub_keywords`)
-        .then(res => {
-            host_keywords = []
-            res.rows.forEach(row => {
-                host_keywords.push(row)
-            })
-        }).catch(console.error)
-    }
-})
-
 module.exports = {
     endpoints,
     squad_closure
@@ -275,7 +261,7 @@ function squadsCreate(data,callback) {
 function squadsFetch(data,callback) {
     console.log('[squadbot/squadsFetch] data:',data)
     db.query(`
-        SELECT * FROM as_sb_squads WHERE status='active';
+        SELECT * FROM as_sb_squads WHERE status='active' ORDER BY creation_timestamp ASC;
     `).then(res => {
         return callback({
             code: 200,
@@ -499,18 +485,17 @@ function trackersDelete(data,callback) {
     })
 }
 
-// db.on('notification',(notification) => {
-//     const payload = JSONbig.parse(notification.payload);
-//     if (['rb_hosting_table_insert','rb_hosting_table_update','rb_hosting_table_delete'].includes(notification.channel)) {
-//         db.query(`SELECT * FROM rb_hosting_table;`)
-//         .then(res => {
-//             hosting_table = []
-//             res.rows.forEach(row => {
-//                 hosting_table.push({
-//                     match_string: `${row.tier}_${row.main_relics.join('_')}_`,
-//                     ...row
-//                 })
-//             })
-//         }).catch(console.error)
-//     }
-// })
+db.on('notification',(notification) => {
+    const payload = JSONbig.parse(notification.payload);
+    if (['wfhub_keywords_insert','wfhub_keywords_update','wfhub_keywords_delete'].includes(notification.channel)) {
+        db.query(`SELECT * FROM wfhub_keywords`)
+        .then(res => {
+            keywords_list = []
+            explicitwords_list = []
+            res.rows.forEach(row => {
+                if (row.include) keywords_list.push(row.name)
+                else explicitwords_list.push(row.name)
+            })
+        }).catch(console.error)
+    }
+})
