@@ -467,7 +467,7 @@ function trackersfetchSubscribers(data,callback) {
         const hosted_squad = squad.squad_string
         const trackers = res[0].rows
         const ping_mutes = res[1].rows
-        trackers.rows.forEach(tracker => {
+        trackers.forEach(tracker => {
             for (const mute of ping_mutes) {
                 if (mute.discord_id == tracker.discord_id) {
                     if (mute.squad_string == 'global') return
