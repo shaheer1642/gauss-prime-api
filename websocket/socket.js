@@ -1075,7 +1075,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
         UPDATE rb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
         UPDATE rb_squads SET status='opened',open_timestamp=${new Date().getTime()} WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
         UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}';
-        DELETE FROM wfhub_recruit_members WHERE user_id = ANY(ARRAY[${payload[0].members.join(', ')}]);
+        UPDATE as_sb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active';
       `).catch(console.error)
       db_modules.schedule_query(`UPDATE rb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,relicbot.squad_closure)
     }
@@ -1136,6 +1136,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
         UPDATE as_sb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
         UPDATE as_sb_squads SET status='opened',open_timestamp=${new Date().getTime()} WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
         UPDATE as_sb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}';
+        UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active';
       `).catch(console.error)
       db_modules.schedule_query(`UPDATE as_sb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,squadbot.squad_closure)
     }
