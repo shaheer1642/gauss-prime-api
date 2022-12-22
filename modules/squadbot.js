@@ -30,8 +30,35 @@ const endpoints = {
 }
 
 const squad_expiry =  3600000 // in ms
-// const squad_is_old =  900000 // in ms
-const squad_closure = 1800000 // in ms
+const squad_closures = {  // listed in minutes
+    default: 30,
+
+    sortie: 15,
+    incursion: 20,
+    alert: 20,
+    eidolon: 40,
+    help: 15,
+    index: 15,
+    profit_taker: 15,
+    bounty: 15,
+    bounties: 30,
+    leveling: 15,
+    arbitration: 20,
+    nightwave: 15,
+    lich: 15,
+    sister: 15,
+    endo: 15,
+    archon: 20
+}
+
+function getSquadClosure(squad_string) {
+    var squad_closure = squad_closures.default
+    Object.keys(squad_closures).forEach(key => {
+        if (squad_string.match(key))
+            squad_closure = squad_closures[key]
+    })
+    return squad_closure * 60 * 1000
+}
 
 var keywords_list = []
 var explicitwords_list = []
@@ -130,11 +157,6 @@ function keywordsDelete(data,callback) {
     })
 }
 
-module.exports = {
-    endpoints,
-    squad_closure
-}
-
 function squadsMessageCreate(data,callback) {
     console.log('[squadbot/squadsMessageCreate] data:',data)
     if (!data.thread_id) return callback({code: 500, err: 'No thread_id provided'})
@@ -200,7 +222,7 @@ function squadsCreate(data,callback) {
             const squad_code = `${squad_string}_${spots}_${data.merge_squad == false ? `${new Date().getTime()}`:`${new Date(new Date().setHours(0,0,0,0)).getTime()}`}`
             console.log('squad_code:',squad_code)
 
-            db.query(`INSERT INTO as_sb_squads (squad_id,squad_code,squad_string,spots,members,original_host,joined_from_channel_ids)
+            db.query(`INSERT INTO as_sb_squads (squad_id,squad_code,squad_string,spots,members,original_host,joined_from_channel_ids,squad_closure)
             VALUES (
                 (SELECT CASE WHEN (COUNT(squad_id) >= 75) THEN NULL ELSE '${squad_id}'::uuid END AS counted FROM as_sb_squads WHERE status='active'),
                 '${squad_code}',
@@ -208,7 +230,8 @@ function squadsCreate(data,callback) {
                 ${spots},
                 '["${data.discord_id}"]',
                 '${data.discord_id}',
-                '${data.channel_id ? `{"${data.discord_id}":"${data.channel_id}"}`:'{}'}'
+                '${data.channel_id ? `{"${data.discord_id}":"${data.channel_id}"}`:'{}'}',
+                ${getSquadClosure(squad_string)}
             )`).then(res => {
                 if (res.rowCount == 1) {
                     //db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
@@ -499,3 +522,7 @@ db.on('notification',(notification) => {
         }).catch(console.error)
     }
 })
+
+module.exports = {
+    endpoints
+}
