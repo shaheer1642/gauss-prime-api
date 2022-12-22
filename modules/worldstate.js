@@ -7,7 +7,8 @@ var expiries = {
     archon_hunt: undefined
 }
 
-var updateWorldStateTimer;
+updateWorldState()
+
 async function updateWorldState() {
     console.log('[updateWorldState] called')
 
