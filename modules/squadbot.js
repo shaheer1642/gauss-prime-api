@@ -461,12 +461,20 @@ function trackersfetchSubscribers(data,callback) {
     console.log('[squadbot/trackersfetchSubscribers] data:',data)
     if (!data.squad) return callback({code: 500, err: 'No squad obj provided'})
     const squad = data.squad
-    db.query(`SELECT * FROM as_sb_trackers WHERE discord_id != '${squad.original_host}';`)
+    db.query(`SELECT * FROM as_sb_trackers WHERE discord_id != '${squad.original_host}'; SELECT * FROM as_ping_mutes;`)
     .then(res => {
         const channel_ids = {};
         const hosted_squad = squad.squad_string
-        res.rows.forEach(tracker => {
-            if (tracker.squad_string.match(hosted_squad)) {
+        const trackers = res[0].rows
+        const ping_mutes = res[1].rows
+        trackers.rows.forEach(tracker => {
+            for (const mute of ping_mutes) {
+                if (mute.discord_id == tracker.discord_id) {
+                    if (mute.squad_string == 'global') return
+                    if (tracker.squad_string.match(mute.squad_string) || mute.squad_string.match(tracker.squad_string)) return
+                }
+            }
+            if (tracker.squad_string.match(hosted_squad) || hosted_squad.match(tracker.squad_string)) {
                 if (!channel_ids[tracker.channel_id]) channel_ids[tracker.channel_id] = []
                 channel_ids[tracker.channel_id].push(tracker.discord_id)
             }

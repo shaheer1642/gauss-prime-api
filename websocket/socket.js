@@ -1139,6 +1139,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
         UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active';
       `).catch(console.error)
       db_modules.schedule_query(`UPDATE as_sb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,payload[0].squad_closure)
+      allsquads.pingmuteOnSquadOpen(payload[0])
     }
     if (payload[0].status != 'active' && payload[1].status == 'active') {
       db.query(`UPDATE as_sb_squads SET squad_code='${payload[0].squad_code}_${payload[0].creation_timestamp}' WHERE squad_id='${payload[0].squad_id}'`).catch(console.error)

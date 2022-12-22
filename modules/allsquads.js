@@ -6,11 +6,16 @@ const {event_emitter} = require('./event_emitter')
 const JSONbig = require('json-bigint');
 const { WebhookClient } = require('discord.js');
 const clanWebhookClient = new WebhookClient({url: process.env.AS_CLAN_AFFILIATES_WEBHOOK});
+const { getStateExpiry } = require('./worldstate')
 
 const endpoints = {
     'allsquads/clans/create': clansCreate,
     'allsquads/clans/fetch': clansFetch,
     'allsquads/clans/delete': clansDelete,
+
+    'allsquads/pingmutes/create': pingmutesCreate,
+    'allsquads/pingmutes/fetch': pingmutesFetch,
+    'allsquads/pingmutes/delete': pingmutesDelete,
 }
 
 event_emitter.on('db_connected', () => {
@@ -165,10 +170,106 @@ function clanAffiliateEmbed(clan) {
     }
 }
 
+function pingmutesCreate(data,callback) {
+    console.log('[trackersCreate] data:',data)
+    if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
+    if (!data.squad_string) return callback({code: 400, err: 'No squad_string provided'})
+    if (!data.revoke_after) return callback({code: 400, err: 'No revoke_after provided'})
+    const pingmute_id = uuid.v1()
+    db.query(`INSERT INTO as_ping_mutes (discord_id,squad_string,pingmute_id) VALUES (
+        '${data.discord_id}',
+        '${data.squad_string}',
+        '${pingmute_id}',
+    )`).then(res => {
+        db_modules.schedule_query(`DELETE FROM as_ping_mutes WHERE pingmute_id='${pingmute_id}'`, data.revoke_after)
+        if (callback) {
+            return callback({
+                code: 200,
+                data: res.rows
+            })
+        }
+    }).catch(err => {
+        console.log(err)
+        if (callback) {
+            return callback({
+                code: 500,
+                message: err.stack
+            })
+        }
+    })
+}
+
+function pingmutesFetch(data,callback) {
+    console.log('[allsquads/pingmutesFetch] data:', data)
+    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    db.query(`
+        SELECT * FROM as_ping_mutes WHERE discord_id='${data.discord_id}';
+    `).then(res => {
+        return callback({
+            code: 200,
+            data: res.rows
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+function pingmutesDelete(data,callback) {
+    console.log('[allsquads/pingmutesDelete] data:',data)
+    if (!data.discord_id && !data.pingmute_ids) return callback({code: 500, err: 'No discord_id or squad_strings provided'})
+    var query = ''
+    if (data.discord_id) {
+        query = `DELETE FROM as_ping_mutes WHERE discord_id='${data.discord_id}';`
+    } else {
+        data.pingmute_ids.forEach(pingmute_id => {
+            query += `DELETE FROM as_ping_mutes WHERE pingmute_id='${pingmute_id}';`
+        })
+    }
+    db.query(query).then(res => {
+        return callback({
+            code: 200,
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+function pingmuteOnSquadOpen(squad) {
+    if (squad.squad_string.match('sortie')) {
+        squad.members.forEach(discord_id => {
+            pingmutesCreate({discord_id: discord_id, squad_string: 'sortie', revoke_after: getStateExpiry('sortie')})
+        })
+    }
+    if (squad.squad_string.match('archon')) {
+        squad.members.forEach(discord_id => {
+            pingmutesCreate({discord_id: discord_id, squad_string: 'archon', revoke_after: getStateExpiry('archon_hunt')})
+        })
+    }
+    if (squad.squad_string.match('incursion')) {
+        squad.members.forEach(discord_id => {
+            pingmutesCreate({discord_id: discord_id, squad_string: 'incursions', revoke_after: getStateExpiry('incursions')})
+        })
+    }
+    if (squad.squad_string.match('eidolon')) {
+        squad.members.forEach(discord_id => {
+            pingmutesCreate({discord_id: discord_id, squad_string: 'eidolon', revoke_after: 3000000})
+        })
+    }
+}
+
 db.on('notification',(notification) => {
     const payload = JSONbig.parse(notification.payload);
 })
 
 module.exports = {
     endpoints,
+    pingmuteOnSquadOpen
 }

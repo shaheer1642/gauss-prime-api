@@ -32,6 +32,7 @@
     "socket.io": "^4.5.1",
     "square": "^23.0.0",
     "undici": "^5.10.0",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "warframe-worldstate-parser": "^2.25.6"
   }
 }
