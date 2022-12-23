@@ -27,9 +27,14 @@ async function updateWorldState() {
             if (expiries[key] < least_expiry)
                 least_expiry = expiries[key]
         })
-
-        setTimeout(updateWorldState, least_expiry - new Date().getTime())
-        console.log(`updateWorldState invokes in ${least_expiry - new Date().getTime()}`)
+        var timer = undefined
+        if (least_expiry < new Date().getTime()) {
+            timer = 15000
+        } else {
+            timer = least_expiry - new Date().getTime()
+        }
+        setTimeout(updateWorldState, timer)
+        console.log(`updateWorldState invokes in ${timer} ms`)
     }).catch(err => {
         console.log(err)
         setTimeout(updateWorldState,60000)
