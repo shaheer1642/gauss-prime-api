@@ -157,7 +157,8 @@ function squadsCreate(data,callback) {
             `).then(res => {
                 if (res.rowCount == 1) {
                     //db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
-                    db_modules.schedule_query(`UPDATE rb_squads SET status='expired' WHERE squad_id = '${squad_id}' AND status='active'`,squad_expiry)
+                    //db_modules.schedule_query(`UPDATE rb_squads SET status='expired' WHERE squad_id = '${squad_id}' AND status='active'`,squad_expiry)
+                    db_modules.schedule_query(`UPDATE rb_squads SET members = members-'${data.discord_id}' WHERE members @> '"${data.discord_id}"' AND status='active' AND squad_id = '${squad_id}'`,squad_expiry)
                     if (squad.is_vaulted == true && data.channel_vaulted == false) {
                         return resolve({
                             code: 299,
@@ -262,6 +263,7 @@ function squadsAddMember(data,callback) {
         returning*;
     `).then(res => {
         if (res.rowCount == 1) {
+            db_modules.schedule_query(`UPDATE rb_squads SET members = members-'${data.discord_id}' WHERE members @> '"${data.discord_id}"' AND status='active' AND squad_id = '${data.squad_id}'`,squad_expiry)
             return callback({
                 code: 200
             })
