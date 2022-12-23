@@ -179,7 +179,7 @@ function pingmutesCreate(data,callback) {
     db.query(`INSERT INTO as_ping_mutes (discord_id,squad_string,pingmute_id) VALUES (
         '${data.discord_id}',
         '${data.squad_string}',
-        '${pingmute_id}',
+        '${pingmute_id}'
     )`).then(res => {
         db_modules.schedule_query(`DELETE FROM as_ping_mutes WHERE pingmute_id='${pingmute_id}'`, data.revoke_after)
         if (callback) {
@@ -261,6 +261,11 @@ function pingmuteOnSquadOpen(squad) {
     if (squad.squad_string.match('eidolon')) {
         squad.members.forEach(discord_id => {
             pingmutesCreate({discord_id: discord_id, squad_string: 'eidolon', revoke_after: 3000000})
+        })
+    }
+    if (squad.squad_string.match('voruna')) {
+        squad.members.forEach(discord_id => {
+            pingmutesCreate({discord_id: discord_id, squad_string: 'voruna', revoke_after: 300000})
         })
     }
 }
