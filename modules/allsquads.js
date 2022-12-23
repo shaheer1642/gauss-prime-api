@@ -263,11 +263,6 @@ function pingmuteOnSquadOpen(squad) {
             pingmutesCreate({discord_id: discord_id, squad_string: 'eidolon', revoke_after: 3000000})
         })
     }
-    if (squad.squad_string.match('voruna')) {
-        squad.members.forEach(discord_id => {
-            pingmutesCreate({discord_id: discord_id, squad_string: 'voruna', revoke_after: 300000})
-        })
-    }
 }
 
 db.on('notification',(notification) => {
