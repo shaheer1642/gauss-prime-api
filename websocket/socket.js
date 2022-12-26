@@ -1,9 +1,7 @@
 const {server} = require('../api/api')
 const { Server } = require("socket.io");
 const io = new Server(server, {
-  transports: ['websocket'],
-  pingInterval: 1000 * 60 * 5,
-  pingTimeout: 1000 * 60 * 3
+  transports: ['websocket']
 });
 const {db} = require('../modules/db_connection')
 const uuid = require('uuid');
