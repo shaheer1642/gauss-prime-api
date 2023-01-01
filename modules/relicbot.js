@@ -96,7 +96,6 @@ function squadsCreate(data,callback) {
     console.log('[squadsCreate] data:',data)
     if (!data.message) return callback({code: 500, err: 'No message provided'})
     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
-    if (data.channel_vaulted == undefined) return callback({code: 500, err: 'No channel_vaulted provided'})
     const lines = data.message.toLowerCase().trim().split('\n')
     Promise.all(lines.map(line => {
         return new Promise((resolve,reject) => {
@@ -115,8 +114,6 @@ function squadsCreate(data,callback) {
                         code: 400,
                         message: `**${squad.tier} ${relic}** is not a valid relic`
                     })
-                } else {
-                    squad.is_vaulted = data.channel_vaulted
                 }
                 if (squad.squad_type == '2b2' && !squad.is_vaulted && !relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()].is_pa) return resolve({
                     code: 400,
@@ -159,17 +156,7 @@ function squadsCreate(data,callback) {
                     //db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
                     //db_modules.schedule_query(`UPDATE rb_squads SET status='expired' WHERE squad_id = '${squad_id}' AND status='active'`,squad_expiry)
                     db_modules.schedule_query(`UPDATE rb_squads SET members = members-'${data.discord_id}' WHERE members @> '"${data.discord_id}"' AND status='active' AND squad_id = '${squad_id}'`,squad_expiry)
-                    if (squad.is_vaulted == true && data.channel_vaulted == false) {
-                        return resolve({
-                            code: 299,
-                            message: 'Your squad has been hosted in the **vaulted** channel'
-                        })
-                    } else if (squad.is_vaulted == false && data.channel_vaulted == true) {
-                        return resolve({
-                            code: 299,
-                            message: 'Your squad has been hosted in the **non-vaulted** channel'
-                        })
-                    } else return resolve({code: 200})
+                    return resolve({code: 200})
                 } else return resolve({
                     code: 500,
                     message: 'unexpected db response'
