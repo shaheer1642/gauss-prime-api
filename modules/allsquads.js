@@ -256,9 +256,9 @@ function leaderboardsFetch(data,callback) {
 
         var leaderboards = {
             all_time: [],
-            today: [],
-            this_week: [],
             this_month: [],
+            this_week: [],
+            today: [],
         }
         const today_start = getTodayStartMs()
         const week_start = getWeekStartMs()
