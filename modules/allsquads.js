@@ -280,22 +280,26 @@ function leaderboardsFetch(data,callback) {
                     if (squad.creation_timestamp >= month_start) squads_completed.this_month++
                 }
             })
-            leaderboards.all_time.push({
-                ...user,
-                squads_completed: squads_completed.all_time
-            })
-            leaderboards.today.push({
-                ...user,
-                squads_completed: squads_completed.today
-            })
-            leaderboards.this_week.push({
-                ...user,
-                squads_completed: squads_completed.this_week
-            })
-            leaderboards.this_month.push({
-                ...user,
-                squads_completed: squads_completed.this_month
-            })
+            if (squads_completed.all_time > 0)
+                leaderboards.all_time.push({
+                    ...user,
+                    squads_completed: squads_completed.all_time
+                })
+            if (squads_completed.today > 0)
+                leaderboards.today.push({
+                    ...user,
+                    squads_completed: squads_completed.today
+                })
+            if (squads_completed.this_week > 0)
+                leaderboards.this_week.push({
+                    ...user,
+                    squads_completed: squads_completed.this_week
+                })
+            if (squads_completed.this_month > 0)
+                leaderboards.this_month.push({
+                    ...user,
+                    squads_completed: squads_completed.this_month
+                })
         })
         leaderboards.all_time = leaderboards.all_time.sort(dynamicSortDesc("squads_completed"))
         leaderboards.today = leaderboards.today.sort(dynamicSortDesc("squads_completed"))
