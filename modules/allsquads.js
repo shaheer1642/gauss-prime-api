@@ -266,7 +266,7 @@ function leaderboardsFetch(data,callback) {
 
         db_users.forEach(user => {
             const discord_id = user.discord_id
-            if (!discord_id) return
+            if (!discord_id || discord_id == "0") return
             var squads_completed = {
                 all_time: 0,
                 today: 0,
