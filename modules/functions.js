@@ -104,4 +104,19 @@ function convertUpper(str) {
     return str.replace(/_/g, " ").replace(/(^\w{1})|(\s+\w{1})/g, letter => letter.toUpperCase())
 }
 
-module.exports = {dynamicSort,dynamicSortDesc,msToTime,msToFullTime,getRandomColor,embedScore,convertUpper};
+function getTodayStartMs() {
+    return new Date(new Date().setHours(0,0,0,0)).getTime()
+}
+function getWeekStartMs() {
+    const date = new Date();
+    date.setHours(0,0,0,0)
+    var day = date.getDay() || 7;  
+    if( day !== 1 ) 
+        date.setHours(-24 * (day - 1)); 
+    return date.getTime();
+}
+function getMonthStartMs() {
+    return new Date(new Date(new Date().getFullYear(), new Date().getMonth(), 1)).getTime()
+}
+
+module.exports = {dynamicSort,dynamicSortDesc,msToTime,msToFullTime,getRandomColor,embedScore,convertUpper,getTodayStartMs,getWeekStartMs,getMonthStartMs};

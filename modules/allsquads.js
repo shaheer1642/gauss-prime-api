@@ -1,6 +1,6 @@
 const { db } = require("./db_connection")
 const uuid = require('uuid')
-const {convertUpper, dynamicSort, dynamicSortDesc} = require('./functions')
+const {convertUpper, dynamicSort, dynamicSortDesc, getTodayStartMs, getWeekStartMs, getMonthStartMs} = require('./functions')
 const db_modules = require('./db_modules')
 const {event_emitter} = require('./event_emitter')
 const JSONbig = require('json-bigint');
@@ -16,6 +16,8 @@ const endpoints = {
     'allsquads/pingmutes/create': pingmutesCreate,
     'allsquads/pingmutes/fetch': pingmutesFetch,
     'allsquads/pingmutes/delete': pingmutesDelete,
+
+    'allsquads/leaderboards/fetch': leaderboardsFetch,
 }
 
 event_emitter.on('db_connected', () => {
@@ -232,6 +234,83 @@ function pingmutesDelete(data,callback) {
     db.query(query).then(res => {
         return callback({
             code: 200,
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+function leaderboardsFetch(data,callback) {
+    console.log('[leaderboardsFetch] data:',data)
+    db.query(`
+        SELECT * FROM tradebot_users_list;
+        SELECT * FROM rb_squads;
+        SELECT * FROM as_sb_squads;
+    `).then(res => {
+        const db_users = res[0].rows
+        const db_squads = res[1].rows.concat(res[2].rows)
+
+        var leaderboards = {
+            all_time: [],
+            today: [],
+            this_week: [],
+            this_month: [],
+        }
+        const today_start = getTodayStartMs()
+        const week_start = getWeekStartMs()
+        const month_start = getMonthStartMs()
+
+        db_users.forEach(user => {
+            const discord_id = user.discord_id
+            var squads_completed = {
+                all_time: 0,
+                today: 0,
+                this_week: 0,
+                this_month: 0
+            }
+            db_squads.forEach(squad => {
+                if (squad.members.includes(discord_id) && squad.status == 'closed') {
+                    squads_completed.all_time++
+                    if (squad.creation_timestamp >= today_start) squads_completed.today++
+                    if (squad.creation_timestamp >= week_start) squads_completed.this_week++
+                    if (squad.creation_timestamp >= month_start) squads_completed.this_month++
+                }
+            })
+            leaderboards.all_time.push({
+                ...user,
+                squads_completed: squads_completed.all_time
+            })
+            leaderboards.today.push({
+                ...user,
+                squads_completed: squads_completed.today
+            })
+            leaderboards.this_week.push({
+                ...user,
+                squads_completed: squads_completed.this_week
+            })
+            leaderboards.this_month.push({
+                ...user,
+                squads_completed: squads_completed.this_month
+            })
+        })
+        leaderboards.all_time = leaderboards.all_time.sort(dynamicSortDesc("squads_completed"))
+        leaderboards.today = leaderboards.today.sort(dynamicSortDesc("squads_completed"))
+        leaderboards.this_week = leaderboards.this_week.sort(dynamicSortDesc("squads_completed"))
+        leaderboards.this_month = leaderboards.this_month.sort(dynamicSortDesc("squads_completed"))
+        if (data.limit) {
+            leaderboards.all_time = leaderboards.all_time.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+            leaderboards.today = leaderboards.today.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+            leaderboards.this_week = leaderboards.this_week.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+            leaderboards.this_month = leaderboards.this_month.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+        }
+        console.log(JSON.stringify(leaderboards))
+        return callback({
+            code: 200,
+            data: leaderboards
         })
     }).catch(err => {
         console.log(err)
