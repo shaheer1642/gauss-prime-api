@@ -14,6 +14,7 @@ const endpoints = {
     'relicbot/squads/leaveall': squadsLeaveAll,
 
     'relicbot/squads/messageCreate': squadsMessageCreate,
+    'relicbot/squads/messagesFetch': squadsMessagesFetch,
 
     'relicbot/trackers/create': trackersCreate,
     'relicbot/trackers/fetch': trackersFetch,
@@ -89,6 +90,24 @@ function squadsMessageCreate(data,callback) {
     `).catch(err => {
         if (err.code != '23502') // message not sent in a tracked thread
             console.log(err)
+    })
+}
+
+function squadsMessagesFetch(data,callback) {
+    console.log('[relicbot/squadsMessagesFetch] data:', data)
+    if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
+    db.query(`
+        SELECT * FROM rb_squads_messages WHERE squad_id = '${data.squad_id}' ORDER BY creation_timestamp ASC;
+    `).then(res => {
+        return callback({
+            code: 200,
+            data: res.rows
+        })
+    }).catch(err => {
+        return callback({
+            code: 500,
+            err: err
+        })
     })
 }
 
