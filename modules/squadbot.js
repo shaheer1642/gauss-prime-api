@@ -178,20 +178,20 @@ function squadsMessageCreate(data,callback) {
 }
 
 function squadsMessagesFetch(data,callback) {
-    console.log('[squadbot/squadsMessageFetch] data:', data)
-    if (!data.squad_id) return callback({code: 500, err: 'No thread_id provided'})
+    console.log('[squadbot/squadsMessagesFetch] data:', data)
+    if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
     db.query(`
         SELECT * FROM as_sb_squads_messages WHERE squad_id = '${data.squad_id}' ORDER BY creation_timestamp ASC;
     `).then(res => {
-        return callback([{
+        return callback({
             code: 200,
             data: res.rows
-        }])
+        })
     }).catch(err => {
-        return callback([{
+        return callback({
             code: 500,
             err: err
-        }])
+        })
     })
 }
 
