@@ -682,7 +682,7 @@ function relicBotStringToSquad(str) {
     for (const host of hosting_table) {
         if (host.match_string.match(`${squad.tier}_`)) {
             squad.main_relics.forEach(relic => {
-                if (host.match_string.match(`_${relic}_`)) {
+                if (host.match_string.match(`_${relic}_`) && squad.main_relics.length < host.main_relics) {
                     squad.main_relics = host.main_relics
                     if (squad.squad_type == '')
                         squad.squad_type = host.squad_type
