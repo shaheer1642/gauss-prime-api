@@ -147,12 +147,12 @@ function clanAffiliateEmbed(clan) {
         embeds: [{
             title: clan.clan_name,
             fields: [{
-                name: '-- Requirements --',
-                value: clan.requirements,
-                inline: true
-            },{
                 name: '-- Stats --',
                 value: clan.stats,
+                inline: true
+            },{
+                name: '-- Requirements --',
+                value: clan.requirements,
                 inline: true
             },{
                 name: '\u200b',
