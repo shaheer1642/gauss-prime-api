@@ -54,6 +54,10 @@ db.connect().then(async res => {
 
         LISTEN as_sb_squads_insert;
         LISTEN as_sb_squads_update;
+
+        LISTEN as_clan_affiliates_insert;
+        LISTEN as_clan_affiliates_update;
+        LISTEN as_clan_affiliates_delete;
     `).then(res => {
         db.query(`SELECT * FROM scheduled_queries`).then(res => {
             res.rows.forEach(row => {

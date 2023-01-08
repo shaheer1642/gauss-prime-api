@@ -20,10 +20,6 @@ const endpoints = {
     'allsquads/leaderboards/fetch': leaderboardsFetch,
 }
 
-event_emitter.on('db_connected', () => {
-    updateClanWebhookMessage()
-})
-
 function clansCreate(data, callback) {
     console.log('[keywordsCreate] data:',data)
     if (!data.clan_name) return callback({code: 400, message: 'No clan_name provided'})
@@ -46,7 +42,6 @@ function clansCreate(data, callback) {
             '${data.stats}'
         )
     `).then(res => {
-        updateClanWebhookMessage()
         if (res.rowCount == 1) {
             return callback({
                 code: 200,
@@ -93,7 +88,6 @@ function clansDelete(data,callback) {
     }
     db.query(`DELETE FROM as_clan_affiliates WHERE id=${data.id}`)
     .then(res => {
-        updateClanWebhookMessage()
         if (!callback) return
         if (res.rowCount == 0) {
             return callback({
@@ -116,7 +110,7 @@ function clansDelete(data,callback) {
     })
 }
 
-function updateClanWebhookMessage() {
+function updateClanWebhookMessages() {
     db.query(`
         SELECT * FROM as_clan_affiliates ORDER BY id;
         SELECT * FROM as_clan_affiliates_messages ORDER BY id;
@@ -351,6 +345,9 @@ function pingmuteOnSquadOpen(squad) {
 
 db.on('notification',(notification) => {
     const payload = JSONbig.parse(notification.payload);
+    if (['as_clan_affiliates_insert','as_clan_affiliates_update','as_clan_affiliates_delete'].includes(notification.channel)) {
+        updateClanWebhookMessages()
+    }
 })
 
 module.exports = {
