@@ -418,8 +418,10 @@ function trackersfetchSubscribers(data,callback) {
         const hosted_squad = relicBotSquadToString(squad,true)
         res.rows.forEach(tracker => {
             if (hosted_squad == relicBotSquadToString(tracker,true)) {
-                if (!channel_ids[tracker.channel_id]) channel_ids[tracker.channel_id] = []
-                channel_ids[tracker.channel_id].push(tracker.discord_id)
+                if (!channel_ids[tracker.channel_id]) 
+                    channel_ids[tracker.channel_id] = []
+                if (!channel_ids[tracker.channel_id].includes(tracker.discord_id))
+                    channel_ids[tracker.channel_id].push(tracker.discord_id)
             }
         })
         return callback({

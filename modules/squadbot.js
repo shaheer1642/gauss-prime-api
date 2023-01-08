@@ -496,8 +496,10 @@ function trackersfetchSubscribers(data,callback) {
                 }
             }
             if (tracker.squad_string.match(hosted_squad) || hosted_squad.match(tracker.squad_string)) {
-                if (!channel_ids[tracker.channel_id]) channel_ids[tracker.channel_id] = []
-                channel_ids[tracker.channel_id].push(tracker.discord_id)
+                if (!channel_ids[tracker.channel_id]) 
+                    channel_ids[tracker.channel_id] = []
+                if (!channel_ids[tracker.channel_id].includes(tracker.discord_id))
+                    channel_ids[tracker.channel_id].push(tracker.discord_id)
             }
         })
         return callback({
