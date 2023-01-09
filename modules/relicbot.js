@@ -345,9 +345,8 @@ function trackersCreate(data,callback) {
             })
             if (squad.squad_type == '') squad.squad_type = '4b4'
             if (squad.main_refinements.length == 0) squad.main_refinements.push('rad')
-            if (squad.is_steelpath && squad.is_railjack) squad.is_railjack = false
 
-            db.query(`INSERT INTO rb_trackers (tracker_id,discord_id,channel_id,tier,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack) 
+            db.query(`INSERT INTO rb_trackers (tracker_id,discord_id,channel_id,tier,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count) 
             VALUES (
                 '${tracker_id}',
                 '${data.discord_id}',
@@ -358,9 +357,7 @@ function trackersCreate(data,callback) {
                 '${JSON.stringify(squad.off_relics)}',
                 '${JSON.stringify(squad.off_refinements)}',
                 '${squad.squad_type}',
-                '${squad.cycle_count}',
-                ${squad.is_steelpath},
-                ${squad.is_railjack}
+                '${squad.cycle_count}'
             )`).then(res => {
                 if (res.rowCount == 1) {
                     return resolve({
@@ -415,9 +412,9 @@ function trackersfetchSubscribers(data,callback) {
     db.query(`SELECT * FROM rb_trackers WHERE discord_id != '${squad.original_host}';`)
     .then(res => {
         const channel_ids = {};
-        const hosted_squad = relicBotSquadToString(squad,true)
+        const hosted_squad = relicBotSquadToString(squad)
         res.rows.forEach(tracker => {
-            if (hosted_squad == relicBotSquadToString(tracker,true)) {
+            if (hosted_squad == relicBotSquadToString(tracker)) {
                 if (!channel_ids[tracker.channel_id]) 
                     channel_ids[tracker.channel_id] = []
                 if (!channel_ids[tracker.channel_id].includes(tracker.discord_id))
