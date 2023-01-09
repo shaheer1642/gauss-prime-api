@@ -128,7 +128,7 @@ function squadsCreate(data,callback) {
                 message: `Relic name could not be determined`
             })
             for (const relic of squad.main_relics) {
-                if (!['random','randoms','trace','traces'].includes(relic.toLowerCase())) {
+                if (!['random','traces'].includes(relic.toLowerCase())) {
                     if (!relics_list[`${squad.tier}_${relic}_relic`.toLowerCase()]) return resolve({
                         code: 400,
                         message: `**${squad.tier} ${relic}** is not a valid relic`
@@ -628,9 +628,9 @@ function relicBotStringToSquad(str) {
     }
     str = str.toLowerCase().trim()
     str = str.replace(/^h /,'').replace(/off$/g,'').replace(/off$/g,'').replace(/offcycle$/g,'').replace(/ or /g,'').replace(/ or /g,' ').replace(/steel path/,'steelpath').replace(/rail jack/,'railjack')
+    .replace(/^randoms /,'random ')
     .replace(/^random lith/,'lith random').replace(/^random meso/,'meso random').replace(/^random neo/,'neo random').replace(/^random axi/,'axi random')
-    .replace(/^randoms lith/,'lith random').replace(/^randoms meso/,'meso random').replace(/^randoms neo/,'neo random').replace(/^randoms axi/,'axi random')
-    .replace(/^trace lith/,'lith trace').replace(/^trace meso/,'meso trace').replace(/^trace neo/,'neo trace').replace(/^trace axi/,'axi trace')
+    .replace(/^trace /,'traces ')
     .replace(/^traces lith/,'lith trace').replace(/^traces meso/,'meso trace').replace(/^traces neo/,'neo trace').replace(/^traces axi/,'axi trace');
     squad.tier = str.split(' ')[0]
     str = str.replaceAll(squad.tier,'').replace(/,/g,' ').replace(/\s+/g, ' ').trim()
@@ -649,7 +649,7 @@ function relicBotStringToSquad(str) {
             const refinement = word[word.length - 1].replace('i','int').replace('f','flaw').replace('r','rad')
             if (!squad.main_refinements.includes(refinement)) squad.main_refinements.push(refinement)
         }
-        else if (['random','randoms','trace','traces'].includes(word)) {
+        else if (['random','traces'].includes(word)) {
             if (!squad.main_relics.includes(word)) squad.main_relics.push(word)
         }
         else if ((word.length == 2 || word.length == 3) && !Number(word[0]) && Number(`${word[1]}${word[2] || ''}`)) {
