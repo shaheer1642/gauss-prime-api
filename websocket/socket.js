@@ -1093,6 +1093,8 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
           clients[socket].emit('relicbot/squads/closed', payload[0])
         if (payload[0].status == 'disbanded' && payload[1].status == 'opened')
           clients[socket].emit('relicbot/squads/disbanded', payload[0])
+        if (payload[0].status == 'invalidated' && payload[1].status == 'closed')
+          clients[socket].emit('relicbot/squads/invalidated', payload[0])
       }
     }
   }
@@ -1155,6 +1157,8 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
           clients[socket].emit('squadbot/squads/closed', payload[0])
         if (payload[0].status == 'disbanded' && payload[1].status == 'opened')
           clients[socket].emit('squadbot/squads/disbanded', payload[0])
+        if (payload[0].status == 'invalidated' && payload[1].status == 'closed')
+          clients[socket].emit('squadbot/squads/invalidated', payload[0])
       }
     }
   }
