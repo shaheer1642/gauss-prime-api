@@ -650,7 +650,7 @@ function relicBotStringToSquad(str) {
         is_vaulted: true
     }
     str = str.toLowerCase().trim()
-    str = str.replace(/^h /,'').replace(/off$/g,'').replace(/off$/g,'').replace(/offcycle$/g,'').replace(/ or /g,'').replace(/ or /g,' ').replace(/steel path/,'steelpath').replace(/rail jack/,'railjack')
+    str = str.replace(/^h /,'').replace(/off$/g,'').replace(/off$/g,'').replace(/offcycle$/g,'').replace(/ or /g,' ').replace(/steel path/,'steelpath').replace(/rail jack/,'railjack')
     .replace(/^randoms /,'random ')
     .replace(/^random lith/,'lith random').replace(/^random meso/,'meso random').replace(/^random neo/,'neo random').replace(/^random axi/,'axi random')
     .replace(/^trace /,'traces ')
