@@ -49,6 +49,7 @@ export default class AllSquadsFaqs extends React.Component {
             modalAlert: '',
             modalTitle: '',
             modalBody: '',
+            modalImageUrl: '',
             modalFaqId: '',
         }
     }
@@ -77,6 +78,7 @@ export default class AllSquadsFaqs extends React.Component {
             modalAlert: '',
             modalTitle: '',
             modalBody: '',
+            modalImageUrl: '',
             modalFaqId: '',
         })
     }
@@ -100,7 +102,7 @@ export default class AllSquadsFaqs extends React.Component {
                                     </Typography>
                                 </Grid>
                                 <Grid item xs={1}>
-                                    <Button size='large' onClick={() => this.setState({modalShow: true, modalHeader: 'Edit', modalTitle: faq.title, modalBody: faq.body, modalFaqId: faq.faq_id})}><Edit fontSize='large' sx={{ color: Colors.blue[900] }} /></Button>
+                                    <Button size='large' onClick={() => this.setState({modalShow: true, modalHeader: 'Edit', modalTitle: faq.title, modalBody: faq.body, modalFaqId: faq.faq_id, modalImageUrl: faq.image_url})}><Edit fontSize='large' sx={{ color: Colors.blue[900] }} /></Button>
                                 </Grid>
                                 <Grid item xs={1}>
                                     <Button size='large' onClick={() => socket.emit('allsquads/faqs/delete', {faq_id: faq.faq_id},(res) => this.fetchFaqs())}><Delete fontSize='large' sx={{ color: Colors.red[900] }} /></Button>
@@ -113,6 +115,17 @@ export default class AllSquadsFaqs extends React.Component {
                                             </Typography>
                                         )
                                     })}
+                                    {
+                                        faq.image_url ? 
+                                        <Grid item xs={12}>
+                                            <img 
+                                                width={"100%"}
+                                                height={"100%"}
+                                                src={faq.image_url}
+                                                alt="Image"
+                                            />
+                                        </Grid>:<></>
+                                    }
                                 </Grid>
                             </Grid>
                         )
@@ -144,12 +157,17 @@ export default class AllSquadsFaqs extends React.Component {
 
                         <Grid item xs={12} >
                             <FormControl sx={{ m: '10px', width: '100%' }} size="small">
-                                <TextField label="Title" variant="standard" onChange={(e) => this.setState({modalTitle: e.target.value})} defaultValue = {this.state.modalTitle}/>
+                                <TextField required label="Title" variant="standard" onChange={(e) => this.setState({modalTitle: e.target.value})} defaultValue = {this.state.modalTitle}/>
                             </FormControl>
                         </Grid>
                         <Grid item xs={12} >
                             <FormControl sx={{ m: '10px', width: '100%' }} size="small">
-                                <TextField multiline minRows={2} maxRows={5} label="Body" variant="standard" onChange={(e) => this.setState({modalBody: e.target.value})} defaultValue = {this.state.modalBody}/>
+                                <TextField required multiline minRows={2} maxRows={5} label="Body" variant="standard" onChange={(e) => this.setState({modalBody: e.target.value})} defaultValue = {this.state.modalBody}/>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={12} >
+                            <FormControl sx={{ m: '10px', width: '100%' }} size="small">
+                                <TextField label="Image Url (optional)" variant="standard" onChange={(e) => this.setState({modalImageUrl: e.target.value})} defaultValue = {this.state.modalImageUrl}/>
                             </FormControl>
                         </Grid>
                         
@@ -164,6 +182,7 @@ export default class AllSquadsFaqs extends React.Component {
                                 socket.emit(`allsquads/faqs/${this.state.modalFaqId == '' ? 'create':'update'}`, {
                                     title: this.state.modalTitle,
                                     body: this.state.modalBody,
+                                    image_url: this.state.modalImageUrl,
                                     faq_id: this.state.modalFaqId,
                                 }, (res) => {
                                     this.fetchFaqs()

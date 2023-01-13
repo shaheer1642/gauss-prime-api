@@ -153,10 +153,12 @@ function faqsCreate(data, callback) {
     db.query(`
         INSERT INTO as_faq (
             title,
-            body
+            body,
+            image_url
         ) VALUES (
             '${data.title.replace(/'/g,`''`)}',
-            '${data.body.replace(/'/g,`''`)}'
+            '${data.body.replace(/'/g,`''`)}',
+            ${data.image_url ? `'${data.image_url}'`:'null'}
         )
     `).then(res => {
         if (res.rowCount == 1) {
@@ -185,7 +187,7 @@ function faqsUpdate(data, callback) {
     if (!data.title) return callback({code: 400, message: 'No title provided'})
     if (!data.body) return callback({code: 400, message: 'No body provided'})
     db.query(`
-        UPDATE as_faq SET title='${data.title.replace(/'/g,`''`)}', body='${data.body.replace(/'/g,`''`)}' WHERE faq_id = '${data.faq_id}';
+        UPDATE as_faq SET title='${data.title.replace(/'/g,`''`)}', body='${data.body.replace(/'/g,`''`)}', image_url=${data.image_url ? `'${data.image_url}'`:'null'} WHERE faq_id = '${data.faq_id}';
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
