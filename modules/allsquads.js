@@ -183,11 +183,12 @@ function faqsCreate(data, callback) {
 
 function faqsUpdate(data, callback) {
     console.log('[allsquads.faqsUpdate] data:',data)
+    if (!data.id) return callback({code: 400, message: 'No id(order) provided'})
     if (!data.faq_id) return callback({code: 400, message: 'No faq_id provided'})
     if (!data.title) return callback({code: 400, message: 'No title provided'})
     if (!data.body) return callback({code: 400, message: 'No body provided'})
     db.query(`
-        UPDATE as_faq SET title='${data.title.replace(/'/g,`''`)}', body='${data.body.replace(/'/g,`''`)}', image_url=${data.image_url ? `'${data.image_url}'`:'null'} WHERE faq_id = '${data.faq_id}';
+        UPDATE as_faq SET id=${data.id},title='${data.title.replace(/'/g,`''`)}', body='${data.body.replace(/'/g,`''`)}', image_url=${data.image_url ? `'${data.image_url}'`:'null'} WHERE faq_id = '${data.faq_id}';
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
