@@ -13,6 +13,11 @@ const endpoints = {
     'allsquads/clans/fetch': clansFetch,
     'allsquads/clans/delete': clansDelete,
 
+    'allsquads/faqs/create': faqsCreate,
+    'allsquads/faqs/update': faqsUpdate,
+    'allsquads/faqs/fetch': faqsFetch,
+    'allsquads/faqs/delete': faqsDelete,
+
     'allsquads/pingmutes/create': pingmutesCreate,
     'allsquads/pingmutes/fetch': pingmutesFetch,
     'allsquads/pingmutes/delete': pingmutesDelete,
@@ -21,7 +26,7 @@ const endpoints = {
 }
 
 function clansCreate(data, callback) {
-    console.log('[keywordsCreate] data:',data)
+    console.log('[clansCreate] data:',data)
     if (!data.clan_name) return callback({code: 400, message: 'No clan_name provided'})
     if (!data.logo_url) return callback({code: 400, message: 'No logo_url provided'})
     if (!data.description) return callback({code: 400, message: 'No description provided'})
@@ -81,7 +86,7 @@ function clansFetch(data,callback) {
 }
 
 function clansDelete(data,callback) {
-    console.log('[keywordsDelete] data:',data)
+    console.log('[clansDelete] data:',data)
     if (!data.id) {
         if (callback) callback({code: 400, message: 'No id provided'})
         return
@@ -139,6 +144,115 @@ function updateClanWebhookMessages() {
             }
         })
     }).catch(console.error)
+}
+
+function faqsCreate(data, callback) {
+    console.log('[allsquads.faqsCreate] data:',data)
+    if (!data.title) return callback({code: 400, message: 'No title provided'})
+    if (!data.body) return callback({code: 400, message: 'No body provided'})
+    db.query(`
+        INSERT INTO as_faq (
+            title,
+            body
+        ) VALUES (
+            '${data.title.replace(/'/g,`''`)}',
+            '${data.body.replace(/'/g,`''`)}'
+        )
+    `).then(res => {
+        if (res.rowCount == 1) {
+            return callback({
+                code: 200,
+                message: 'Success'
+            })
+        } else {
+            return callback({
+                code: 500,
+                message: 'Unexpected error'
+            })
+        }
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.detail || err.stack || err
+        })
+    })
+}
+
+function faqsUpdate(data, callback) {
+    console.log('[allsquads.faqsUpdate] data:',data)
+    if (!data.faq_id) return callback({code: 400, message: 'No faq_id provided'})
+    if (!data.title) return callback({code: 400, message: 'No title provided'})
+    if (!data.body) return callback({code: 400, message: 'No body provided'})
+    db.query(`
+        UPDATE as_faq SET title='${data.title.replace(/'/g,`''`)}', body='${data.body.replace(/'/g,`''`)}' WHERE faq_id = '${data.faq_id}';
+    `).then(res => {
+        if (res.rowCount == 1) {
+            return callback({
+                code: 200,
+                message: 'Success'
+            })
+        } else {
+            return callback({
+                code: 500,
+                message: 'Unexpected db response'
+            })
+        }
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.detail || err.stack || err
+        })
+    })
+}
+
+function faqsFetch(data,callback) {
+    console.log('[allsquads.faqsFetch] data:',data)
+    db.query(`
+        SELECT * FROM as_faq ORDER BY id;
+    `).then(res => {
+        return callback({
+            code: 200,
+            data: res.rows
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.detail || err.stack || err
+        })
+    })
+}
+
+function faqsDelete(data,callback) {
+    console.log('[allsquads.faqsDelete] data:',data)
+    if (!data.faq_id) {
+        if (callback) callback({code: 400, message: 'No faq_id provided'})
+        return
+    }
+    db.query(`DELETE FROM as_faq WHERE faq_id='${data.faq_id}'`)
+    .then(res => {
+        if (!callback) return
+        if (res.rowCount == 0) {
+            return callback({
+                code: 500,
+                message: 'Unexpected db response'
+            })
+        } else {
+            return callback({
+                code: 200,
+                message: 'Record deleted'
+            })
+        }
+    }).catch(err => {
+        console.log(err)
+        if (!callback) return
+        return callback({
+            code: 500,
+            message: err.detail || err.stack || err
+        })
+    })
 }
 
 function clanAffiliateEmbed(clan) {
