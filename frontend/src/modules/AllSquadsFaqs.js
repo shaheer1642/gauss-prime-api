@@ -162,7 +162,7 @@ export default class AllSquadsFaqs extends React.Component {
                         </Grid>
                         <Grid item xs={12} >
                             <FormControl sx={{ m: '10px', width: '100%' }} size="small">
-                                <TextField required multiline minRows={2} maxRows={5} label="Body" variant="standard" onChange={(e) => this.setState({modalBody: e.target.value})} defaultValue = {this.state.modalBody}/>
+                                <TextField required multiline minRows={2} maxRows={10} label="Body" variant="standard" onChange={(e) => this.setState({modalBody: e.target.value})} defaultValue = {this.state.modalBody}/>
                             </FormControl>
                         </Grid>
                         <Grid item xs={12} >
