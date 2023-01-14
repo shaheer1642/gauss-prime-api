@@ -14,6 +14,7 @@ const endpoints = {
     'relicbot/squads/leave': squadsLeave,
     'relicbot/squads/validate': squadsValidate,
     'relicbot/squads/invalidate': squadsInvalidate,
+    'relicbot/squads/selecthost': squadsSelectHost,
 
     'relicbot/squads/messageCreate': squadsMessageCreate,
     'relicbot/squads/messagesFetch': squadsMessagesFetch,
@@ -360,6 +361,30 @@ function squadsInvalidate(data,callback) {
     if (!data.reason) return callback({code: 500, err: 'No reason provided'})
     db.query(`
         UPDATE rb_squads SET status = 'invalidated', invalidated_by = '${data.discord_id}', invalidation_reason = '${data.reason}' WHERE status = 'closed' AND squad_id = '${data.squad_id}';
+    `).then(res => {
+        if (res.rowCount == 1) {
+            return callback({
+                code: 200
+            })
+        } else return callback({
+            code: 500,
+            message: 'unexpected db response'
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+function squadsSelectHost(data,callback) {
+    console.log('[relicbot.squadsSelectHost] data:',data)
+    if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
+    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    db.query(`
+        UPDATE rb_squads SET squad_host = '${data.discord_id}' WHERE status = 'opened' AND squad_id = '${data.squad_id}';
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
