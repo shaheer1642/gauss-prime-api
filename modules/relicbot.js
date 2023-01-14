@@ -11,7 +11,7 @@ const endpoints = {
     'relicbot/squads/update': squadsUpdate,
     'relicbot/squads/addmember': squadsAddMember,
     'relicbot/squads/removemember': squadsRemoveMember,
-    'relicbot/squads/leaveall': squadsLeaveAll,
+    'relicbot/squads/leave': squadsLeave,
     'relicbot/squads/validate': squadsValidate,
     'relicbot/squads/invalidate': squadsInvalidate,
 
@@ -310,10 +310,12 @@ function squadsRemoveMember(data,callback) {
     })
 }
 
-function squadsLeaveAll(data,callback) {
-    console.log('[squadsLeaveAll] data:',data)
+function squadsLeave(data,callback) {
+    console.log('[relicbot.squadsLeave] data:',data)
     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
-    db.query(`UPDATE rb_squads SET members=members-'${data.discord_id}' WHERE status='active' AND members @> '"${data.discord_id}"' ${data.tier ? ` AND tier = '${data.tier}'`:''}`)
+    if (!data.tier) return callback({code: 500, err: 'No tier provided'})
+    if (!['all','lith','meso','neo','axi'].includes(data.tier)) return callback({code: 500, err: `**${data.tier}** is not a valid tier`})
+    db.query(`UPDATE rb_squads SET members=members-'${data.discord_id}' WHERE status='active' AND members @> '"${data.discord_id}"' ${data.tier == 'all' ? '':` AND tier = '${data.tier}'`}`)
     .then(res => {
         return callback({
             code: 200
