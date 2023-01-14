@@ -12,6 +12,7 @@ const endpoints = {
     'squadbot/squads/addmember': squadsAddMember,
     // 'squadbot/squads/removemember': squadsRemoveMember,
     'squadbot/squads/leaveall': squadsLeaveAll,
+    'squadbot/squads/validate': squadsValidate,
     'squadbot/squads/invalidate': squadsInvalidate,
 
     'squadbot/squads/messageCreate': squadsMessageCreate,
@@ -399,6 +400,30 @@ function squadsLeaveAll(data,callback) {
     .then(res => {
         return callback({
             code: 200
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+function squadsValidate(data,callback) {
+    console.log('[squadbot.squadsValidate] data:',data)
+    if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
+    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    db.query(`
+        UPDATE as_sb_squads SET validated_by = '${data.discord_id}' WHERE status = 'closed' AND squad_id = '${data.squad_id}';
+    `).then(res => {
+        if (res.rowCount == 1) {
+            return callback({
+                code: 200
+            })
+        } else return callback({
+            code: 500,
+            message: 'unexpected db response'
         })
     }).catch(err => {
         console.log(err)
