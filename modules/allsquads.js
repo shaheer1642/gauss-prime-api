@@ -24,6 +24,9 @@ const endpoints = {
 
     'allsquads/leaderboards/fetch': leaderboardsFetch,
     'allsquads/statistics/fetch': statisticsFetch,
+
+    'allsquads/user/ratings/fetch': userRatingsFetch,
+    'allsquads/user/ratings/create': userRatingsCreate,
 }
 
 function clansCreate(data, callback) {
@@ -502,7 +505,7 @@ function statisticsFetch(data,callback) {
                 if (giveaway.discord_id == discord_id) {
                     const rep = rep_scheme.giveaway
                     reputation.all_time += rep
-                    if (giveaway.expiry_timestamp >= today_start) reputation.today += rep
+                    // if (giveaway.expiry_timestamp >= today_start) reputation.today += rep
                     if (giveaway.expiry_timestamp >= week_start) reputation.this_week += rep
                     if (giveaway.expiry_timestamp >= month_start) reputation.this_month += rep
                 }
@@ -520,7 +523,7 @@ function statisticsFetch(data,callback) {
                 if (daywave_challenge.discord_id == discord_id) {
                     const rep = rep_scheme.daywave_completion
                     reputation.all_time += rep
-                    if (daywave_challenge.timestamp >= today_start) reputation.today += rep
+                    // if (daywave_challenge.timestamp >= today_start) reputation.today += rep
                     if (daywave_challenge.timestamp >= week_start) reputation.this_week += rep
                     if (daywave_challenge.timestamp >= month_start) reputation.this_month += rep
                 }
@@ -573,6 +576,73 @@ function statisticsFetch(data,callback) {
             code: 500,
             message: err.stack
         })
+    })
+}
+
+function userRatingsFetch(data,callback) {
+    console.log('[allsquads.userRatingsFetch] data:',data)
+    if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
+    db.query(`
+        SELECT * FROM as_users_ratings WHERE discord_id = '${data.discord_id}';
+    `).then(res => {
+        const user_ratings = {}
+        res.rows.forEach(row => {
+            user_ratings[row.rated_user] = row.rating
+        })
+        return callback({
+            code: 200,
+            data: user_ratings
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.detail || err.stack || err
+        })
+    })
+}
+function userRatingsCreate(data,callback) {
+    console.log('[allsquads.userRatingsCreate] data:',data)
+    if (!data.discord_id) {
+        if (callback) callback({code: 400, err: 'No discord_id provided'})
+        return
+    }
+    if (!data.rated_user) {
+        if (callback) callback({code: 400, err: 'No rated_user provided'})
+        return
+    }
+    if (!data.rating) {
+        if (callback) callback({code: 400, err: 'No rating provided'})
+        return
+    }
+    if (!Number(data.rating)) {
+        if (callback) callback({code: 400, err: 'Invalid rating type'})
+        return
+    }
+    db.query(`
+        INSERT INTO as_users_ratings (discord_id, rated_user, rating) VALUES ('${data.discord_id}','${data.rated_user}',${Number(data.rating)});
+    `).then(res => {
+        if (callback) {
+            if (res.rowCount == 1) {
+                return callback({
+                    code: 200,
+                    data: user_ratings
+                })
+            } else {
+                return callback({
+                    code: 500,
+                    data: 'unexpected db response'
+                })
+            }
+        }
+    }).catch(err => {
+        console.log(err)
+        if (callback) {
+            return callback({
+                code: 500,
+                message: err.detail || err.stack || err
+            })
+        }
     })
 }
 
