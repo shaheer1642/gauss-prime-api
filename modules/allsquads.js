@@ -23,6 +23,7 @@ const endpoints = {
     'allsquads/pingmutes/delete': pingmutesDelete,
 
     'allsquads/leaderboards/fetch': leaderboardsFetch,
+    'allsquads/statistics/fetch': statisticsFetch,
 }
 
 function clansCreate(data, callback) {
@@ -378,7 +379,7 @@ function leaderboardsFetch(data,callback) {
         db_users.forEach(user => {
             const discord_id = user.discord_id
             if (!discord_id || discord_id == "0") return
-            var squads_completed = {
+            var reputation = {
                 all_time: 0,
                 today: 0,
                 this_week: 0,
@@ -386,37 +387,37 @@ function leaderboardsFetch(data,callback) {
             }
             db_squads.forEach(squad => {
                 if (squad.members.includes(discord_id) && squad.status == 'closed') {
-                    squads_completed.all_time++
-                    if (squad.creation_timestamp >= today_start) squads_completed.today++
-                    if (squad.creation_timestamp >= week_start) squads_completed.this_week++
-                    if (squad.creation_timestamp >= month_start) squads_completed.this_month++
+                    reputation.all_time++
+                    if (squad.creation_timestamp >= today_start) reputation.today++
+                    if (squad.creation_timestamp >= week_start) reputation.this_week++
+                    if (squad.creation_timestamp >= month_start) reputation.this_month++
                 }
             })
-            if (squads_completed.all_time > 0)
+            if (reputation.all_time > 0)
                 leaderboards.all_time.push({
                     ...user,
-                    squads_completed: squads_completed.all_time
+                    reputation: reputation.all_time
                 })
-            if (squads_completed.today > 0)
+            if (reputation.today > 0)
                 leaderboards.today.push({
                     ...user,
-                    squads_completed: squads_completed.today
+                    reputation: reputation.today
                 })
-            if (squads_completed.this_week > 0)
+            if (reputation.this_week > 0)
                 leaderboards.this_week.push({
                     ...user,
-                    squads_completed: squads_completed.this_week
+                    reputation: reputation.this_week
                 })
-            if (squads_completed.this_month > 0)
+            if (reputation.this_month > 0)
                 leaderboards.this_month.push({
                     ...user,
-                    squads_completed: squads_completed.this_month
+                    reputation: reputation.this_month
                 })
         })
-        leaderboards.all_time = leaderboards.all_time.sort(dynamicSortDesc("squads_completed"))
-        leaderboards.today = leaderboards.today.sort(dynamicSortDesc("squads_completed"))
-        leaderboards.this_week = leaderboards.this_week.sort(dynamicSortDesc("squads_completed"))
-        leaderboards.this_month = leaderboards.this_month.sort(dynamicSortDesc("squads_completed"))
+        leaderboards.all_time = leaderboards.all_time.sort(dynamicSortDesc("reputation"))
+        leaderboards.today = leaderboards.today.sort(dynamicSortDesc("reputation"))
+        leaderboards.this_week = leaderboards.this_week.sort(dynamicSortDesc("reputation"))
+        leaderboards.this_month = leaderboards.this_month.sort(dynamicSortDesc("reputation"))
         if (data.limit) {
             leaderboards.all_time = leaderboards.all_time.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
             leaderboards.today = leaderboards.today.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
@@ -427,6 +428,144 @@ function leaderboardsFetch(data,callback) {
         return callback({
             code: 200,
             data: leaderboards
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+function statisticsFetch(data,callback) {
+    console.log('[allsquads.statisticsFetch] data:',data)
+    db.query(`
+        SELECT * FROM tradebot_users_list;
+        SELECT * FROM rb_squads WHERE status = 'closed';
+        SELECT * FROM as_sb_squads WHERE status = 'closed';
+        SELECT * FROM as_gabot_giveaways WHERE status = 'ended';
+        SELECT * FROM as_bb_blesses WHERE status = 'closed';
+        SELECT * FROM challenges_completed;
+        SELECT * FROM as_rank_roles;
+    `).then(res => {
+        const rep_scheme = {
+            relicbot: 0.5,
+            squadbot: 0.5,
+            giveaway: 0.2,
+            blessing: 0.2,
+            daywave_completion: 0.5,
+            ranks: {
+                rank_1: 5.0,
+                rank_2: 10.0,
+                rank_3: 15.0,
+                rank_4: 20.0,
+                rank_5: 25.0,
+            }
+        }
+        const db_users = res[0].rows
+        const db_squads = res[1].rows.map(row => ({...row, bot_type: 'relicbot'})).concat(res[2].rows.map(row => ({...row, bot_type: 'squadbot'})))
+        const db_giveaways = res[3].rows
+        const db_blessings = res[4].rows
+        const db_daywave_challenges = res[5].rows
+        const db_rank_roles = res[6].rows
+
+        var statistics = {
+            all_time: [],
+            this_month: [],
+            this_week: [],
+            today: [],
+        }
+        const today_start = getTodayStartMs()
+        const week_start = getWeekStartMs()
+        const month_start = getMonthStartMs()
+
+        db_users.forEach(user => {
+            const discord_id = user.discord_id
+            if (!discord_id || discord_id == "0") return
+            var reputation = {
+                all_time: 0.0,
+                today: 0.0,
+                this_week: 0.0,
+                this_month: 0.0
+            }
+            db_squads.forEach(squad => {
+                if (squad.members.includes(discord_id)) {
+                    const rep = rep_scheme[squad.bot_type]
+                    reputation.all_time += rep
+                    if (squad.creation_timestamp >= today_start) reputation.today += rep
+                    if (squad.creation_timestamp >= week_start) reputation.this_week += rep
+                    if (squad.creation_timestamp >= month_start) reputation.this_month += rep
+                }
+            })
+            db_giveaways.forEach(giveaway => {
+                if (giveaway.discord_id == discord_id) {
+                    const rep = rep_scheme.giveaway
+                    reputation.all_time += rep
+                    if (giveaway.expiry_timestamp >= today_start) reputation.today += rep
+                    if (giveaway.expiry_timestamp >= week_start) reputation.this_week += rep
+                    if (giveaway.expiry_timestamp >= month_start) reputation.this_month += rep
+                }
+            })
+            db_blessings.forEach(blessing => {
+                if (blessing.discord_id == discord_id) {
+                    const rep = rep_scheme.blessing
+                    reputation.all_time += rep
+                    if (blessing.creation_timestamp >= today_start) reputation.today += rep
+                    if (blessing.creation_timestamp >= week_start) reputation.this_week += rep
+                    if (blessing.creation_timestamp >= month_start) reputation.this_month += rep
+                }
+            })
+            db_daywave_challenges.forEach(daywave_challenge => {
+                if (daywave_challenge.discord_id == discord_id) {
+                    const rep = rep_scheme.daywave_completion
+                    reputation.all_time += rep
+                    if (daywave_challenge.timestamp >= today_start) reputation.today += rep
+                    if (daywave_challenge.timestamp >= week_start) reputation.this_week += rep
+                    if (daywave_challenge.timestamp >= month_start) reputation.this_month += rep
+                }
+            })
+            db_rank_roles.forEach(rank_role => {
+                if (rank_role.discord_id == discord_id) {
+                    const rep = rep_scheme.ranks[rank_role.rank_type]
+                    reputation.all_time += rep
+                }
+            })
+            if (reputation.all_time > 0)
+                statistics.all_time.push({
+                    ...user,
+                    reputation: reputation.all_time
+                })
+            if (reputation.today > 0)
+                statistics.today.push({
+                    ...user,
+                    reputation: reputation.today
+                })
+            if (reputation.this_week > 0)
+                statistics.this_week.push({
+                    ...user,
+                    reputation: reputation.this_week
+                })
+            if (reputation.this_month > 0)
+                statistics.this_month.push({
+                    ...user,
+                    reputation: reputation.this_month
+                })
+        })
+        statistics.all_time = statistics.all_time.sort(dynamicSortDesc("reputation"))
+        statistics.today = statistics.today.sort(dynamicSortDesc("reputation"))
+        statistics.this_week = statistics.this_week.sort(dynamicSortDesc("reputation"))
+        statistics.this_month = statistics.this_month.sort(dynamicSortDesc("reputation"))
+        if (data.limit) {
+            statistics.all_time = statistics.all_time.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+            statistics.today = statistics.today.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+            statistics.this_week = statistics.this_week.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+            statistics.this_month = statistics.this_month.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+        }
+        console.log(JSON.stringify(statistics))
+        return callback({
+            code: 200,
+            data: statistics
         })
     }).catch(err => {
         console.log(err)
