@@ -23,7 +23,6 @@ const endpoints = {
     'allsquads/pingmutes/fetch': pingmutesFetch,
     'allsquads/pingmutes/delete': pingmutesDelete,
 
-    'allsquads/leaderboards/fetch': leaderboardsFetch,
     'allsquads/statistics/fetch': statisticsFetch,
 
     'allsquads/user/ratings/fetch': userRatingsFetch,
@@ -350,88 +349,6 @@ function pingmutesDelete(data,callback) {
     db.query(query).then(res => {
         return callback({
             code: 200,
-        })
-    }).catch(err => {
-        console.log(err)
-        return callback({
-            code: 500,
-            message: err.stack
-        })
-    })
-}
-
-function leaderboardsFetch(data,callback) {
-    console.log('[leaderboardsFetch] data:',data)
-    db.query(`
-        SELECT * FROM tradebot_users_list;
-        SELECT * FROM rb_squads;
-        SELECT * FROM as_sb_squads;
-    `).then(res => {
-        const db_users = res[0].rows
-        const db_squads = res[1].rows.concat(res[2].rows)
-
-        var leaderboards = {
-            all_time: [],
-            this_month: [],
-            this_week: [],
-            today: [],
-        }
-        const today_start = getTodayStartMs()
-        const week_start = getWeekStartMs()
-        const month_start = getMonthStartMs()
-
-        db_users.forEach(user => {
-            const discord_id = user.discord_id
-            if (!discord_id || discord_id == "0") return
-            var reputation = {
-                all_time: 0,
-                today: 0,
-                this_week: 0,
-                this_month: 0
-            }
-            db_squads.forEach(squad => {
-                if (squad.members.includes(discord_id) && squad.status == 'closed') {
-                    reputation.all_time++
-                    if (squad.creation_timestamp >= today_start) reputation.today++
-                    if (squad.creation_timestamp >= week_start) reputation.this_week++
-                    if (squad.creation_timestamp >= month_start) reputation.this_month++
-                }
-            })
-            if (reputation.all_time > 0)
-                leaderboards.all_time.push({
-                    ...user,
-                    reputation: reputation.all_time
-                })
-            if (reputation.today > 0)
-                leaderboards.today.push({
-                    ...user,
-                    reputation: reputation.today
-                })
-            if (reputation.this_week > 0)
-                leaderboards.this_week.push({
-                    ...user,
-                    reputation: reputation.this_week
-                })
-            if (reputation.this_month > 0)
-                leaderboards.this_month.push({
-                    ...user,
-                    reputation: reputation.this_month
-                })
-        })
-        leaderboards.all_time = leaderboards.all_time.sort(dynamicSortDesc("reputation"))
-        leaderboards.today = leaderboards.today.sort(dynamicSortDesc("reputation"))
-        leaderboards.this_week = leaderboards.this_week.sort(dynamicSortDesc("reputation"))
-        leaderboards.this_month = leaderboards.this_month.sort(dynamicSortDesc("reputation"))
-        if (data.limit) {
-            leaderboards.all_time = leaderboards.all_time.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
-            leaderboards.today = leaderboards.today.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
-            leaderboards.this_week = leaderboards.this_week.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
-            leaderboards.this_month = leaderboards.this_month.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
-        }
-        console.log(JSON.stringify(leaderboards))
-        return callback({
-            code: 200,
-            data: leaderboards
         })
     }).catch(err => {
         console.log(err)

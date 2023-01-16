@@ -24,10 +24,6 @@ const endpoints = {
     'squadbot/trackers/delete': trackersDelete,
     'squadbot/trackers/fetchSubscribers': trackersfetchSubscribers,
 
-    // 'squadbot/users/fetch': usersFetch,
-
-    // 'squadbot/stats/fetch': statsFetch,
-
     'squadbot/keywords/create': keywordsCreate,
     'squadbot/keywords/fetch': keywordsFetch,
     'squadbot/keywords/delete': keywordsDelete,
