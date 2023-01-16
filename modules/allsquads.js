@@ -467,12 +467,12 @@ function statisticsFetch(data,callback) {
                     if (daywave_challenge.timestamp >= month_start) reputation.this_month += rep
                 }
             })
-            db_rank_roles.forEach(rank_role => {
-                if (rank_role.discord_id == discord_id) {
-                    const rep = rep_scheme.ranks[rank_role.rank_type]
-                    reputation.all_time += rep
-                }
-            })
+            // db_rank_roles.forEach(rank_role => {
+            //     if (rank_role.discord_id == discord_id) {
+            //         const rep = rep_scheme.ranks[rank_role.rank_type]
+            //         reputation.all_time += rep
+            //     }
+            // })
             db_users_ratings.forEach(user_rating => {
                 if (user_rating.rated_user == discord_id) {
                     const rep = rep_scheme.rating[user_rating.rating]
