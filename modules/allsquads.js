@@ -451,6 +451,7 @@ function statisticsFetch(data,callback) {
         SELECT * FROM as_bb_blesses WHERE status = 'closed';
         SELECT * FROM challenges_completed;
         SELECT * FROM as_rank_roles;
+        SELECT * FROM as_users_ratings;
     `).then(res => {
         const rep_scheme = {
             relicbot: 0.5,
@@ -464,6 +465,13 @@ function statisticsFetch(data,callback) {
                 rank_3: 15.0,
                 rank_4: 20.0,
                 rank_5: 25.0,
+            },
+            rating: {
+                1: 0.0,
+                2: 0.2,
+                3: 0.4,
+                4: 0.5,
+                5: 1.0,
             }
         }
         const db_users = res[0].rows
@@ -472,6 +480,7 @@ function statisticsFetch(data,callback) {
         const db_blessings = res[4].rows
         const db_daywave_challenges = res[5].rows
         const db_rank_roles = res[6].rows
+        const db_users_ratings = res[7].rows
 
         var statistics = {
             all_time: [],
@@ -531,6 +540,12 @@ function statisticsFetch(data,callback) {
             db_rank_roles.forEach(rank_role => {
                 if (rank_role.discord_id == discord_id) {
                     const rep = rep_scheme.ranks[rank_role.rank_type]
+                    reputation.all_time += rep
+                }
+            })
+            db_users_ratings.forEach(user_rating => {
+                if (user_rating.rated_user == discord_id) {
+                    const rep = rep_scheme.rating[user_rating.rating]
                     reputation.all_time += rep
                 }
             })
