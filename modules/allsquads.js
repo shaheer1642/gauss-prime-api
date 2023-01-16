@@ -457,8 +457,8 @@ function statisticsFetch(data,callback) {
         const rep_scheme = {
             relicbot: 0.5,
             squadbot: 0.5,
-            giveaway: 0.2,
-            blessing: 0.2,
+            giveaway: 2.0,
+            blessing: 0.5,
             daywave_completion: 0.5,
             ranks: {
                 rank_1: 5.0,
@@ -503,9 +503,11 @@ function statisticsFetch(data,callback) {
                 statistics.top_squads[squad.squad_string]++
             }
         })
+        const skip_users = data.skip_users || []
         db_users.forEach(user => {
             const discord_id = user.discord_id
             if (!discord_id || discord_id == "0") return
+            if (skip_users.includes(discord_id)) return
             var reputation = {
                 all_time: 0.0,
                 today: 0.0,
@@ -594,6 +596,7 @@ function statisticsFetch(data,callback) {
             statistics.top_squads = statistics.top_squads.map((host,index) => index < data.limit ? host:null).filter(o => o != null)
         }
         console.log(JSON.stringify(statistics))
+        if (data.exclude_daily) delete statistics.today
         return callback({
             code: 200,
             data: statistics
