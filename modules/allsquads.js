@@ -7,6 +7,7 @@ const JSONbig = require('json-bigint');
 const { WebhookClient } = require('discord.js');
 const clanWebhookClient = new WebhookClient({url: process.env.AS_CLAN_AFFILIATES_WEBHOOK});
 const { getStateExpiry } = require('./worldstate')
+const {relicBotSquadToString} = require('./relicbot')
 
 const endpoints = {
     'allsquads/clans/create': clansCreate,
@@ -487,11 +488,21 @@ function statisticsFetch(data,callback) {
             this_month: [],
             this_week: [],
             today: [],
+            top_squads: {}
         }
         const today_start = getTodayStartMs()
         const week_start = getWeekStartMs()
         const month_start = getMonthStartMs()
 
+        db_squads.forEach(squad => {
+            if (squad.creation_timestamp >= week_start) {
+                if (!squad.squad_string) 
+                    squad.squad_string = (relicBotSquadToString(squad,false,true)).toLowerCase().replace(/ /g,'_')
+                if (!statistics.top_squads[squad.squad_string]) 
+                    statistics.top_squads[squad.squad_string] = 0
+                statistics.top_squads[squad.squad_string]++
+            }
+        })
         db_users.forEach(user => {
             const discord_id = user.discord_id
             if (!discord_id || discord_id == "0") return
@@ -574,11 +585,13 @@ function statisticsFetch(data,callback) {
         statistics.today = statistics.today.sort(dynamicSortDesc("reputation"))
         statistics.this_week = statistics.this_week.sort(dynamicSortDesc("reputation"))
         statistics.this_month = statistics.this_month.sort(dynamicSortDesc("reputation"))
+        statistics.top_squads = Object.keys(statistics.top_squads).map(squad_string => ({squad_string: squad_string, hosts: statistics.top_squads[squad_string]})).sort(dynamicSortDesc("hosts"))
         if (data.limit) {
             statistics.all_time = statistics.all_time.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
             statistics.today = statistics.today.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
             statistics.this_week = statistics.this_week.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
             statistics.this_month = statistics.this_month.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+            statistics.top_squads = statistics.top_squads.map((host,index) => index < data.limit ? host:null).filter(o => o != null)
         }
         console.log(JSON.stringify(statistics))
         return callback({

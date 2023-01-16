@@ -772,8 +772,8 @@ function relicBotStringToSquad(str) {
     return squad;
 }
 
-function relicBotSquadToString(squad,include_sp_rj) {
-    return `${convertUpper(squad.tier)} ${squad.main_relics.join(' ').toUpperCase()} ${squad.squad_type} ${squad.main_refinements.join(' ')} ${squad.off_relics.length > 0 ? 'with':''} ${squad.off_relics.join(' ').toUpperCase()} ${squad.off_refinements.join(' ')} ${include_sp_rj ? (squad.is_steelpath ? 'Steelpath':squad.is_railjack ? 'Railjack':''):''} ${squad.cycle_count == '' ? '':`(${squad.cycle_count} cycles)`}`.replace(/\s+/g, ' ').trim()
+function relicBotSquadToString(squad,include_sp_rj,exclude_cycle_count) {
+    return `${convertUpper(squad.tier)} ${squad.main_relics.join(' ').toUpperCase()} ${squad.squad_type} ${squad.main_refinements.join(' ')} ${squad.off_relics.length > 0 ? 'with':''} ${squad.off_relics.join(' ').toUpperCase()} ${squad.off_refinements.join(' ')} ${include_sp_rj ? (squad.is_steelpath ? 'Steelpath':squad.is_railjack ? 'Railjack':''):''} ${exclude_cycle_count ? '' : squad.cycle_count == '' ? '':`(${squad.cycle_count} cycles)`}`.replace(/\s+/g, ' ').trim()
 }
 
 db.on('notification',(notification) => {
@@ -794,5 +794,6 @@ db.on('notification',(notification) => {
 
 module.exports = {
     endpoints,
-    squad_closure
+    squad_closure,
+    relicBotSquadToString
 }
