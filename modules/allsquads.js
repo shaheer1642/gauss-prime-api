@@ -545,7 +545,7 @@ function statisticsFetch(data,callback) {
                 if (daywave_challenge.discord_id == discord_id) {
                     const rep = rep_scheme.daywave_completion
                     reputation.all_time += rep
-                    // if (daywave_challenge.timestamp >= today_start) reputation.today += rep
+                    // if (daywave_challenge.timestamp >= today_start) reputation.today += rep 
                     if (daywave_challenge.timestamp >= week_start) reputation.this_week += rep
                     if (daywave_challenge.timestamp >= month_start) reputation.this_month += rep
                 }
