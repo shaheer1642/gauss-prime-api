@@ -240,7 +240,7 @@ function squadsCreate(data,callback) {
             const squad_code = `${squad_string}_${spots}_${data.merge_squad == false ? `${new Date().getTime()}`:`${new Date(new Date().setHours(0,0,0,0)).getTime()}`}`
             console.log('squad_code:',squad_code)
 
-            db.query(`INSERT INTO as_sb_squads (squad_id,squad_code,squad_string,spots,members,original_host,joined_from_channel_ids,squad_closure)
+            db.query(`INSERT INTO as_sb_squads (squad_id,squad_code,squad_string,spots,members,original_host,joined_from_channel_ids,squad_closure,logs)
             VALUES (
                 (SELECT CASE WHEN (COUNT(squad_id) >= 75) THEN NULL ELSE '${squad_id}'::uuid END AS counted FROM as_sb_squads WHERE status='active'),
                 '${squad_code}',
@@ -249,8 +249,9 @@ function squadsCreate(data,callback) {
                 '["${data.discord_id}"]',
                 '${data.discord_id}',
                 '${data.channel_id ? `{"${data.discord_id}":"${data.channel_id}"}`:'{}'}',
-                ${getSquadClosure(squad_string)}
-            )`).then(res => {
+                ${getSquadClosure(squad_string)},
+                '["${new Date().getTime()} ${data.discord_id} created squad"]')
+            `).then(res => {
                 if (res.rowCount == 1) {
                     //db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
                     //db_modules.schedule_query(`UPDATE as_sb_squads SET status='expired' WHERE squad_id = '${squad_id}' AND status='active'`,squad_expiry)
@@ -346,7 +347,10 @@ function squadsAddMember(data,callback) {
         CASE WHEN members @> '"${data.discord_id}"'
         THEN joined_from_channel_ids - '${data.discord_id}'
         ELSE jsonb_set(joined_from_channel_ids, '{${data.discord_id}}', '"${data.channel_id}"') END
-        ` : ''}
+        ` : ''},
+        logs = CASE WHEN members @> '"${data.discord_id}"'
+        THEN logs || '"${new Date().getTime()} ${data.discord_id} left squad"'
+        ELSE logs || '"${new Date().getTime()} ${data.discord_id} joined squad"' END
         WHERE status = 'active' AND squad_id = '${data.squad_id}'
         returning*;
     `).then(res => {
