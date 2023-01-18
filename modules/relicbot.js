@@ -337,7 +337,7 @@ function squadsValidate(data,callback) {
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
     db.query(`
-        UPDATE rb_squads SET validated_by = '${data.discord_id}' WHERE status = 'closed' AND squad_id = '${data.squad_id}' AND validated_by = null AND invalidated_by = null;
+        UPDATE rb_squads SET validated_by = '${data.discord_id}' WHERE status = 'closed' AND squad_id = '${data.squad_id}' AND validated_by is null AND invalidated_by is null;
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
@@ -362,7 +362,7 @@ function squadsInvalidate(data,callback) {
     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
     if (!data.reason) return callback({code: 500, err: 'No reason provided'})
     db.query(`
-        UPDATE rb_squads SET status = 'invalidated', invalidated_by = '${data.discord_id}', invalidation_reason = '${data.reason}' WHERE status = 'closed' AND squad_id = '${data.squad_id}' AND validated_by = null AND invalidated_by = null;
+        UPDATE rb_squads SET status = 'invalidated', invalidated_by = '${data.discord_id}', invalidation_reason = '${data.reason}' WHERE status = 'closed' AND squad_id = '${data.squad_id}' AND validated_by is null AND invalidated_by is null;
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
