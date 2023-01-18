@@ -152,7 +152,7 @@ function squadsCreate(data,callback) {
             const squad_code = `${relicBotSquadToString(squad,true).toLowerCase().replace(/ /g,'_')}_${data.merge_squad == false ? `${new Date().getTime()}`:`${new Date(new Date().setHours(0,0,0,0)).getTime()}`}`
             console.log('squad_code:',squad_code)
 
-            db.query(`INSERT INTO rb_squads (squad_id,squad_code,tier,members,original_host,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp,joined_from_channel_ids,is_vaulted) 
+            db.query(`INSERT INTO rb_squads (squad_id,squad_code,tier,members,original_host,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp,joined_from_channel_ids,is_vaulted,logs) 
             VALUES 
                 (
                 (SELECT CASE WHEN (COUNT(squad_id) >= 24) THEN NULL ELSE '${squad_id}'::uuid END AS counted FROM rb_squads WHERE tier='${squad.tier}' AND status='active'),
@@ -170,7 +170,8 @@ function squadsCreate(data,callback) {
                 ${squad.is_railjack},
                 ${new Date().getTime()},
                 '${data.channel_id ? `{"${data.discord_id}":"${data.channel_id}"}`:'{}'}',
-                ${squad.is_vaulted})
+                ${squad.is_vaulted},
+                '["${new Date().getTime()} ${data.discord_id} created squad"]')
             `).then(res => {
                 if (res.rowCount == 1) {
                     //db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
@@ -257,15 +258,18 @@ function squadsAddMember(data,callback) {
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
     db.query(`
-        UPDATE rb_squads SET members =
-        CASE WHEN members @> '"${data.discord_id}"'
+        UPDATE rb_squads 
+        SET members = CASE WHEN members @> '"${data.discord_id}"'
         THEN members-'${data.discord_id}'
         ELSE members||'"${data.discord_id}"' END
         ${data.channel_id ? `,joined_from_channel_ids = 
         CASE WHEN members @> '"${data.discord_id}"'
         THEN joined_from_channel_ids - '${data.discord_id}'
         ELSE jsonb_set(joined_from_channel_ids, '{${data.discord_id}}', '"${data.channel_id}"') END
-        ` : ''}
+        ` : ''},
+        logs = CASE WHEN members @> '"${data.discord_id}"'
+        THEN logs || '"${new Date().getTime()} ${data.discord_id} left squad"'
+        ELSE logs || '"${new Date().getTime()} ${data.discord_id} joined squad"' END
         WHERE status = 'active' AND squad_id = '${data.squad_id}'
         returning*;
     `).then(res => {
