@@ -107,7 +107,7 @@ export default class AllSquadsFaqs extends React.Component {
                                     <Button size='large' onClick={() => this.setState({modalShow: true, modalHeader: 'Edit', modalOrder: faq.id, modalTitle: faq.title, modalBody: faq.body, modalFaqId: faq.faq_id, modalImageUrl: faq.image_url})}><Edit fontSize='large' sx={{ color: Colors.blue[900] }} /></Button>
                                 </Grid>
                                 <Grid item xs={1}>
-                                    <Button size='large' onClick={() => socket.emit('allsquads/faqs/delete', {faq_id: faq.faq_id},(res) => this.fetchFaqs())}><Delete fontSize='large' sx={{ color: Colors.red[900] }} /></Button>
+                                    <Button size='large' disabled = {faq.disable_delete} onClick={() => socket.emit('allsquads/faqs/delete', {faq_id: faq.faq_id},(res) => this.fetchFaqs())}><Delete fontSize='large' sx={{ color: Colors.red[900] }} /></Button>
                                 </Grid>
                                 <Grid item xs={12}>
                                     {faq.body.split('\n').map(line => {
