@@ -274,7 +274,9 @@ function squadsAddMember(data,callback) {
         returning*;
     `).then(res => {
         if (res.rowCount == 1) {
-            db_modules.schedule_query(`UPDATE rb_squads SET members = members-'${data.discord_id}' WHERE members @> '"${data.discord_id}"' AND status='active' AND squad_id = '${data.squad_id}'`,squad_expiry)
+            if (res.rows[0].members.includes(data.discord_id)) {
+                db_modules.schedule_query(`UPDATE rb_squads SET members = members-'${data.discord_id}', logs = logs || '"${new Date().getTime()} ${data.discord_id} removed from squad due to timeout"' WHERE members @> '"${data.discord_id}"' AND status='active' AND squad_id = '${data.squad_id}'`,squad_expiry)
+            }
             return callback({
                 code: 200
             })
