@@ -159,14 +159,10 @@ function faqsCreate(data, callback) {
         INSERT INTO as_faq (
             title,
             body,
-            title,
-            body,
             image_url
         ) VALUES (
-            '1',
-            '1',
-            '{"${data.language}": "${data.title.replace(/'/g,`''`)}"}',
-            '{"${data.language}": "${data.body.replace(/'/g,`''`)}"}',
+            '{"${data.language}": "${data.title.replace(/'/g,`''`).replace(/\"/g,`\\"`).replace(/\r\n/g,`\\n`).replace(/\n/g,`\\r\\n`)}"}',
+            '{"${data.language}": "${data.body.replace(/'/g,`''`).replace(/\"/g,`\\"`).replace(/\r\n/g,`\\n`).replace(/\n/g,`\\r\\n`)}"}',
             ${data.image_url ? `{"${data.language}": "${data.image_url}"}`:'null'}
         )
     `).then(res => {
