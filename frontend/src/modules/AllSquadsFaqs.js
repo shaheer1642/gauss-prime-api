@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {Box, Toolbar, TableContainer, Table, TableHead, TableRow, TableCell, Paper, TableBody, 
     tableCellClasses, Button, Modal, Typography, Select, MenuItem, FormControl, InputLabel, TextField,
-    FormGroup, FormControlLabel, Checkbox, CircularProgress, Alert, Radio, RadioGroup, IconButton, Grid } from '@mui/material';
+    FormGroup, FormLabel, FormControlLabel, Checkbox, CircularProgress, Alert, Radio, RadioGroup, IconButton, Grid } from '@mui/material';
 import {Delete, Close, Edit} from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { socket } from '../websocket/socket';
@@ -44,6 +44,7 @@ export default class AllSquadsFaqs extends React.Component {
         super(props);
         this.state = {
             faqs: [],
+            faqLanguage: 'en',
 
             modalShow: false,
             modalAlert: '',
@@ -52,6 +53,7 @@ export default class AllSquadsFaqs extends React.Component {
             modalBody: '',
             modalImageUrl: '',
             modalFaqId: '',
+            modalLanguage: 'en',
         }
     }
 
@@ -72,6 +74,12 @@ export default class AllSquadsFaqs extends React.Component {
         })
     }
 
+    radioBoxOnChange = (e) => {
+        this.setState({
+            modalLanguage: e.target.value
+        })
+    }
+
     destroyModal = () => {
         this.setState({
             modalShow: false,
@@ -85,6 +93,24 @@ export default class AllSquadsFaqs extends React.Component {
         })
     }
 
+    updateModalValues = (faq_id) => {
+        console.log('[AllSquadsFaqs.updateModalValues] called. faq_id',faq_id)
+        this.state.faqs.forEach(faq => {
+            if (faq.faq_id == faq_id) {
+                this.setState({
+                    modalShow: true, 
+                    modalHeader: 'Edit', 
+                    modalOrder: faq.id, 
+                    modalFaqId: faq.faq_id,
+                    modalTitle: (faq.title?.[this.state.modalLanguage] || ''), 
+                    modalBody: (faq.body?.[this.state.modalLanguage] || ''),
+                    modalImageUrl: (faq.image_url?.[this.state.modalLanguage] || '')
+                })
+                
+            }
+        })
+    }
+
     render() {
         return (
         <Box
@@ -94,36 +120,53 @@ export default class AllSquadsFaqs extends React.Component {
             <Toolbar />
             {this.state.faqs.length == 0 ? <div style={{display: 'flex', justifyContent: 'center'}}><CircularProgress /></div>:
             <Grid container style={{maxHeight: '80vh', overflow: 'auto'}}>
+                <Grid item xs={12}>
+                    <FormControl>
+                        <FormLabel id="demo-row-radio-buttons-group-label">Language</FormLabel>
+                        <RadioGroup
+                            row
+                            aria-labelledby="demo-row-radio-buttons-group-label"
+                            name="row-radio-buttons-group"
+                            onChange={(e) => this.setState({faqLanguage: e.target.value, modalLanguage: e.target.value})}
+                            value={this.state.faqLanguage}
+                        >
+                            <FormControlLabel value="en" control={<Radio />} label="English" />
+                            <FormControlLabel value="fr" control={<Radio />} label="French" />
+                            <FormControlLabel value="it" control={<Radio />} label="Italian" />
+                        </RadioGroup>
+                    </FormControl>
+                </Grid>
+
                 {
                     this.state.faqs.map(faq => {
                         return (
                             <Grid container style={{ border: '5px solid #651fff', borderRadius: '20px', padding: '20px'}} xs={6}>
                                 <Grid item xs={10}>
                                     <Typography sx={{mx:'10px',my:'20px'}} variant="h4" style={{color: '#651fff'}}>
-                                        {faq.title}
+                                        #{faq.id} {faq.title[this.state.faqLanguage]}
                                     </Typography>
                                 </Grid>
                                 <Grid item xs={1}>
-                                    <Button size='large' onClick={() => this.setState({modalShow: true, modalHeader: 'Edit', modalOrder: faq.id, modalTitle: faq.title, modalBody: faq.body, modalFaqId: faq.faq_id, modalImageUrl: faq.image_url})}><Edit fontSize='large' sx={{ color: Colors.blue[900] }} /></Button>
+                                    <Button size='large' onClick={() => this.updateModalValues(faq.faq_id)}><Edit fontSize='large' sx={{ color: Colors.blue[900] }} /></Button>
                                 </Grid>
                                 <Grid item xs={1}>
                                     <Button size='large' disabled = {faq.disable_delete} onClick={() => socket.emit('allsquads/faqs/delete', {faq_id: faq.faq_id},(res) => this.fetchFaqs())}><Delete fontSize='large' sx={{ color: Colors.red[900] }} /></Button>
                                 </Grid>
                                 <Grid item xs={12}>
-                                    {faq.body.split('\n').map(line => {
+                                    {faq.body[this.state.faqLanguage]?.split('\r\n').map(line => {
                                         return (
                                             <Typography>
-                                                {line}
+                                                {!line ? '\u200b':line}
                                             </Typography>
                                         )
                                     })}
                                     {
-                                        faq.image_url ? 
+                                        faq.image_url?.[this.state.faqLanguage] ? 
                                         <Grid item xs={12}>
                                             <img 
                                                 width={"100%"}
                                                 height={"100%"}
-                                                src={faq.image_url}
+                                                src={faq.image_url?.[this.state.faqLanguage]}
                                                 alt="Image"
                                             />
                                         </Grid>:<></>
@@ -157,27 +200,44 @@ export default class AllSquadsFaqs extends React.Component {
                             {this.state.modalAlert != '' ? <Alert severity="info" sx={{m: '10px'}}>{this.state.modalAlert}</Alert>:<></>}
                         </Grid>
 
+                        <FormControl>
+                            <FormLabel id="demo-row-radio-buttons-group-label">Language</FormLabel>
+                            <RadioGroup
+                                row
+                                aria-labelledby="demo-row-radio-buttons-group-label"
+                                name="row-radio-buttons-group"
+                                onChange={(e) => {
+                                    this.setState({modalLanguage: e.target.value},() => this.updateModalValues(this.state.modalFaqId))
+                                }}
+                                value={this.state.modalLanguage}
+                            >
+                                <FormControlLabel value="en" control={<Radio />} label="English" />
+                                <FormControlLabel value="fr" control={<Radio />} label="French" />
+                                <FormControlLabel value="it" control={<Radio />} label="Italian" />
+                            </RadioGroup>
+                        </FormControl>
+
                         {
                             this.state.modalOrder ? 
                             <Grid item xs={12} >
                                 <FormControl sx={{ m: '10px', width: '100%' }} size="small">
-                                    <TextField required label="Order" variant="standard" onChange={(e) => this.setState({modalOrder: e.target.value})} defaultValue = {this.state.modalOrder}/>
+                                    <TextField required label="Order" variant="standard" onChange={(e) => this.setState({modalOrder: e.target.value})} value = {this.state.modalOrder}/>
                                 </FormControl>
                             </Grid>:<></>
                         }
                         <Grid item xs={12} >
                             <FormControl sx={{ m: '10px', width: '100%' }} size="small">
-                                <TextField required label="Title" variant="standard" onChange={(e) => this.setState({modalTitle: e.target.value})} defaultValue = {this.state.modalTitle}/>
+                                <TextField required label="Title" variant="standard" onChange={(e) => this.setState({modalTitle: e.target.value})} value = {this.state.modalTitle}/>
                             </FormControl>
                         </Grid>
                         <Grid item xs={12} >
                             <FormControl sx={{ m: '10px', width: '100%' }} size="small">
-                                <TextField required multiline minRows={2} maxRows={10} label="Body" variant="standard" onChange={(e) => this.setState({modalBody: e.target.value})} defaultValue = {this.state.modalBody}/>
+                                <TextField required multiline minRows={2} maxRows={10} label="Body" variant="standard" onChange={(e) => this.setState({modalBody: e.target.value})} value = {this.state.modalBody}/>
                             </FormControl>
                         </Grid>
                         <Grid item xs={12} >
                             <FormControl sx={{ m: '10px', width: '100%' }} size="small">
-                                <TextField label="Image Url (optional)" variant="standard" onChange={(e) => this.setState({modalImageUrl: e.target.value})} defaultValue = {this.state.modalImageUrl}/>
+                                <TextField label="Image Url (optional)" variant="standard" onChange={(e) => this.setState({modalImageUrl: e.target.value})} value = {this.state.modalImageUrl}/>
                             </FormControl>
                         </Grid>
                         
@@ -186,15 +246,13 @@ export default class AllSquadsFaqs extends React.Component {
                                 this.setState({
                                     modalAlert: 'Processing...'
                                 })
-                                if (this.state.modalFaqId == '') {
-
-                                }
                                 socket.emit(`allsquads/faqs/${this.state.modalFaqId == '' ? 'create':'update'}`, {
                                     id: this.state.modalOrder,
                                     title: this.state.modalTitle,
                                     body: this.state.modalBody,
                                     image_url: this.state.modalImageUrl,
                                     faq_id: this.state.modalFaqId,
+                                    language: this.state.modalLanguage
                                 }, (res) => {
                                     this.fetchFaqs()
                                     console.log(res)

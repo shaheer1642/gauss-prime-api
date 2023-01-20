@@ -154,15 +154,20 @@ function faqsCreate(data, callback) {
     console.log('[allsquads.faqsCreate] data:',data)
     if (!data.title) return callback({code: 400, message: 'No title provided'})
     if (!data.body) return callback({code: 400, message: 'No body provided'})
+    if (!data.language) return callback({code: 400, message: 'No language provided'})
     db.query(`
         INSERT INTO as_faq (
             title,
             body,
+            title,
+            body,
             image_url
         ) VALUES (
-            '${data.title.replace(/'/g,`''`)}',
-            '${data.body.replace(/'/g,`''`)}',
-            ${data.image_url ? `'${data.image_url}'`:'null'}
+            '1',
+            '1',
+            '{"${data.language}": "${data.title.replace(/'/g,`''`)}"}',
+            '{"${data.language}": "${data.body.replace(/'/g,`''`)}"}',
+            ${data.image_url ? `{"${data.language}": "${data.image_url}"}`:'null'}
         )
     `).then(res => {
         if (res.rowCount == 1) {
@@ -191,8 +196,14 @@ function faqsUpdate(data, callback) {
     if (!data.faq_id) return callback({code: 400, message: 'No faq_id provided'})
     if (!data.title) return callback({code: 400, message: 'No title provided'})
     if (!data.body) return callback({code: 400, message: 'No body provided'})
+    if (!data.language) return callback({code: 400, message: 'No language provided'})
     db.query(`
-        UPDATE as_faq SET id=${data.id},title='${data.title.replace(/'/g,`''`)}', body='${data.body.replace(/'/g,`''`)}', image_url=${data.image_url ? `'${data.image_url}'`:'null'} WHERE faq_id = '${data.faq_id}';
+        UPDATE as_faq SET 
+        id=${data.id},
+        title = jsonb_set(title,'{${data.language}}', '"${data.title.replace(/'/g,`''`).replace(/\"/g,`\\"`).replace(/\r\n/g,`\\n`).replace(/\n/g,`\\r\\n`)}"', true),
+        body = jsonb_set(body,'{${data.language}}', '"${data.body.replace(/'/g,`''`).replace(/\"/g,`\\"`).replace(/\r\n/g,`\\n`).replace(/\n/g,`\\r\\n`)}"', true)
+        ${data.image_url ? `, image_url = jsonb_set(image_url,'{${data.language}}', '"${data.image_url}"', true)`:''}
+        WHERE faq_id = '${data.faq_id}';
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
