@@ -176,7 +176,7 @@ function squadsCreate(data,callback) {
                 if (res.rowCount == 1) {
                     //db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
                     //db_modules.schedule_query(`UPDATE rb_squads SET status='expired' WHERE squad_id = '${squad_id}' AND status='active'`,squad_expiry)
-                    db_modules.schedule_query(`UPDATE rb_squads SET members = members-'${data.discord_id}' WHERE members @> '"${data.discord_id}"' AND status='active' AND squad_id = '${squad_id}'`,squad_expiry)
+                    db_modules.schedule_query(`UPDATE rb_squads SET members = members-'${data.discord_id}', logs = logs || '"${new Date().getTime()} ${data.discord_id} removed from squad due to timeout"' WHERE members @> '"${data.discord_id}"' AND status='active' AND squad_id = '${squad_id}'`,squad_expiry)
                     return resolve({code: 200})
                 } else return resolve({
                     code: 500,
