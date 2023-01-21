@@ -376,7 +376,7 @@ function statisticsFetch(data,callback) {
         SELECT * FROM as_bb_blesses WHERE status = 'closed';
         SELECT * FROM challenges_completed;
         SELECT * FROM as_rank_roles;
-        SELECT * FROM as_users_ratings;
+        SELECT * FROM as_users_ratings WHERE rating_type = 'squad_rating';
     `).then(res => {
         const rep_scheme = {
             relicbot: 0.5,
@@ -394,7 +394,7 @@ function statisticsFetch(data,callback) {
             rating: {
                 1: 0.0,
                 2: 0.5,
-                3: 1.0
+                3: 1.0,
             }
         }
         const db_users = res[0].rows
@@ -535,8 +535,9 @@ function statisticsFetch(data,callback) {
 function userRatingsFetch(data,callback) {
     console.log('[allsquads.userRatingsFetch] data:',data)
     if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
+    if (!data.rating_type) return callback({code: 400, err: 'No rating_type provided'})
     db.query(`
-        SELECT * FROM as_users_ratings WHERE discord_id = '${data.discord_id}';
+        SELECT * FROM as_users_ratings WHERE discord_id = '${data.discord_id}' AND rating_type = '${data.rating_type}';
     `).then(res => {
         const user_ratings = {}
         res.rows.forEach(row => {
@@ -564,6 +565,10 @@ function userRatingsCreate(data,callback) {
         if (callback) callback({code: 400, err: 'No rated_user provided'})
         return
     }
+    if (!data.rating_type) {
+        if (callback) callback({code: 400, err: 'No rating_type provided'})
+        return
+    }
     if (!data.rating) {
         if (callback) callback({code: 400, err: 'No rating provided'})
         return
@@ -573,7 +578,10 @@ function userRatingsCreate(data,callback) {
         return
     }
     db.query(`
-        INSERT INTO as_users_ratings (discord_id, rated_user, rating) VALUES ('${data.discord_id}','${data.rated_user}',${Number(data.rating)});
+        INSERT INTO as_users_ratings (discord_id, rated_user, rating, rating_type) VALUES ('${data.discord_id}','${data.rated_user}',${Number(data.rating)},'${data.rating_type}')
+        ON CONFLICT (discord_id,rated_user,rating_type)
+        DO UPDATE SET 
+        rating = EXCLUDED.rating;
     `).then(res => {
         if (callback) {
             if (res.rowCount == 1) {
