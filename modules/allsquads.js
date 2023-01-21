@@ -393,10 +393,8 @@ function statisticsFetch(data,callback) {
             },
             rating: {
                 1: 0.0,
-                2: 0.2,
-                3: 0.4,
-                4: 0.5,
-                5: 1.0,
+                2: 0.5,
+                3: 1.0
             }
         }
         const db_users = res[0].rows
