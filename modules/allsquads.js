@@ -410,7 +410,8 @@ function statisticsFetch(data,callback) {
             this_month: [],
             this_week: [],
             today: [],
-            top_squads: {}
+            top_squads: {},
+            total_squads: 0
         }
         const today_start = getTodayStartMs()
         const week_start = getWeekStartMs()
@@ -423,6 +424,7 @@ function statisticsFetch(data,callback) {
                 if (!statistics.top_squads[squad.squad_string]) 
                     statistics.top_squads[squad.squad_string] = 0
                 statistics.top_squads[squad.squad_string]++
+                statistics.total_squads++
             }
         })
         const skip_users = data.skip_users || []
