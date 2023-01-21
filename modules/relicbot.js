@@ -186,7 +186,7 @@ function squadsCreate(data,callback) {
                 if (err.code == '23502') {
                     return resolve({
                         code: 400,
-                        message: `${squad.tier} squads limit has been reached. Please try hosting later or join an existing squad`
+                        message: `${squad.tier} squads limit has been reached. Please __try hosting later__ or __join an existing squad__`
                     })
                 } else if (err.code == '23505') {
                     db.query(`SELECT * FROM rb_squads WHERE squad_code='${squad_code}' AND status='active'`)
@@ -194,7 +194,7 @@ function squadsCreate(data,callback) {
                         if (res.rowCount > 0) {
                             return resolve({
                                 code: 399,
-                                message: `**${relicBotSquadToString(squad,true)}** already exists. Would you like to *join existing squad* or *host a new one*?`,
+                                message: `**${relicBotSquadToString(squad,true)}** already exists. Would you like to __join existing squad__ or __host a new one__?`,
                                 squad_id: res.rows[0].squad_id,
                                 squad_code: res.rows[0].squad_code
                             })

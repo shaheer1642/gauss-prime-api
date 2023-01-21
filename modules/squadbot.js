@@ -267,7 +267,7 @@ function squadsCreate(data,callback) {
                 if (err.code == '23502') {
                     return resolve({
                         code: 400,
-                        message: `Squads limit has been reached. Please try hosting later or join an existing squad`
+                        message: `Squads limit has been reached. Please try __hosting later__ or __join an existing squad__`
                     })
                 } else if (err.code == '23505') {
                     db.query(`SELECT * FROM as_sb_squads WHERE squad_code='${squad_code}' AND status='active'`)
@@ -275,7 +275,7 @@ function squadsCreate(data,callback) {
                         if (res.rowCount > 0) {
                             return resolve({
                                 code: 399,
-                                message: `**${convertUpper(squad_string)}** already exists. Would you like to *join existing squad* or *host a new one*?`,
+                                message: `**${convertUpper(squad_string)}** already exists. Would you like to __join existing squad__ or __host a new one__?`,
                                 squad_id: res.rows[0].squad_id,
                                 squad_code: res.rows[0].squad_code,
                                 squad_string: squad_string
