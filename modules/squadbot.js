@@ -48,7 +48,8 @@ const squad_closures = {  // listed in minutes
     lich: 15,
     sister: 15,
     endo: 15,
-    archon: 20
+    archon: 20,
+    aya_farm: 20
 }
 
 function getSquadClosure(squad_string) {
