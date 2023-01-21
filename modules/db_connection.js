@@ -13,71 +13,71 @@ db.connect().then(async res => {
     console.log('DB Connection established.')
     event_emitter.emit('db_connected')
     // Listening to triggers
-    if (!process.env.MAINTENANCE_MODE) {
-        db.query(`
-            LISTEN hubapp_messages_insert;
-    
-            LISTEN hubapp_users_update;
-    
-            LISTEN hub_recruitbot_squads_insert;
-            LISTEN hub_recruitbot_squads_update;
-            LISTEN hub_recruitbot_squads_delete;
-    
-            LISTEN tradebot_users_orders_insert;
-            LISTEN tradebot_users_orders_update;
-            LISTEN tradebot_users_orders_delete;
-    
-            LISTEN tradebot_filled_users_orders_insert;
-            LISTEN tradebot_filled_users_orders_update_new_message;
-            LISTEN tradebot_filled_users_orders_update_archived;
-    
-            LISTEN hubapp_messages_channels_update;
-    
-            LISTEN rb_squads_insert;
-            LISTEN rb_squads_update;
-    
-            LISTEN tradebot_users_list_insert;
-            LISTEN tradebot_users_list_update;
-            LISTEN tradebot_users_list_delete;
-    
-            LISTEN scheduled_queries_insert;
-    
-            LISTEN rb_squads_messages_insert;
-            LISTEN as_sb_squads_messages_insert;
-    
-            LISTEN rb_hosting_table_insert;
-            LISTEN rb_hosting_table_update;
-            LISTEN rb_hosting_table_delete;
-    
-            LISTEN wfhub_keywords_insert;
-            LISTEN wfhub_keywords_update;
-            LISTEN wfhub_keywords_delete;
-    
-            LISTEN as_sb_squads_insert;
-            LISTEN as_sb_squads_update;
-    
-            LISTEN as_clan_affiliates_insert;
-            LISTEN as_clan_affiliates_update;
-            LISTEN as_clan_affiliates_delete;
-    
-            LISTEN as_faq_insert;
-            LISTEN as_faq_update;
-            LISTEN as_faq_delete;
-        `).then(res => {
-            db.query(`SELECT * FROM scheduled_queries`).then(res => {
-                res.rows.forEach(row => {
-                    setTimeout(() => {
-                        db.query(`
-                            ${row.query}
-                            DELETE FROM scheduled_queries WHERE id=${row.id};
-                        `).catch(console.error)
-                    }, row.call_timestamp - new Date().getTime());
-                })
-            }).catch(console.error)
-        }).catch(err => console.log(err))
-    } else {
-        console.log('WARNING: MAINTENANCE_MODE is enabled. Not listening to DB notifications')
-    }
+    // if (process.env.MAINTENANCE_MODE) {
+    //     console.log('WARNING: MAINTENANCE_MODE is enabled. Not listening to DB notifications')
+    //     return
+    // }
+    db.query(`
+        LISTEN hubapp_messages_insert;
+
+        LISTEN hubapp_users_update;
+
+        LISTEN hub_recruitbot_squads_insert;
+        LISTEN hub_recruitbot_squads_update;
+        LISTEN hub_recruitbot_squads_delete;
+
+        LISTEN tradebot_users_orders_insert;
+        LISTEN tradebot_users_orders_update;
+        LISTEN tradebot_users_orders_delete;
+
+        LISTEN tradebot_filled_users_orders_insert;
+        LISTEN tradebot_filled_users_orders_update_new_message;
+        LISTEN tradebot_filled_users_orders_update_archived;
+
+        LISTEN hubapp_messages_channels_update;
+
+        LISTEN rb_squads_insert;
+        LISTEN rb_squads_update;
+
+        LISTEN tradebot_users_list_insert;
+        LISTEN tradebot_users_list_update;
+        LISTEN tradebot_users_list_delete;
+
+        LISTEN scheduled_queries_insert;
+
+        LISTEN rb_squads_messages_insert;
+        LISTEN as_sb_squads_messages_insert;
+
+        LISTEN rb_hosting_table_insert;
+        LISTEN rb_hosting_table_update;
+        LISTEN rb_hosting_table_delete;
+
+        LISTEN wfhub_keywords_insert;
+        LISTEN wfhub_keywords_update;
+        LISTEN wfhub_keywords_delete;
+
+        LISTEN as_sb_squads_insert;
+        LISTEN as_sb_squads_update;
+
+        LISTEN as_clan_affiliates_insert;
+        LISTEN as_clan_affiliates_update;
+        LISTEN as_clan_affiliates_delete;
+
+        LISTEN as_faq_insert;
+        LISTEN as_faq_update;
+        LISTEN as_faq_delete;
+    `).then(res => {
+        db.query(`SELECT * FROM scheduled_queries`).then(res => {
+            res.rows.forEach(row => {
+                setTimeout(() => {
+                    db.query(`
+                        ${row.query}
+                        DELETE FROM scheduled_queries WHERE id=${row.id};
+                    `).catch(console.error)
+                }, row.call_timestamp - new Date().getTime());
+            })
+        }).catch(console.error)
+    }).catch(err => console.log(err))
 }).catch(err => {
     console.log('DB Connection failure.\n' + err)
     process.exit()
