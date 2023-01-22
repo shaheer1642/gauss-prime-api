@@ -580,7 +580,15 @@ function userRatingsCreate(data,callback) {
         return
     }
     db.query(`
-        INSERT INTO as_users_ratings (discord_id, rated_user, rating, rating_type) VALUES ('${data.discord_id}','${data.rated_user}',${Number(data.rating)},'${data.rating_type}')
+        INSERT INTO as_users_ratings 
+        (discord_id, rated_user, rating, rating_type, reason) 
+        VALUES (
+            '${data.discord_id}',
+            '${data.rated_user}',
+            ${Number(data.rating)},
+            '${data.rating_type}',
+            ${data.reason ? `'${data.reason}'` : 'null'}
+        )
         ON CONFLICT (discord_id,rated_user,rating_type)
         DO UPDATE SET 
         rating = EXCLUDED.rating;
