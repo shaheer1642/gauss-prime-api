@@ -400,7 +400,7 @@ function squadsAddMember(data,callback) {
 function squadsLeaveAll(data,callback) {
     console.log('[squadbot/squadsLeaveAll] data:',data)
     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
-    db.query(`UPDATE as_sb_squads SET members=members-'${data.discord_id}' WHERE status='active' AND members @> '"${data.discord_id}"'`)
+    db.query(`UPDATE as_sb_squads SET members=members-'${data.discord_id}', logs = logs || '"${new Date().getTime()} ${data.discord_id} left squad"' WHERE status='active' AND members @> '"${data.discord_id}"'`)
     .then(res => {
         return callback({
             code: 200
