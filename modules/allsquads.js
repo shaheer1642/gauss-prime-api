@@ -520,9 +520,12 @@ function statisticsFetch(data,callback) {
             statistics.top_squads = statistics.top_squads.map((host,index) => index < data.limit ? host:null).filter(o => o != null)
         }
         console.log(JSON.stringify(statistics))
-        delete statistics.top_squads;
-        delete statistics.total_squads;
-        if (data.exclude_daily) delete statistics.today
+        if (data.exclude_squads) {
+            delete statistics.top_squads;
+            delete statistics.total_squads;
+        }
+        if (data.exclude_daily) 
+            delete statistics.today
         return callback({
             code: 200,
             data: statistics
