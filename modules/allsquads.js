@@ -452,24 +452,24 @@ function statisticsFetch(data,callback) {
                     const rep = rep_scheme.giveaway
                     reputation.all_time += rep
                     // if (giveaway.expiry_timestamp >= today_start) reputation.today += rep
-                    if (giveaway.expiry_timestamp >= week_start) reputation.this_week += rep
-                    if (giveaway.expiry_timestamp >= month_start) reputation.this_month += rep
+                    // if (giveaway.expiry_timestamp >= week_start) reputation.this_week += rep
+                    // if (giveaway.expiry_timestamp >= month_start) reputation.this_month += rep
                 }
             })
             db_blessings.forEach(blessing => {
                 if (blessing.discord_id == discord_id) {
                     const rep = rep_scheme.blessing
                     reputation.all_time += rep
-                    if (blessing.creation_timestamp >= today_start) reputation.today += rep
-                    if (blessing.creation_timestamp >= week_start) reputation.this_week += rep
-                    if (blessing.creation_timestamp >= month_start) reputation.this_month += rep
+                    // if (blessing.creation_timestamp >= today_start) reputation.today += rep
+                    // if (blessing.creation_timestamp >= week_start) reputation.this_week += rep
+                    // if (blessing.creation_timestamp >= month_start) reputation.this_month += rep
                 }
             })
             db_daywave_challenges.forEach(daywave_challenge => {
                 if (daywave_challenge.discord_id == discord_id) {
                     const rep = rep_scheme.daywave_completion
                     reputation.all_time += rep
-                    // if (daywave_challenge.timestamp >= today_start) reputation.today += rep 
+                    if (daywave_challenge.timestamp >= today_start) reputation.today += rep 
                     if (daywave_challenge.timestamp >= week_start) reputation.this_week += rep
                     if (daywave_challenge.timestamp >= month_start) reputation.this_month += rep
                 }
