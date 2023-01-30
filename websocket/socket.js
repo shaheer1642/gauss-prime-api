@@ -1,5 +1,6 @@
 const {server} = require('../api/api')
 const { Server } = require("socket.io");
+const {as_users_list} = require('../modules/allsquads/as_users_list')
 const io = new Server(server, {
   transports: ['websocket']
 });
@@ -29,46 +30,49 @@ io.on('connection', (socket) => {
       Object.keys(relicbot.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
           if (data.discord_id) {
-            console.log('[middleware] checking if user exists')
-            db.query(`SELECT * FROM tradebot_users_list WHERE discord_id = ${data.discord_id}`)
-            .then(res => {
-              if (res.rowCount == 1) relicbot.endpoints[key](data,callback)
-              else return callback({
-                  code: 499,
-                  message: 'unauthorized'
-                })
-            }).catch(console.error)
-          } else relicbot.endpoints[key](data,callback)
+            if (as_users_list[data.discord_id]) {
+              relicbot.endpoints[key](data,callback)
+            } else {
+              return callback({
+                code: 499,
+                message: 'unauthorized'
+              })
+            }
+          } else {
+            relicbot.endpoints[key](data,callback)
+          }
         })
       })
       Object.keys(squadbot.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
           if (data.discord_id) {
-            console.log('[middleware] checking if user exists')
-            db.query(`SELECT * FROM tradebot_users_list WHERE discord_id = ${data.discord_id}`)
-            .then(res => {
-              if (res.rowCount == 1) squadbot.endpoints[key](data,callback)
-              else return callback({
-                  code: 499,
-                  message: 'unauthorized'
-                })
-            }).catch(console.error)
-          } else squadbot.endpoints[key](data,callback)
+            if (as_users_list[data.discord_id]) {
+              squadbot.endpoints[key](data,callback)
+            } else {
+              return callback({
+                code: 499,
+                message: 'unauthorized'
+              })
+            }
+          } else {
+            squadbot.endpoints[key](data,callback)
+          }
         })
       })
       Object.keys(allsquads.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
           if (data.discord_id) {
-            console.log('[middleware] checking if user exists')
-            db.query(`SELECT * FROM tradebot_users_list WHERE discord_id = ${data.discord_id}`)
-            .then(res => {
-              if (res.rowCount == 1) allsquads.endpoints[key](data,callback)
-              else return callback({
-                  code: 499,
-                  message: 'unauthorized'
-                })
-            }).catch(console.error)
-          } else allsquads.endpoints[key](data,callback)
+            if (as_users_list[data.discord_id]) {
+              allsquads.endpoints[key](data,callback)
+            } else {
+              return callback({
+                code: 499,
+                message: 'unauthorized'
+              })
+            }
+          } else {
+            allsquads.endpoints[key](data,callback)
+          }
         })
       })
     } else {

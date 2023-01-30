@@ -26,6 +26,10 @@ db.connect().then(async res => {
         LISTEN hub_recruitbot_squads_update;
         LISTEN hub_recruitbot_squads_delete;
 
+        LISTEN tradebot_users_list_insert;
+        LISTEN tradebot_users_list_update;
+        LISTEN tradebot_users_list_delete;
+        
         LISTEN tradebot_users_orders_insert;
         LISTEN tradebot_users_orders_update;
         LISTEN tradebot_users_orders_delete;
@@ -38,10 +42,6 @@ db.connect().then(async res => {
 
         LISTEN rb_squads_insert;
         LISTEN rb_squads_update;
-
-        LISTEN tradebot_users_list_insert;
-        LISTEN tradebot_users_list_update;
-        LISTEN tradebot_users_list_delete;
 
         LISTEN scheduled_queries_insert;
 
