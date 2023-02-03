@@ -66,6 +66,10 @@ db.connect().then(async res => {
         LISTEN as_faq_insert;
         LISTEN as_faq_update;
         LISTEN as_faq_delete;
+        
+        LISTEN as_users_ratings_insert;
+        LISTEN as_users_ratings_update;
+        LISTEN as_users_ratings_delete;
     `).then(res => {
         db.query(`SELECT * FROM scheduled_queries`).then(res => {
             res.rows.forEach(row => {
