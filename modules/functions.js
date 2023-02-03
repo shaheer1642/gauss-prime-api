@@ -119,4 +119,12 @@ function getMonthStartMs() {
     return new Date(new Date(new Date().getFullYear(), new Date().getMonth(), 1)).getTime()
 }
 
-module.exports = {dynamicSort,dynamicSortDesc,msToTime,msToFullTime,getRandomColor,embedScore,convertUpper,getTodayStartMs,getWeekStartMs,getMonthStartMs};
+function calcArrAvg(arr) {
+    var sum = 0
+    arr.forEach(value => {
+        sum += value
+    })
+    return sum / arr.length
+}
+
+module.exports = {dynamicSort,dynamicSortDesc,msToTime,msToFullTime,getRandomColor,embedScore,convertUpper,getTodayStartMs,getWeekStartMs,getMonthStartMs,calcArrAvg};

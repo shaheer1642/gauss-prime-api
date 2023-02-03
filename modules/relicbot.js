@@ -412,7 +412,7 @@ function trackersCreate(data,callback) {
     if (!data.message) return callback({code: 400, err: 'No message provided'})
     if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
     if (!data.channel_id) return callback({code: 400, err: 'No channel_id provided'})
-    const lines = data.message.toLowerCase().trim().split('\n')
+    const lines = Array.isArray(data.message) ? data.message : data.message.toLowerCase().trim().split('\n')
     Promise.all(lines.map(line => {
         return new Promise((resolve,reject) => {
             const tracker_id = uuid.v4()

@@ -1077,9 +1077,10 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       db.query(`UPDATE rb_squads SET status = 'abandoned' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}'`).catch(console.error)
     }
     if (payload[0].members.length == 4 && payload[1].members.length < 4) {
+      const host_recommendation = allsquads.calculateBestPingRating(payload[0].members)
       db.query(`
         UPDATE rb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
-        UPDATE rb_squads SET status='opened',open_timestamp=${new Date().getTime()} WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
+        UPDATE rb_squads SET status='opened',open_timestamp=${new Date().getTime()}, host_recommendation = '${JSON.stringify(host_recommendation)}' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
         UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}';
         UPDATE as_sb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active';
       `).catch(console.error)
@@ -1141,10 +1142,11 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     if (payload[0].members.length == 0 && payload[1].members.length > 0) {
       db.query(`UPDATE as_sb_squads SET status = 'abandoned' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}'`).catch(console.error)
     }
-    if (payload[0].members.length == payload[0].spots && payload[1].members.length < payload[0].spots) {
+    if (payload[0].members.length == payload[0].spots && payload[0].status == 'active') {
+      const host_recommendation = allsquads.calculateBestPingRating(payload[0].members)
       db.query(`
         UPDATE as_sb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
-        UPDATE as_sb_squads SET status='opened',open_timestamp=${new Date().getTime()} WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
+        UPDATE as_sb_squads SET status='opened',open_timestamp=${new Date().getTime()}, host_recommendation = '${JSON.stringify(host_recommendation)}' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
         UPDATE as_sb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}';
         UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active';
       `).catch(console.error)

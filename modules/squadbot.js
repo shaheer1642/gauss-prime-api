@@ -16,6 +16,9 @@ const endpoints = {
     'squadbot/squads/invalidate': squadsInvalidate,
     'squadbot/squads/selecthost': squadsSelectHost,
 
+    'squadbot/squads/autofill/fetch': squadsAutofillFetch,
+    'squadbot/squads/autofill/execute': squadsAutofillExecute,
+
     'squadbot/squads/messageCreate': squadsMessageCreate,
     'squadbot/squads/messagesFetch': squadsMessagesFetch,
 
@@ -31,7 +34,7 @@ const endpoints = {
 
 const squad_expiry =  3600000 // in ms
 const squad_closures = {  // listed in minutes
-    default: 30,
+    default: 20,
 
     sortie: 15,
     incursion: 20,
@@ -191,6 +194,60 @@ function squadsMessagesFetch(data,callback) {
         return callback({
             code: 500,
             err: err
+        })
+    })
+}
+
+function squadsAutofillFetch(data,callback) {
+    console.log('[squadbot.squadsAutofillFetch] data:',data)
+    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    db.query(`
+        SELECT * FROM as_sb_squads WHERE status='active' AND members @> '"${data.discord_id}"' AND jsonb_array_length(members) > 1 ORDER BY creation_timestamp ASC;
+    `).then(res => {
+        if (res.rowCount == 0) {
+            return callback({
+                code: 400,
+                message: 'You are not in any eligible squad that can be auto-filled'
+            })
+        } else {
+            return callback({
+                code: 200,
+                data: res.rows
+            })
+        }
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+
+function squadsAutofillExecute(data,callback) {
+    console.log('[squadbot.squadsAutofillExecute] data:',data)
+    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
+    db.query(`
+        UPDATE as_sb_squads SET spots = jsonb_array_length(members), autofilled_by = '${data.discord_id}' WHERE status='active' AND members @> '"${data.discord_id}"' AND jsonb_array_length(members) > 1;
+    `).then(res => {
+        if (res.rowCount == 1) {
+            return callback({
+                code: 200,
+                message: 'Squad auto-filled'
+            })
+        } else {
+            return callback({
+                code: 400,
+                message: 'Failed to fill that squad. Its status may have changed'
+            })
+        }
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
         })
     })
 }
@@ -492,7 +549,7 @@ function trackersCreate(data,callback) {
     if (!data.message) return callback({code: 400, err: 'No message provided'})
     if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
     if (!data.channel_id) return callback({code: 400, err: 'No channel_id provided'})
-    const lines = Array.isArray(data.message) ? data.message : data.message.split('\n')
+    const lines = Array.isArray(data.message) ? data.message : data.message.toLowerCase().trim().split('\n')
     Promise.all(lines.map(line => {
         return new Promise((resolve,reject) => {
             const tracker_id = uuid.v4()
