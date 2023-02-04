@@ -1,5 +1,6 @@
 const {db} = require('../db_connection')
 const {event_emitter} = require('../event_emitter')
+const JSONbig = require('json-bigint');
 
 var as_users_list = {}
 
@@ -16,8 +17,12 @@ function updateUsersList() {
 }
 
 db.on('notification',(notification) => {
-    if (['tradebot_users_list_insert','tradebot_users_list_update','tradebot_users_list_delete'].includes(notification.channel)) {
-        updateUsersList()
+    const payload = JSONbig.parse(notification.payload);
+    if (notification.channel == 'tradebot_users_list_insert') {
+        as_users_list[payload.discord_id] = payload
+    }
+    if (notification.channel == 'tradebot_users_list_update') {
+        as_users_list[payload[0].discord_id] = payload
     }
 })
 
