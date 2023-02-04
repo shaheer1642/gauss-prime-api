@@ -491,16 +491,28 @@ function trackersfetchSubscribers(data,callback) {
     console.log('[trackersfetchSubscribers] data:',data)
     if (!data.squad) return callback({code: 500, err: 'No squad obj provided'})
     const squad = data.squad
-    db.query(`SELECT * FROM rb_trackers WHERE discord_id != '${squad.original_host}';`)
+    db.query(`SELECT * FROM rb_trackers WHERE discord_id != '${squad.original_host}' AND tier = '${squad.tier}';`)
     .then(res => {
         const channel_ids = {};
-        const hosted_squad = relicBotSquadToString(squad)
+        const hosted_squad = relicBotSquadToString(squad,false,true)
+        const tracked_squad = relicBotSquadToString(tracker,false,true)
         res.rows.forEach(tracker => {
-            if (hosted_squad == relicBotSquadToString(tracker)) {
+            if (hosted_squad == tracked_squad) {
                 if (!channel_ids[tracker.channel_id]) 
                     channel_ids[tracker.channel_id] = []
                 if (!channel_ids[tracker.channel_id].includes(tracker.discord_id))
                     channel_ids[tracker.channel_id].push(tracker.discord_id)
+            } else {
+                if (tracked_squad.main_refinements.length == 0) {
+                    tracked_squad.main_relics.forEach(tracked_relic => {
+                        if (hosted_squad.main_relics.includes(tracked_relic)) {
+                            if (!channel_ids[tracker.channel_id]) 
+                                channel_ids[tracker.channel_id] = []
+                            if (!channel_ids[tracker.channel_id].includes(tracker.discord_id))
+                                channel_ids[tracker.channel_id].push(tracker.discord_id)
+                        }
+                    })
+                }
             }
         })
         return callback({
