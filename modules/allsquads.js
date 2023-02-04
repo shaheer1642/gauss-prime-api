@@ -29,6 +29,8 @@ const endpoints = {
 
     'allsquads/user/ratings/fetch': userRatingsFetch,
     'allsquads/user/ratings/create': userRatingsCreate,
+
+    'allsquads/user/settings/update': userSettingsUpdate,
 }
 
 function clansCreate(data, callback) {
@@ -622,6 +624,40 @@ function userRatingsCreate(data,callback) {
             })
         }
     })
+}
+
+function userSettingsUpdate(data,callback) {
+    console.log('[allsquads.userSettingsUpdate] data:',data)
+    if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
+    if (!data.setting_type) return callback({code: 400, err: 'No setting_type provided'})
+    if (data.setting_value == undefined) return callback({code: 400, err: 'No setting_value provided'})
+    if (['ping_dnd', 'ping_off'].includes(data.setting_type)) {
+        db.query(`
+            UPDATE tradebot_users_list
+            SET
+            allowed_pings_status = allowed_pings_status ${data.setting_type == 'ping_dnd' ? data.setting_value ? `|| '"dnd"'`:`- 'dnd'` : data.setting_type == 'ping_off' ? data.setting_value ? `|| '"invisible"' || '"offline"'`:`- 'offline' - 'invisible'` : '[]'}
+            WHERE discord_id = ${data.discord_id}
+            returning *;
+        `).then(res => {
+            if (res.rowCount == 1) {
+                return callback({
+                    code: 200,
+                    data: res.rows[0]
+                })
+            } else {
+                return callback({
+                    code: 500,
+                    data: 'unexpected db response'
+                })
+            }
+        }).catch(err => {
+            console.log(err)
+            return callback({
+                code: 500,
+                message: err.detail || err.stack || err
+            })
+        })
+    }
 }
 
 function calculateBestPingRating(discord_ids) {
