@@ -503,7 +503,7 @@ function trackersfetchSubscribers(data,callback) {
                 if (!channel_ids[tracker.channel_id].includes(tracker.discord_id))
                     channel_ids[tracker.channel_id].push(tracker.discord_id)
             } else {
-                if (tracker.main_refinements.length == 0) {
+                if (tracker.off_relics.length == 0) {
                     tracker.main_relics.forEach(tracked_relic => {
                         if (squad.main_relics.includes(tracked_relic)) {
                             if (!channel_ids[tracker.channel_id]) 
