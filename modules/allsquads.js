@@ -441,7 +441,7 @@ function statisticsFetch(data,callback) {
                 this_month: 0.0
             }
             db_squads.forEach(squad => {
-                if (squad.members.includes(discord_id)) {
+                if (squad.members.filter(id => !squad.invalidated_members?.includes(id)).includes(discord_id)) {
                     const rep = rep_scheme[squad.bot_type]
                     reputation.all_time += rep
                     if (squad.creation_timestamp >= today_start) reputation.today += rep
