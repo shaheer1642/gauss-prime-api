@@ -495,17 +495,17 @@ function trackersfetchSubscribers(data,callback) {
     .then(res => {
         const channel_ids = {};
         const hosted_squad = relicBotSquadToString(squad,false,true)
-        const tracked_squad = relicBotSquadToString(tracker,false,true)
         res.rows.forEach(tracker => {
+            const tracked_squad = relicBotSquadToString(tracker,false,true)
             if (hosted_squad == tracked_squad) {
                 if (!channel_ids[tracker.channel_id]) 
                     channel_ids[tracker.channel_id] = []
                 if (!channel_ids[tracker.channel_id].includes(tracker.discord_id))
                     channel_ids[tracker.channel_id].push(tracker.discord_id)
             } else {
-                if (tracked_squad.main_refinements.length == 0) {
-                    tracked_squad.main_relics.forEach(tracked_relic => {
-                        if (hosted_squad.main_relics.includes(tracked_relic)) {
+                if (tracker.main_refinements.length == 0) {
+                    tracker.main_relics.forEach(tracked_relic => {
+                        if (squad.main_relics.includes(tracked_relic)) {
                             if (!channel_ids[tracker.channel_id]) 
                                 channel_ids[tracker.channel_id] = []
                             if (!channel_ids[tracker.channel_id].includes(tracker.discord_id))
