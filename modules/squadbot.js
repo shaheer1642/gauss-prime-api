@@ -212,7 +212,8 @@ function squadsAutofillFetch(data,callback) {
         } else {
             return callback({
                 code: 200,
-                data: res.rows
+                message: 'Select a squad you want to force open',
+                data: res.rows,
             })
         }
     }).catch(err => {
@@ -230,7 +231,7 @@ function squadsAutofillExecute(data,callback) {
     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
     db.query(`
-        UPDATE as_sb_squads SET spots = jsonb_array_length(members), autofilled_by = '${data.discord_id}' WHERE status='active' AND members @> '"${data.discord_id}"' AND jsonb_array_length(members) > 1;
+        UPDATE as_sb_squads SET spots = jsonb_array_length(members), autofilled_by = '${data.discord_id}' WHERE status='active' AND members @> '"${data.discord_id}"' AND jsonb_array_length(members) > 1 AND squad_id = '${data.squad_id}';
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
@@ -238,9 +239,27 @@ function squadsAutofillExecute(data,callback) {
                 message: 'Squad auto-filled'
             })
         } else {
-            return callback({
-                code: 400,
-                message: 'Failed to fill that squad. Its status may have changed'
+            db.query(`
+                SELECT * FROM as_sb_squads WHERE status='active' AND members @> '"${data.discord_id}"' AND jsonb_array_length(members) > 1 ORDER BY creation_timestamp ASC;
+            `).then(res => {
+                if (res.rowCount == 0) {
+                    return callback({
+                        code: 400,
+                        message: 'You are not in any eligible squad that can be auto-filled'
+                    })
+                } else {
+                    return callback({
+                        code: 400,
+                        message: 'Failed to fill that squad. Its status may have changed. Please try again',
+                        data: res.rows
+                    })
+                }
+            }).catch(err => {
+                console.log(err)
+                return callback({
+                    code: 500,
+                    message: err.stack
+                })
             })
         }
     }).catch(err => {

@@ -1081,8 +1081,8 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       db.query(`
         UPDATE rb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
         UPDATE rb_squads SET status='opened',open_timestamp=${new Date().getTime()}, host_recommendation = '${JSON.stringify(host_recommendation)}' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
-        UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}';
-        UPDATE as_sb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active';
+        UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"'`).join(' OR ')});
+        UPDATE as_sb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"'`).join(' OR ')});
       `).catch(console.error)
       db_modules.schedule_query(`UPDATE rb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,relicbot.squad_closure)
     }
@@ -1147,9 +1147,11 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       db.query(`
         UPDATE as_sb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
         UPDATE as_sb_squads SET status='opened',open_timestamp=${new Date().getTime()}, host_recommendation = '${JSON.stringify(host_recommendation)}' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
-        UPDATE as_sb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}';
-        UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active';
-      `).catch(console.error)
+        UPDATE as_sb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"'`).join(' OR ')});
+        UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"'`).join(' OR ')});
+      `).then(res => {
+        console.log('--------------finished executing removal query----------------------')
+      }).catch(console.error)
       db_modules.schedule_query(`UPDATE as_sb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,payload[0].squad_closure)
       allsquads.pingmuteOnSquadOpen(payload[0])
     }
