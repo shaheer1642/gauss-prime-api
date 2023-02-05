@@ -4,7 +4,7 @@ import {Box, Toolbar, TableContainer, Table, TableHead, TableRow, TableCell, Pap
     FormGroup, FormLabel, FormControlLabel, Checkbox, CircularProgress, Alert, Radio, RadioGroup, IconButton, Grid } from '@mui/material';
 import {Delete, Close, Edit} from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { socket } from '../websocket/socket';
+import { socket } from '../../../websocket/socket';
 import * as Colors from '@mui/material/colors';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({

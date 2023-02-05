@@ -636,7 +636,7 @@ function userSettingsUpdate(data,callback) {
             UPDATE tradebot_users_list
             SET
             allowed_pings_status = allowed_pings_status ${data.setting_type == 'ping_dnd' ? data.setting_value ? `|| '"dnd"'`:`- 'dnd'` : data.setting_type == 'ping_off' ? data.setting_value ? `|| '"invisible"' || '"offline"'`:`- 'offline' - 'invisible'` : '[]'}
-            WHERE discord_id = ${data.discord_id}
+            WHERE discord_id = '${data.discord_id}'
             returning *;
         `).then(res => {
             if (res.rowCount == 1) {

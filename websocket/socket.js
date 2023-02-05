@@ -12,6 +12,7 @@ const db_modules = require('../modules/db_modules')
 const relicbot = require('../modules/relicbot')
 const squadbot = require('../modules/squadbot')
 const allsquads = require('../modules/allsquads')
+const global_variables = require('../modules/global_variables')
 
 var clients = {}
 io.on('connection', (socket) => {
@@ -72,6 +73,22 @@ io.on('connection', (socket) => {
             }
           } else {
             allsquads.endpoints[key](data,callback)
+          }
+        })
+      })
+      Object.keys(global_variables.endpoints).forEach(key => {
+        socket.addListener(key, (data,callback) => {
+          if (data.discord_id) {
+            if (as_users_list[data.discord_id]) {
+              global_variables.endpoints[key](data,callback)
+            } else {
+              return callback({
+                code: 499,
+                message: 'unauthorized'
+              })
+            }
+          } else {
+            global_variables.endpoints[key](data,callback)
           }
         })
       })
@@ -1130,6 +1147,13 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     }
   }
 
+  if (['global_variables_list_insert','global_variables_list_update','global_variables_list_delete'].includes(notification.channel)) {
+    for (const socket in clients) {
+      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+        clients[socket].emit('globalVariableUpdated', payload)
+      }
+    }
+  }
   
   if (notification.channel == 'as_sb_squads_insert') {
     for (const socket in clients) {

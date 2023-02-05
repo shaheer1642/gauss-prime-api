@@ -70,6 +70,10 @@ db.connect().then(async res => {
             LISTEN as_users_ratings_insert;
             LISTEN as_users_ratings_update;
             LISTEN as_users_ratings_delete;
+            
+            LISTEN global_variables_list_insert;
+            LISTEN global_variables_list_update;
+            LISTEN global_variables_list_delete;
         `).then(res => {
             db.query(`SELECT * FROM scheduled_queries`).then(res => {
                 res.rows.forEach(row => {

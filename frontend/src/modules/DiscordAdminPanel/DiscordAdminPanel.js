@@ -13,11 +13,12 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import InboxIcon from '@mui/icons-material/MoveToInbox';
 import MailIcon from '@mui/icons-material/Mail';
-import DefaultHostingTable from './DefaultHostingTable';
-import SquadsBotKeywordsTable from './SquadsBotKeywordsTable';
-import ClanAffiliates from './ClanAffiliates';
-import AllSquadsFaqs from './AllSquadsFaqs';
-import { socket, socketHasConnected } from '../websocket/socket';
+import DefaultHostingTable from './modules/DefaultHostingTable';
+import SquadsBotKeywordsTable from './modules/SquadsBotKeywordsTable';
+import ClanAffiliates from './modules/ClanAffiliates';
+import AllSquadsFaqs from './modules/AllSquadsFaqs';
+import SquadBotDefaultSquads from './modules/SquadBotDefaultSquads';
+import { socket, socketHasConnected } from '../../websocket/socket';
 
 const drawerWidth = 240;
 
@@ -77,7 +78,7 @@ export default class DiscordAdminPanel extends React.Component {
                 <Toolbar />
                 <Divider />
                 <List>
-                    {['Default Hosting Table','Squad Bot Keywords','Clan Affiliates','FAQ Settings'].map((text, index) => (
+                    {['Default Hosting Table','Squad Bot Keywords','Clan Affiliates','FAQ Settings','Squad Bot Default Squads'].map((text, index) => (
                         <ListItem key={text} disablePadding>
                             <ListItemButton onClick={() => this.setState({drawerIndex: index})} style={{backgroundColor: this.state.drawerIndex == index ? '#651fff':'white', color: this.state.drawerIndex == index ? 'white':'black'}}>
                                 <ListItemText primary={text} />
@@ -91,6 +92,7 @@ export default class DiscordAdminPanel extends React.Component {
                 this.state.drawerIndex == 1 ? <SquadsBotKeywordsTable />:
                 this.state.drawerIndex == 2 ? <ClanAffiliates />:
                 this.state.drawerIndex == 3 ? <AllSquadsFaqs />:
+                this.state.drawerIndex == 4 ? <SquadBotDefaultSquads />:
                 <></>
                 }
             </React.Fragment>

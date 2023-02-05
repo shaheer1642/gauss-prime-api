@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import PaypalPaymentForm from './modules/PaypalPaymentForm';
-import DiscordAdminPanel from './modules/DiscordAdminPanel';
+import DiscordAdminPanel from './modules/DiscordAdminPanel/DiscordAdminPanel';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
