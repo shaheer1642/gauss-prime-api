@@ -136,7 +136,6 @@ export default class SquadBotDefaultSquads extends React.Component {
                     } else {
                         var squad_string = default_squads[index].squad_string
                         default_squads[index].choices.forEach((sub_choices,sub_choice_index) => {
-                            squad_string += sub_choices.sort((a,b) => b.length - a.length)[0]
                             sub_choices.forEach((choice,choice_index) => {
                                 default_squads[index].choices[sub_choice_index][choice_index] = lowerAndScore(choice.trim())
                                 if (choice.length > 80) {
@@ -144,6 +143,7 @@ export default class SquadBotDefaultSquads extends React.Component {
                                     invalid_reason = `Choice keyword length cannot be longer than 70 characters for squad ${default_squads[index].squad_string}`
                                 }
                             })
+                            squad_string += sub_choices.sort((a,b) => b.length - a.length)[0]
                         })
                         if (squad_string.length > 70) {
                             invalid_flag = true
