@@ -207,7 +207,7 @@ export default class SquadBotDefaultSquads extends React.Component {
                                 <Grid item xs={2}>
                                 </Grid>
                                 <Grid item xs={5} style={{marginTop: '20px'}}>
-                                    <TextField label="Order" size="small" type="number"  variant="outlined" value={squad.id} onChange={(e) => this.updateDefaultSquad(index, 'id', e.target.value)}/>
+                                    <TextField disabled label="Order" size="small" type="number"  variant="outlined" value={squad.id} onChange={(e) => this.updateDefaultSquad(index, 'id', e.target.value)}/>
                                 </Grid>
                                 <Grid item xs={1}>
                                 </Grid>
@@ -230,7 +230,7 @@ export default class SquadBotDefaultSquads extends React.Component {
                                     <Grid item xs={12}>
                                         {squad.choices.map((sub_choices,sub_choice_index) => {
                                             return (
-                                                <Paper variant="outlined" style={{padding: '10px',my:'10px'}}>
+                                                <Paper variant="outlined" style={{padding: '10px'}}>
                                                     <Grid container spacing={0.5} style={{background: Colors.grey}}>
                                                         {sub_choices.map((choice) => {
                                                             return (
