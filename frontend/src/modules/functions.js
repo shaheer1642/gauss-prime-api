@@ -104,6 +104,10 @@ function convertUpper(str) {
     return str.replace(/_/g, " ").replace(/(^\w{1})|(\s+\w{1})/g, letter => letter.toUpperCase())
 }
 
+function lowerAndScore(str) {
+    return str.toLowerCase().replace(/ /g, '_')
+}
+
 function getTodayStartMs() {
     return new Date(new Date().setHours(0,0,0,0)).getTime()
 }
@@ -127,4 +131,4 @@ function calcArrAvg(arr) {
     return sum / arr.length
 }
 
-module.exports = {dynamicSort,dynamicSortDesc,msToTime,msToFullTime,getRandomColor,embedScore,convertUpper,getTodayStartMs,getWeekStartMs,getMonthStartMs,calcArrAvg};
+module.exports = {dynamicSort,dynamicSortDesc,msToTime,msToFullTime,getRandomColor,embedScore,convertUpper,lowerAndScore,getTodayStartMs,getWeekStartMs,getMonthStartMs,calcArrAvg};

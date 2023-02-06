@@ -1,12 +1,12 @@
 import * as React from 'react';
 import {Box, Toolbar, TableContainer, Table, TableHead, TableRow, TableCell, Paper, TableBody, 
     tableCellClasses, Button, Modal, Typography, Select, MenuItem, FormControl, InputLabel, TextField,
-    FormGroup, FormControlLabel, Checkbox, CircularProgress, Alert, Radio, RadioGroup, IconButton, Grid } from '@mui/material';
-import {Delete, Close} from '@mui/icons-material';
+    FormGroup, FormControlLabel, FormLabel, Checkbox, CircularProgress, Alert, Radio, RadioGroup, IconButton, Grid, Stack, Chip } from '@mui/material';
+import {Delete, Close, PlusOne} from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { socket } from '../../../websocket/socket';
 import * as Colors from '@mui/material/colors';
-import {convertUpper, dynamicSort, dynamicSortDesc} from '../../functions'
+import {convertUpper, lowerAndScore, dynamicSort, dynamicSortDesc} from '../../functions'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
     [`&.${tableCellClasses.head}`]: {
@@ -103,7 +103,14 @@ export default class SquadBotDefaultSquads extends React.Component {
         var invalid_flag = false
         var invalid_reason = ''
         default_squads.forEach((squad, index )=> {
-            if (squad.id == undefined || squad.squad_string == undefined || squad.spots == undefined || squad.is_default == undefined || squad.members == undefined) {
+            if (
+                squad.id == undefined || 
+                squad.squad_string == undefined || 
+                squad.spots == undefined || 
+                squad.is_default == undefined || 
+                squad.members == undefined || 
+                squad.squad_type == undefined || 
+                squad.choices == undefined) {
                 invalid_flag = true
                 invalid_reason = 'missing a required attribute'
                 return
@@ -115,11 +122,34 @@ export default class SquadBotDefaultSquads extends React.Component {
                 }
                 if (default_squads[index].squad_string.length > 70) {
                     invalid_flag = true
-                    invalid_reason = 'squad name cannot be longer than 70 characters'
+                    invalid_reason = `squad name cannot be longer than 70 characters for squad ${default_squads[index].squad_string}`
                 }
                 if (default_squads[index].spots < 2 || default_squads[index].spots > 4) {
                     invalid_flag = true
                     invalid_reason = 'total spots should be between 2 - 4'
+                }
+                // choice_based check
+                if (default_squads[index].squad_type == 'choice_based') {
+                    if (default_squads[index].choices.length == 0 || default_squads[index].choices.some(sub_choices => sub_choices.length == 0)) {
+                        invalid_flag = true
+                        invalid_reason = `There should be at least one keyword in each choice for squad ${default_squads[index].squad_string}`
+                    } else {
+                        var squad_string = default_squads[index].squad_string
+                        default_squads[index].choices.forEach((sub_choices,sub_choice_index) => {
+                            squad_string += sub_choices.sort((a,b) => b.length - a.length)[0]
+                            sub_choices.forEach((choice,choice_index) => {
+                                default_squads[index].choices[sub_choice_index][choice_index] = lowerAndScore(choice.trim())
+                                if (choice.length > 80) {
+                                    invalid_flag = true
+                                    invalid_reason = `Choice keyword length cannot be longer than 70 characters for squad ${default_squads[index].squad_string}`
+                                }
+                            })
+                        })
+                        if (squad_string.length > 70) {
+                            invalid_flag = true
+                            invalid_reason = `Squad name cannot be longer than 70 characters for squad ${default_squads[index].squad_string}`
+                        }
+                    }
                 }
             }
         })
@@ -170,20 +200,77 @@ export default class SquadBotDefaultSquads extends React.Component {
                                 <Grid item xs={2}>
                                     <Button size='large' onClick={() => this.deleteDefaultSquad(index)}><Delete fontSize='small' sx={{ color: Colors.red[900] }} /></Button>
                                 </Grid>
-                                <Grid item xs={12}>{"\u200b"}</Grid>
-                                <Grid item xs={4} style={{display: 'flex',alignItems: 'center', justifyContent: 'left'}}>
-                                    <Typography>Total Spots: </Typography>
+                                <Grid item xs={4} style={{marginTop: '20px'}}>
+                                    <TextField label="Total Spots" size="small" type="number"  InputProps={{ inputProps: { min: 2, max: 4 } }} variant="outlined" value={squad.spots} onChange={(e) => this.updateDefaultSquad(index, 'spots',e.target.value)}/>
+                                    
                                 </Grid>
                                 <Grid item xs={2}>
-                                    <TextField label="" size="small" type="number"  InputProps={{ inputProps: { min: 2, max: 4 } }} variant="outlined" value={squad.spots} onChange={(e) => this.updateDefaultSquad(index, 'spots',e.target.value)}/>
                                 </Grid>
-                                <Grid item xs={6}></Grid>
-                                <Grid item xs={4} style={{display: 'flex',alignItems: 'center', justifyContent: 'left'}}>
-                                    <Typography>Order: </Typography>
+                                <Grid item xs={5} style={{marginTop: '20px'}}>
+                                    <TextField label="Order" size="small" type="number"  variant="outlined" value={squad.id} onChange={(e) => this.updateDefaultSquad(index, 'id', e.target.value)}/>
                                 </Grid>
-                                <Grid item xs={3}>
-                                    <TextField label="" size="small" type="number"  variant="outlined" value={squad.id} onChange={(e) => this.updateDefaultSquad(index, 'id', e.target.value)}/>
+                                <Grid item xs={1}>
                                 </Grid>
+                                <Grid item xs={12} style={{marginTop: '20px'}}>
+                                    <FormControl>
+                                        <FormLabel id="demo-row-radio-buttons-group-label">Squad Type</FormLabel>
+                                        <RadioGroup
+                                            row
+                                            aria-labelledby="demo-row-radio-buttons-group-label"
+                                            name="row-radio-buttons-group"
+                                            value={squad.squad_type}
+                                            onChange={(e) => this.updateDefaultSquad(index, 'squad_type', e.target.value)}
+                                        >
+                                            <FormControlLabel value="normal" control={<Radio />} label="Normal" />
+                                            <FormControlLabel value="choice_based" control={<Radio />} label="Choice Based" />
+                                        </RadioGroup>
+                                    </FormControl>
+                                </Grid>
+                                {squad.squad_type == 'choice_based' ? 
+                                    <Grid item xs={12}>
+                                        {squad.choices.map((sub_choices,sub_choice_index) => {
+                                            return (
+                                                <Paper variant="outlined" style={{padding: '10px',my:'10px'}}>
+                                                    <Grid container spacing={0.5} style={{background: Colors.grey}}>
+                                                        {sub_choices.map((choice) => {
+                                                            return (
+                                                                <Grid item xs>
+                                                                    <Chip
+                                                                        label={convertUpper(choice)}
+                                                                        onDelete={() => this.updateDefaultSquad(index, 'choices', squad.choices.map((sub_choices, index) => index == sub_choice_index ? sub_choices.filter(e => e != choice) : sub_choices))}
+                                                                    />
+                                                                {/* <TextField  label="" size="small" variant="outlined" value={convertUpper(choice)} onChange={(e) => this.updateDefaultSquad(index, 'choices', squad.choices.map((sub_choices) => sub_choices.map((choice, index) => index == inner_index ? e.target.value : choice)))}/> */}
+                                                                
+                                                                </Grid>
+                                                            )
+                                                        })}
+                                                        <Grid item xs={5}>
+                                                            <TextField
+                                                                variant='standard'
+                                                                size='small'
+                                                                placeholder="New keyword"
+                                                                InputProps={{
+                                                                    disableUnderline: true,
+                                                                }}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key == 'Enter') {
+                                                                        this.updateDefaultSquad(index, 'choices', squad.choices.map((sub_choices, index) => index == sub_choice_index ? [...sub_choices, e.target.value] : sub_choices))
+                                                                        e.target.value = ''
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </Grid>
+                                                        <Grid item xs>
+                                                            <Button size='small' onClick={() => this.updateDefaultSquad(index, 'choices', squad.choices.filter((sub_choice, index) => index != sub_choice_index))}><Delete fontSize='small' sx={{ color: Colors.red[900] }} /></Button>
+                                                        </Grid>
+                                                    </Grid>
+                                                </Paper>
+                                            )
+                                            })
+                                        }
+                                        <Button size='small' onClick={() => this.updateDefaultSquad(index, 'choices', [...squad.choices, []])}>Add choice</Button>
+                                    </Grid>
+                                :<></>}
                             </Grid>
                         )
                     })
