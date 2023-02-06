@@ -98,8 +98,8 @@ export default class SquadBotDefaultSquads extends React.Component {
     addNewDefaultSquad = () => {
         return this.setState({
             default_squads: [...this.state.default_squads, {
-                id: this.state.default_squads.length + 1, 
-                ...default_squads_object
+                ...default_squads_object,
+                id: this.state.default_squads.length + 1
             }]
         })
     }
