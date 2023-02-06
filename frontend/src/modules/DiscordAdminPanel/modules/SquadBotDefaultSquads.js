@@ -40,6 +40,18 @@ const modalStyle = {
     p: 4,
 };
 
+const default_squads_object = {
+    id: Math.floor(Math.random() * 1000) + 100, 
+    squad_string: 'new_squad', 
+    spots: 4, 
+    members:[], 
+    is_default: true,
+    squad_type: 'normal',
+    choices: [],
+    input_title: '',
+    input_example: ''
+}
+
 export default class SquadBotDefaultSquads extends React.Component {
     constructor(props) {
         super(props);
@@ -67,8 +79,17 @@ export default class SquadBotDefaultSquads extends React.Component {
         socket.emit('globalVariables/fetch', {var_name: 'squadbot.default_squads'}, (res) => {
             console.log(res)
             if (res.code == 200) {
+                const default_squads = res.data.var_value
+                default_squads.forEach((squad,index) => {
+                    Object.keys(default_squads_object).forEach(key => {
+                        console.log(key)
+                        if (!squad[key])
+                            default_squads[index][key] = default_squads_object[key]
+                    })
+                })
+                console.log(default_squads)
                 this.setState({
-                    default_squads: res.data.var_value
+                    default_squads: default_squads
                 })
             }
         })
@@ -76,7 +97,10 @@ export default class SquadBotDefaultSquads extends React.Component {
 
     addNewDefaultSquad = () => {
         return this.setState({
-            default_squads: [...this.state.default_squads, {id: this.state.default_squads.length + 1, squad_string: 'new_squad', spots:4, members:[], is_default:true}]
+            default_squads: [...this.state.default_squads, {
+                id: this.state.default_squads.length + 1, 
+                ...default_squads_object
+            }]
         })
     }
 
@@ -103,14 +127,7 @@ export default class SquadBotDefaultSquads extends React.Component {
         var invalid_flag = false
         var invalid_reason = ''
         default_squads.forEach((squad, index )=> {
-            if (
-                squad.id == undefined || 
-                squad.squad_string == undefined || 
-                squad.spots == undefined || 
-                squad.is_default == undefined || 
-                squad.members == undefined || 
-                squad.squad_type == undefined || 
-                squad.choices == undefined) {
+            if (Object.keys(default_squads_object).some(key => squad[key] == undefined)) {
                 invalid_flag = true
                 invalid_reason = 'missing a required attribute'
                 return
@@ -124,13 +141,13 @@ export default class SquadBotDefaultSquads extends React.Component {
                     invalid_flag = true
                     invalid_reason = `squad name cannot be longer than 70 characters for squad ${default_squads[index].squad_string}`
                 }
-                if (default_squads[index].spots < 2 || default_squads[index].spots > 4) {
+                if (squad.spots < 2 || squad.spots > 4) {
                     invalid_flag = true
                     invalid_reason = 'total spots should be between 2 - 4'
                 }
                 // choice_based check
-                if (default_squads[index].squad_type == 'choice_based') {
-                    if (default_squads[index].choices.length == 0 || default_squads[index].choices.some(sub_choices => sub_choices.length == 0)) {
+                if (squad.squad_type == 'choice_based') {
+                    if (squad.choices.length == 0 || squad.choices.some(sub_choices => sub_choices.length == 0)) {
                         invalid_flag = true
                         invalid_reason = `There should be at least one keyword in each choice for squad ${default_squads[index].squad_string}`
                     } else {
@@ -150,6 +167,23 @@ export default class SquadBotDefaultSquads extends React.Component {
                             invalid_reason = `Squad name cannot be longer than 70 characters for squad ${default_squads[index].squad_string}`
                         }
                     }
+                }
+                // input_based check
+                if (squad.squad_type == 'input_based') {
+                    if (!squad.input_title || !squad.input_example) {
+                        invalid_flag = true
+                        invalid_reason = `Please type title and example for squad ${default_squads[index].squad_string}`
+                    }
+                    if (squad.input_title.length > 45) {
+                        invalid_flag = true
+                        invalid_reason = `Title length must not exceed 45 characters for squad ${default_squads[index].squad_string}`
+                    }
+                    if (squad.input_example.length > 100) {
+                        invalid_flag = true
+                        invalid_reason = `Example length must not exceed 100 characters for squad ${default_squads[index].squad_string}`
+                    }
+                    default_squads[index].input_title = squad.input_title.trim()
+                    default_squads[index].input_example = squad.input_example.trim()
                 }
             }
         })
@@ -223,12 +257,13 @@ export default class SquadBotDefaultSquads extends React.Component {
                                         >
                                             <FormControlLabel value="normal" control={<Radio />} label="Normal" />
                                             <FormControlLabel value="choice_based" control={<Radio />} label="Choice Based" />
+                                            <FormControlLabel value="input_based" control={<Radio />} label="Input Based" />
                                         </RadioGroup>
                                     </FormControl>
                                 </Grid>
                                 {squad.squad_type == 'choice_based' ? 
                                     <Grid item xs={12}>
-                                        {squad.choices.map((sub_choices,sub_choice_index) => {
+                                        {squad.choices?.map((sub_choices,sub_choice_index) => {
                                             return (
                                                 <Paper variant="outlined" style={{padding: '10px'}}>
                                                     <Grid container spacing={0.5} style={{background: Colors.grey}}>
@@ -269,6 +304,15 @@ export default class SquadBotDefaultSquads extends React.Component {
                                             })
                                         }
                                         <Button size='small' onClick={() => this.updateDefaultSquad(index, 'choices', [...squad.choices, []])}>Add choice</Button>
+                                    </Grid>
+                                : squad.squad_type == 'input_based' ? 
+                                    <Grid container spacing={0.5}>
+                                        <Grid item xs>
+                                            <TextField fullWidth label="Title" size="small" variant="outlined" value={convertUpper(squad.input_title)} onChange={(e) => this.updateDefaultSquad(index, 'input_title',e.target.value)}/>
+                                        </Grid>
+                                        <Grid item xs>
+                                            <TextField fullWidth label="Example" size="small" variant="outlined" value={convertUpper(squad.input_example)} onChange={(e) => this.updateDefaultSquad(index, 'input_example',e.target.value)}/>
+                                        </Grid>
                                     </Grid>
                                 :<></>}
                             </Grid>
