@@ -160,7 +160,7 @@ export default class SquadBotDefaultSquads extends React.Component {
                                     invalid_reason = `Choice keyword length cannot be longer than 70 characters for squad ${default_squads[index].squad_string}`
                                 }
                             })
-                            squad_string += sub_choices.sort((a,b) => b.length - a.length)[0]
+                            squad_string += [...sub_choices].sort((a,b) => b.length - a.length)[0]
                         })
                         if (squad_string.length > 70) {
                             invalid_flag = true
