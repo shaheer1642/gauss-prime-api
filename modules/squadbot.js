@@ -349,7 +349,8 @@ function squadsCreate(data,callback) {
                     db.query(`SELECT * FROM as_sb_squads WHERE squad_code='${squad_code}' AND status='active'`)
                     .then(res => {
                         if (res.rowCount > 0) {
-                            return resolve({
+                            if (res.rows.some(row => row.members.includes(data.discord_id))) return resolve({code: 200})
+                            else return resolve({
                                 code: 399,
                                 message: `**${convertUpper(squad_string)}** already exists. Would you like to __join existing squad__ or __host a new one__?`,
                                 squad_id: res.rows[0].squad_id,
