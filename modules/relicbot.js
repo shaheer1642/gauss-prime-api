@@ -692,9 +692,10 @@ function relicBotStringToSquad(str) {
         else if ((word.length == 2 || word.length == 3) && !Number(word[0]) && Number(`${word[1]}${word[2] || ''}`)) {
             if (!squad.main_relics.includes(word)) squad.main_relics.push(word)
         }
-        else if (word.match('cycle') || word.match('cycles')) {
+        else if (word.match('cycle') || word.match('cycles') || word.match('run') || word.match('runs')) {
             const prev_word = subline[0].split(' ')[index-1]
-            squad.cycle_count = prev_word
+            if (prev_word.match(/[0-9]/) && !prev_word.match(/[a-zA-Z]/))
+                squad.cycle_count = prev_word
         }
         else if (word == 'steelpath' || word == 'sp') squad.is_steelpath = true
         else if (word == 'railjack' || word == 'rj') squad.is_railjack = true
@@ -707,9 +708,10 @@ function relicBotStringToSquad(str) {
         else if ((word.length == 2 || word.length == 3) && !Number(word[0]) && Number(`${word[1]}${word[2] || ''}`)) {
             if (!squad.off_relics.includes(word)) squad.off_relics.push(word)
         }
-        else if (word.match('cycle') || word.match('cycles')) {
+        else if (word.match('cycle') || word.match('cycles') || word.match('run') || word.match('runs')) {
             const prev_word = subline[1].split(' ')[index-1]
-            squad.cycle_count = prev_word
+            if (prev_word.match(/[0-9]/) && !prev_word.match(/[a-zA-Z]/))
+                squad.cycle_count = prev_word
         }
         else if (word == 'steelpath' || word == 'sp') squad.is_steelpath = true
         else if (word == 'railjack' || word == 'rj') squad.is_railjack = true
@@ -735,7 +737,7 @@ function relicBotStringToSquad(str) {
 }
 
 function relicBotSquadToString(squad,include_sp_rj,exclude_cycle_count) {
-    return `${convertUpper(squad.tier)} ${squad.main_relics.join(' ').toUpperCase()} ${squad.squad_type} ${squad.main_refinements.join(' ')} ${squad.off_relics.length > 0 ? 'with':''} ${squad.off_relics.join(' ').toUpperCase()} ${squad.off_refinements.join(' ')} ${include_sp_rj ? (squad.is_steelpath ? 'Steelpath':squad.is_railjack ? 'Railjack':''):''} ${exclude_cycle_count ? '' : squad.cycle_count == '' ? '':`(${squad.cycle_count} cycles)`}`.replace(/\s+/g, ' ').trim()
+    return `${convertUpper(squad.tier)} ${squad.main_relics.join(' ').toUpperCase()} ${squad.squad_type} ${squad.main_refinements.join(' ')} ${squad.off_relics.length > 0 ? 'with':''} ${squad.off_relics.join(' ').toUpperCase()} ${squad.off_refinements.join(' ')} ${include_sp_rj ? (squad.is_steelpath ? 'Steelpath':squad.is_railjack ? 'Railjack':''):''} ${exclude_cycle_count ? '' : squad.cycle_count == '' ? '':`(${squad.cycle_count} runs)`}`.replace(/\s+/g, ' ').trim()
 }
 
 db.on('notification',(notification) => {
