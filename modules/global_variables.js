@@ -1,9 +1,16 @@
 const { db } = require("./db_connection")
+const WorldState = require('warframe-worldstate-parser');
+const axios = require('axios');
 
 const endpoints = {
     'globalVariables/fetch': globalVariablesFetch,
     'globalVariables/update': globalVariablesUpdate,
 }
+
+updateNightwaveMissionsSquadBot()
+setInterval(() => {
+    updateNightwaveMissionsSquadBot()
+}, 86400000);
 
 function globalVariablesFetch(data,callback) {
     console.log('[global_variables.globalVariablesFetch] data:',data)
@@ -75,6 +82,38 @@ function globalVariablesUpdate(data,callback) {
             message: err.stack
         }) : null
     })
+}
+
+function updateNightwaveMissionsSquadBot() {
+    console.log('[global_variables.updateNightwaveMissionsSquadBot] called')
+
+    axios('http://content.warframe.com/dynamic/worldState.php')
+    .then( worldstateData => {
+        const worldStateNightwave = new WorldState(JSON.stringify(worldstateData.data)).nightwave
+
+        db.query(`SELECT * from global_variables_list WHERE var_name = 'squadbot.default_squads'`)
+        .then(res => {
+            if (res.rowCount == 1) {
+                const default_squads = JSON.parse(res.rows[0].var_value).map(squad => {
+                    if (squad.squad_string != 'nightwave')
+                        return squad
+                    else return {
+                        ...squad,
+                        squad_type: 'choice_based',
+                        choices: [
+                            worldStateNightwave.activeChallenges.map(challenge => challenge.title)
+                        ]
+                    }
+                })
+                console.log(JSON.stringify(default_squads))
+                db.query(`UPDATE global_variables_list SET var_value = '${JSON.stringify(default_squads)}' WHERE var_name = 'squadbot.default_squads'`)
+                .then(res => {
+                    if (res.rowCount == 1)
+                        console.log('[global_variables.updateNightwaveMissionsSquadBot] success')
+                }).catch(console.error)
+            }
+        }).catch(console.error)
+    }).catch(console.error)
 }
 
 module.exports = {
