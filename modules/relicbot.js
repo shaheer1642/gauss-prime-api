@@ -44,6 +44,14 @@ const pa_relics_list = [
     'axi_b5_relic',
     'axi_g9_relic',
     'axi_n10_relic',
+
+    'lith_a5_relic',
+    'lith_v9_relic',
+    'meso_t6_relic',
+    'meso_v8_relic',
+    'neo_d6_relic',
+    'neo_a7_relic',
+    'axi_f1_relic',
 ]
 const relics_list = {}
 var hosting_table = []
