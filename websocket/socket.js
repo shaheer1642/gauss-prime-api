@@ -27,12 +27,12 @@ io.on('connection', (socket) => {
       socket.removeAllListeners()
     });
 
-    if (socket.handshake.query.bot_token && socket.handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+    if ((socket.handshake.query.bot_token && socket.handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (socket.handshake.auth.token && socket.handshake.auth.conn_type == 'web-user')) {
       Object.keys(relicbot.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
           if (data.discord_id) {
             if (as_users_list[data.discord_id]) {
-              relicbot.endpoints[key](data,callback)
+              relicbot.endpoints[key](data, callback? callback : () => {})
             } else {
               return callback({
                 code: 499,
@@ -40,7 +40,7 @@ io.on('connection', (socket) => {
               })
             }
           } else {
-            relicbot.endpoints[key](data,callback)
+            relicbot.endpoints[key](data, callback? callback : () => {})
           }
         })
       })
@@ -48,7 +48,7 @@ io.on('connection', (socket) => {
         socket.addListener(key, (data,callback) => {
           if (data.discord_id) {
             if (as_users_list[data.discord_id]) {
-              squadbot.endpoints[key](data,callback)
+              squadbot.endpoints[key](data, callback? callback : () => {})
             } else {
               return callback({
                 code: 499,
@@ -56,7 +56,7 @@ io.on('connection', (socket) => {
               })
             }
           } else {
-            squadbot.endpoints[key](data,callback)
+            squadbot.endpoints[key](data, callback? callback : () => {})
           }
         })
       })
@@ -64,7 +64,7 @@ io.on('connection', (socket) => {
         socket.addListener(key, (data,callback) => {
           if (data.discord_id) {
             if (as_users_list[data.discord_id]) {
-              allsquads.endpoints[key](data,callback)
+              allsquads.endpoints[key](data, callback? callback : () => {})
             } else {
               return callback({
                 code: 499,
@@ -72,7 +72,7 @@ io.on('connection', (socket) => {
               })
             }
           } else {
-            allsquads.endpoints[key](data,callback)
+            allsquads.endpoints[key](data, callback? callback : () => {})
           }
         })
       })
@@ -80,7 +80,7 @@ io.on('connection', (socket) => {
         socket.addListener(key, (data,callback) => {
           if (data.discord_id) {
             if (as_users_list[data.discord_id]) {
-              global_variables.endpoints[key](data,callback)
+              global_variables.endpoints[key](data, callback? callback : () => {})
             } else {
               return callback({
                 code: 499,
@@ -88,7 +88,7 @@ io.on('connection', (socket) => {
               })
             }
           } else {
-            global_variables.endpoints[key](data,callback)
+            global_variables.endpoints[key](data, callback? callback : () => {})
           }
         })
       })
@@ -1084,7 +1084,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
 
   if (notification.channel == 'rb_squads_insert') {
     for (const socket in clients) {
-      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+      if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
         clients[socket].emit('squadCreate', payload)
       }
     }
@@ -1107,7 +1107,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       db.query(`UPDATE rb_squads SET squad_code='${payload[0].squad_code}_${payload[0].creation_timestamp}' WHERE squad_id='${payload[0].squad_id}'`).catch(console.error)
     }
     for (const socket in clients) {
-      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+      if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
         clients[socket].emit('squadUpdate', payload)
         if (payload[0].status == 'opened' && payload[1].status == 'active')
           clients[socket].emit('relicbot/squads/opened', payload[0])
@@ -1125,7 +1125,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
 
   if (notification.channel == 'rb_squads_messages_insert') {
     for (const socket in clients) {
-      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+      if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
         clients[socket].emit('squadMessageCreate', payload)
       }
     }
@@ -1133,7 +1133,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
   
   if (['rb_hosting_table_insert','rb_hosting_table_update','rb_hosting_table_delete'].includes(notification.channel)) {
     for (const socket in clients) {
-      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+      if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
         clients[socket].emit('defaultHostingTableUpdate', payload)
       }
     }
@@ -1141,7 +1141,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
 
   if (['wfhub_keywords_insert','wfhub_keywords_update','wfhub_keywords_delete'].includes(notification.channel)) {
     for (const socket in clients) {
-      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+      if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
         clients[socket].emit('squadKeywordsUpdate', payload)
       }
     }
@@ -1149,7 +1149,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
 
   if (['global_variables_list_insert','global_variables_list_update','global_variables_list_delete'].includes(notification.channel)) {
     for (const socket in clients) {
-      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+      if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
         clients[socket].emit('globalVariableUpdated', payload)
       }
     }
@@ -1157,7 +1157,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
   
   if (notification.channel == 'as_sb_squads_insert') {
     for (const socket in clients) {
-      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+      if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
         clients[socket].emit('squadbot/squadCreate', payload)
       }
     }
@@ -1183,7 +1183,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       db.query(`UPDATE as_sb_squads SET squad_code='${payload[0].squad_code}_${payload[0].creation_timestamp}' WHERE squad_id='${payload[0].squad_id}'`).catch(console.error)
     }
     for (const socket in clients) {
-      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+      if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
         clients[socket].emit('squadbot/squadUpdate', payload)
         if (payload[0].status == 'opened' && payload[1].status == 'active')
           clients[socket].emit('squadbot/squads/opened', payload[0])
@@ -1201,7 +1201,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
   
   if (notification.channel == 'as_sb_squads_messages_insert') {
     for (const socket in clients) {
-      if (clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) {
+      if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
         clients[socket].emit('squadbot/squadMessageCreate', payload)
       }
     }

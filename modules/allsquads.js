@@ -31,6 +31,26 @@ const endpoints = {
     'allsquads/user/ratings/create': userRatingsCreate,
 
     'allsquads/user/settings/update': userSettingsUpdate,
+
+    'allsquads/userslist': usersList,
+}
+
+function usersList(data,callback) {
+    console.log('[usersFetch] data:',data)
+    db.query(`
+        SELECT * FROM tradebot_users_list;
+    `).then(res => {
+        return callback({
+            code: 200,
+            data: res.rows
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
 }
 
 function clansCreate(data, callback) {
