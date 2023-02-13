@@ -10,6 +10,7 @@ const uuid = require('uuid');
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const crypto = require('crypto')
+const {generateVerificationId} = require('../modules/functions')
 
 app.use(cors())
 app.use(bodyParser.urlencoded({
@@ -21,7 +22,7 @@ app.use(express.static(path.join(__dirname, '../frontend/build')))
 
 app.get('/api', (req, res) => {
     res.send('Hello, this is the API for Gauss Prime. Nothing fancy to show on the web-page');
-  });
+});
 
 app.get('/api/patreon/oauth', (req,res) => {
   console.log('[/patreon/oauth] called')
@@ -174,8 +175,110 @@ app.get('/api/discordOAuth2/authorize', async (req, res) => {
   }
 });
 
+app.get('/api/allsquads/discordOAuth2/authorize', async (req, res) => {
+  if (!req.query.state) {
+    res.send('<html><body><h1>login_token not found, please try again</h1></body></html>')
+    return
+  }
+  if (!req.query.code) {
+    res.send('<html><body><h1>Authorization code not found, please try again</h1></body></html>')
+    return
+  }
+  const login_token = req.query.state.split('_')[0]
+  const origin = req.query.state.split('_')[1]
+  console.log('origin',origin)
+  request('https://discord.com/api/oauth2/token', {
+    method: 'POST',
+    body: new URLSearchParams({
+      client_id: process.env.BOT_CLIENT_ID,
+      client_secret: process.env.BOT_CLIENT_SECRET,
+      code: req.query.code,
+      grant_type: 'authorization_code',
+      redirect_uri: `${process.env.API_URL}api/allsquads/discordOAuth2/authorize`,
+      scope: 'identify',
+    }).toString(),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  }).then(async tokenResponseData => {
+    const oauthData = await getJSONResponse(tokenResponseData.body);
+    console.log(oauthData);
+    request('https://discord.com/api/users/@me', {
+      headers: {
+        authorization: `${oauthData.token_type} ${oauthData.access_token}`,
+      },
+    }).then(async userResult => {
+      const userData = await getJSONResponse(userResult.body);
+      console.log(userData)
+      if (userData.message && userData.message == '401: Unauthorized')
+        return
+      db.query(`
+        UPDATE tradebot_users_list SET login_token = '${login_token}' WHERE discord_id = '${userData.id}';
+      `).then(db_res => {
+        if (db_res.rowCount == 1) {
+          res.redirect(origin)
+        } else {
+          res.redirect(`/api/allsquads/verification?redirect=${origin}&discord_id=${userData.id}`)
+        }
+      }).catch(console.error)
+    }).catch(console.error)
+  }).catch(console.error)
+  async function getJSONResponse(body) {
+    let fullBody = '';
+  
+    for await (const data of body) {
+      fullBody += data.toString();
+    }
+    return JSON.parse(fullBody);
+  }
+});
+
+app.get('/api/allsquads/verification', async (req, res) => {
+  if (!req.query.redirect || !req.query.discord_id) {
+    res.send('<html><body><h1>Invalid query, please try again</h1></body></html>')
+    return
+  }
+  const id = generateVerificationId()
+  db.query(`INSERT INTO tradebot_users_unverified (id, discord_id) VALUES ('${id}','${req.query.discord_id}')`)
+  .then(db_res => {
+    if (db_res.rowCount == 1) {
+      res.redirect(`${req.query.redirect}verification?code=${id}`)
+    }
+  }).catch(console.error)
+})
+
+app.get('/api/allsquads/authenticate', async (req, res) => {
+  if (!req.query.login_token) {
+    return res.send({
+      code: 400,
+      message: 'Invalid token provided'
+    })
+  }
+  db.query(`
+    SELECT * FROM tradebot_users_list WHERE login_token = '${req.query.login_token}';
+  `).then(db_res => {
+      if (db_res.rowCount == 1) {
+          return res.send({
+              code: 200,
+              data: db_res.rows[0]
+          })
+      } else {
+          return res.send({
+              code: 400,
+              message: 'Invalid token provided'
+          })
+      }
+  }).catch(err => {
+      console.log(err)
+      return res.send({
+          code: 500,
+          message: err.stack
+      })
+  })
+})
+
 app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'))
+  res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'))
 });
 
 server.listen(process.env.PORT, () => {

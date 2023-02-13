@@ -33,6 +33,7 @@ const endpoints = {
     'allsquads/user/settings/update': userSettingsUpdate,
 
     'allsquads/userslist': usersList,
+
 }
 
 function usersList(data,callback) {

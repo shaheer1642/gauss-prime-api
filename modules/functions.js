@@ -127,4 +127,13 @@ function calcArrAvg(arr) {
     return sum / arr.length
 }
 
-module.exports = {dynamicSort,dynamicSortDesc,msToTime,msToFullTime,getRandomColor,embedScore,convertUpper,getTodayStartMs,getWeekStartMs,getMonthStartMs,calcArrAvg};
+function generateVerificationId() {
+    let ID = "";
+    let characters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    for ( var i = 0; i < 6; i++ ) {
+      ID += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return ID;
+}
+
+module.exports = {dynamicSort,dynamicSortDesc,msToTime,msToFullTime,getRandomColor,embedScore,convertUpper,getTodayStartMs,getWeekStartMs,getMonthStartMs,calcArrAvg,generateVerificationId};
