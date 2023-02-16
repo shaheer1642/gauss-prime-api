@@ -31,9 +31,42 @@ const endpoints = {
     'allsquads/user/ratings/create': userRatingsCreate,
 
     'allsquads/user/settings/update': userSettingsUpdate,
+    'allsquads/user/chats/fetch': userChatsFetch,
 
     'allsquads/userslist': usersList,
 
+}
+
+function userChatsFetch(data, callback) {
+    console.log('[allsquads.userChatsFetch] data:',data)
+    if (!data.discord_id) return callback({code: 400, message: 'No discord_id provided'})
+    db.query(`
+        SELECT * FROM as_sb_squads_messages SM
+        JOIN as_sb_squads S ON S.squad_id = SM.squad_id
+        WHERE S.members @> '"${data.discord_id}"'
+        ORDER BY SM.creation_timestamp DESC;
+        SELECT * FROM rb_squads_messages SM
+        JOIN rb_squads S ON S.squad_id = SM.squad_id
+        WHERE S.members @> '"${data.discord_id}"'
+        ORDER BY SM.creation_timestamp DESC;
+    `).then(res => {
+        const chats = res[0].rows.concat(res[1].rows)
+        const squadChats = {}
+        chats.forEach(chat => {
+            if (!squadChats[chat.squad_id]) squadChats[chat.squad_id] = []
+            squadChats[chat.squad_id].push(chat)
+        })
+        callback({
+            code: 200,
+            data: squadChats
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
 }
 
 function usersList(data,callback) {
