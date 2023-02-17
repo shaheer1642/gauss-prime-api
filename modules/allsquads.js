@@ -32,23 +32,44 @@ const endpoints = {
 
     'allsquads/user/settings/update': userSettingsUpdate,
     'allsquads/user/chats/fetch': userChatsFetch,
+    'allsquads/user/filledSquads/fetch': userfilledSquadsFetch,
 
     'allsquads/userslist': usersList,
 
 }
 
+function userfilledSquadsFetch(data, callback) {
+    console.log('[allsquads.userfilledSquadsFetch] data:',data)
+    if (!data.discord_id) return callback({code: 400, message: 'No discord_id provided'})
+    db.query(`
+        SELECT * FROM as_sb_squads WHERE members @> '"${data.discord_id}"' AND (status = 'opened' OR status = 'closed' OR status = 'disbanded');
+        SELECT * FROM rb_squads WHERE members @> '"${data.discord_id}"' AND (status = 'opened' OR status = 'closed' OR status = 'disbanded');
+    `).then(res => {
+        callback({
+            code: 200,
+            data: res[0].rows.concat(res[1].rows).sort(dynamicSortDesc("creation_timestamp"))
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
 function userChatsFetch(data, callback) {
     console.log('[allsquads.userChatsFetch] data:',data)
-    if (!data.discord_id) return callback({code: 400, message: 'No discord_id provided'})
+    if (!data.squad_id) return callback({code: 400, message: 'No discord_id provided'})
     db.query(`
         SELECT * FROM as_sb_squads_messages SM
         JOIN as_sb_squads S ON S.squad_id = SM.squad_id
         WHERE S.members @> '"${data.discord_id}"'
-        ORDER BY SM.creation_timestamp DESC;
+        ORDER BY SM.creation_timestamp ASC;
         SELECT * FROM rb_squads_messages SM
         JOIN rb_squads S ON S.squad_id = SM.squad_id
         WHERE S.members @> '"${data.discord_id}"'
-        ORDER BY SM.creation_timestamp DESC;
+        ORDER BY SM.creation_timestamp ASC;
     `).then(res => {
         const chats = res[0].rows.concat(res[1].rows)
         const squadChats = {}

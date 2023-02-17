@@ -163,18 +163,36 @@ function keywordsDelete(data,callback) {
 
 function squadsMessageCreate(data,callback) {
     console.log('[squadbot/squadsMessageCreate] data:',data)
-    if (!data.thread_id) return callback({code: 500, err: 'No thread_id provided'})
+    if (!data.thread_id) return callback({code: 400, message: 'No thread_id provided'})
+    const fromWeb = data.thread_id.match('web') ? true : false
+    if (fromWeb && !data.squad_id) return callback({code: 400, message: 'No squad_id provided'})
     db.query(`
         INSERT INTO as_sb_squads_messages (message_id,message,discord_id,thread_id,squad_id,squad_thread_ids)
         VALUES (
             '${data.message_id}',
             '${data.message.replace(/'/g,`''`)}',
             '${data.discord_id}',
-            '${data.thread_id}',
-            (select squad_id FROM as_sb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened'),
-            (select thread_ids FROM as_sb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')
+            ${fromWeb ? 'null' : `'${data.thread_id}'`},
+            ${fromWeb ? `'${data.squad_id}'` : `(select squad_id FROM as_sb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')`},
+            ${fromWeb ? `(select thread_ids FROM as_sb_squads WHERE squad_id = '${data.squad_id}' AND status='opened')` : `(select thread_ids FROM as_sb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')`}
+            
         )
-    `).catch(err => {
+    `).then(res => {
+        if (res.rowCount == 1) {
+            if (callback) {
+                callback({
+                    code: 200,
+                })
+            }
+        } else {
+            if (callback) {
+                callback({
+                    code: 500,
+                    message: 'unexpected db response'
+                })
+            }
+        }
+    }).catch(err => {
         if (err.code != '23502') // message not sent in a tracked thread
             console.log(err)
     })
@@ -182,7 +200,7 @@ function squadsMessageCreate(data,callback) {
 
 function squadsMessagesFetch(data,callback) {
     console.log('[squadbot/squadsMessagesFetch] data:', data)
-    if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
+    if (!data.squad_id) return callback({code: 400, message: 'No squad_id provided'})
     db.query(`
         SELECT * FROM as_sb_squads_messages WHERE squad_id = '${data.squad_id}' ORDER BY creation_timestamp ASC;
     `).then(res => {

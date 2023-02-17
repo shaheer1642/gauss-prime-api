@@ -92,11 +92,26 @@ function squadsMessageCreate(data,callback) {
             '${data.message_id}',
             '${data.message.replace(/'/g,`''`)}',
             '${data.discord_id}',
-            '${data.thread_id}',
-            (select squad_id FROM rb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened'),
-            (select thread_ids FROM rb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')
+            ${fromWeb ? 'null' : `'${data.thread_id}'`},
+            ${fromWeb ? `'${data.squad_id}'` : `(select squad_id FROM rb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')`},
+            ${fromWeb ? `(select thread_ids FROM rb_squads WHERE squad_id = '${data.squad_id}' AND status='opened')` : `(select thread_ids FROM rb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')`}
         )
-    `).catch(err => {
+    `).then(res => {
+        if (res.rowCount == 1) {
+            if (callback) {
+                callback({
+                    code: 200,
+                })
+            }
+        } else {
+            if (callback) {
+                callback({
+                    code: 500,
+                    message: 'unexpected db response'
+                })
+            }
+        }
+    }).catch(err => {
         if (err.code != '23502') // message not sent in a tracked thread
             console.log(err)
     })
