@@ -86,6 +86,8 @@ const squad_closure = 900000 // in ms
 function squadsMessageCreate(data,callback) {
     console.log('[squadsMessageCreate] data:',data)
     if (!data.thread_id) return callback({code: 500, err: 'No thread_id provided'})
+    const fromWeb = data.thread_id.match('web') ? true : false
+    if (fromWeb && !data.squad_id) return callback({code: 400, message: 'No squad_id provided'})
     db.query(`
         INSERT INTO rb_squads_messages (message_id,message,discord_id,thread_id,squad_id,squad_thread_ids)
         VALUES (
