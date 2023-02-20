@@ -680,8 +680,7 @@ function userRatingsCreate(data,callback) {
         if (callback) {
             if (res.rowCount == 1) {
                 return callback({
-                    code: 200,
-                    data: user_ratings
+                    code: 200
                 })
             } else {
                 return callback({
