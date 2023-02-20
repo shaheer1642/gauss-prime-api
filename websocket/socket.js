@@ -20,8 +20,8 @@ io.on('connection', (socket) => {
     clients[socket.id] = socket
     console.log('connected clients',new Date(),Object.keys(clients).length)
 
-    socket.on('disconnect', () => {
-      console.log('a user disconnected');
+    socket.on('disconnect', (reason) => {
+      console.log('a user disconnected. reason:',reason);
       delete clients[socket.id]
       console.log('connected clients',new Date(),Object.keys(clients).length)
       socket.removeAllListeners()
