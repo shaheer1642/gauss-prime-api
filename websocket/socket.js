@@ -16,14 +16,14 @@ const global_variables = require('../modules/global_variables')
 
 var clients = {}
 io.on('connection', (socket) => {
-    console.log('a user connected',socket.id);
+    console.log('[websocket] a user connected',socket.id);
     clients[socket.id] = socket
-    console.log('connected clients',new Date(),Object.keys(clients).length)
+    console.log('[websocket] connected clients',new Date(),Object.keys(clients).length)
 
     socket.on('disconnect', (reason) => {
-      console.log('a user disconnected. reason:',reason);
+      console.log('[websocket] a user disconnected. reason:',reason);
       delete clients[socket.id]
-      console.log('connected clients',new Date(),Object.keys(clients).length)
+      console.log('[websocket] connected clients',new Date(),Object.keys(clients).length)
       socket.removeAllListeners()
     });
 
