@@ -598,7 +598,7 @@ function statisticsFetch(data,callback) {
             statistics.this_month = statistics.this_month.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
             statistics.top_squads = statistics.top_squads.map((host,index) => index < data.limit ? host:null).filter(o => o != null)
         }
-        console.log(JSON.stringify(statistics))
+        // console.log(JSON.stringify(statistics))
         if (data.exclude_squads) {
             delete statistics.top_squads;
             delete statistics.total_squads;

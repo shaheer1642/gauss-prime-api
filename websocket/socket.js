@@ -750,9 +750,9 @@ function checkUserLogin(session_key) {
 }
 
 db.on('notification', (notification) => {
-  console.log('db notification')
-  console.log(notification.payload)
-  console.log(notification.channel)
+  console.log('[DB notification]',notification.channel)
+  // console.log(notification.payload)
+  // console.log(notification.channel)
   const payload = JSONbig.parse(notification.payload);
 
   if (notification.channel == 'hubapp_messages_channels_update') {

@@ -345,7 +345,7 @@ function squadsLeave(data,callback) {
     console.log('[relicbot.squadsLeave] data:',data)
     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
     if (!data.tier) return callback({code: 500, err: 'No tier provided'})
-    if (!['all','lith','meso','neo','axi'].includes(data.tier)) return callback({code: 500, err: `Invalid tier **${squad.tier}**\nPlease include lith, meso, neo, or axi`})
+    if (!['all','lith','meso','neo','axi'].includes(data.tier)) return callback({code: 500, err: `Invalid tier **${data.tier}**\nPlease include lith, meso, neo, or axi`})
     db.query(`UPDATE rb_squads SET members=members-'${data.discord_id}', logs = logs || '"${new Date().getTime()} ${data.discord_id} left squad"'  WHERE status='active' AND members @> '"${data.discord_id}"' ${data.tier == 'all' ? '':` AND tier = '${data.tier}'`}`)
     .then(res => {
         return callback({
