@@ -25,6 +25,7 @@ const endpoints = {
     'allsquads/pingmutes/fetch': pingmutesFetch,
     'allsquads/pingmutes/delete': pingmutesDelete,
 
+    'allsquads/leaderboards/fetch': leaderboardsFetch,
     'allsquads/statistics/fetch': statisticsFetch,
 
     'allsquads/user/ratings/fetch': userRatingsFetch,
@@ -445,8 +446,266 @@ function pingmutesDelete(data,callback) {
     })
 }
 
+const rep_scheme = {
+    relicbot: 0.5,
+    squadbot: 0.5,
+    giveaway: 2.0,
+    blessing: 0.5,
+    daywave_completion: 0.5,
+    ranks: {
+        rank_1: 5.0,
+        rank_2: 10.0,
+        rank_3: 15.0,
+        rank_4: 20.0,
+        rank_5: 25.0,
+    },
+    rating: {
+        1: 0.0,
+        2: 0.5,
+        3: 1.0,
+    }
+}
+
 function statisticsFetch(data,callback) {
     console.log('[allsquads.statisticsFetch] data:',data)
+    if (!data.identifier) return callback({code: 500, err: 'No identifier provided'})
+    db.query(`
+        SELECT * FROM tradebot_users_list WHERE LOWER(${Number(data.identifier) ? 'discord_id' : 'ingame_name'}) = LOWER('${data.identifier}');
+    `).then(res => {
+        if (res.rowCount == 0) return callback({code: 400, message: 'Given user does not exist'})
+        const db_user = res.rows[0]
+        delete db_user.login_token
+        const discord_id = db_user.discord_id
+        db.query(`
+            SELECT * FROM rb_squads WHERE status = 'closed' AND members @> '"${discord_id}"';
+            SELECT * FROM as_sb_squads WHERE status = 'closed' AND members @> '"${discord_id}"';
+            SELECT * FROM as_gabot_giveaways WHERE status = 'ended' AND discord_id = '${discord_id}';
+            SELECT * FROM as_gabot_giveaways WHERE status = 'ended' AND winners_list @> '"${discord_id}"';
+            SELECT * FROM as_bb_blesses WHERE status = 'closed' AND discord_id = '${discord_id}';
+            SELECT * FROM challenges_completed WHERE discord_id = '${discord_id}';
+            SELECT * FROM as_users_ratings WHERE rating_type = 'squad_rating' AND rated_user = '${discord_id}';
+            SELECT * FROM challenges_accounts WHERE discord_id = '${discord_id}';
+        `).then(res => {
+            const filled_squads = res[0].rows.concat(res[1].rows)
+            const hosted_giveaways = res[2].rows
+            const won_giveaways = res[3].rows
+            const hosted_blessings = res[4].rows
+            const completed_challenges = res[5].rows
+            const user_ratings = res[6].rows
+            const daywave_account = res[7].rows[0]
+            
+            var statistics = {
+                user: {
+                    ...db_user
+                },
+                squads: {
+                    top_squads: {},
+                    total_squads: {
+                        all_time: 0,
+                        this_month: 0,
+                        this_week: 0,
+                        today: 0
+                    },
+                    total_relic_squads: {
+                        all_time: 0,
+                        this_month: 0,
+                        this_week: 0,
+                        today: 0
+                    },
+                    total_general_squads: {
+                        all_time: 0,
+                        this_month: 0,
+                        this_week: 0,
+                        today: 0
+                    },
+                },
+                giveaways: {
+                    hosted: hosted_giveaways.length,
+                    won: won_giveaways.length
+                },
+                blessings: {
+                    hosted: hosted_blessings.length
+                },
+                challenges: {
+                    total_completed: completed_challenges.length
+                },
+                ratings: {
+                    3: user_ratings.reduce((sum,rating) => rating.rating == 3 ? sum += 1 : sum += 0, 0),
+                    2: user_ratings.reduce((sum,rating) => rating.rating == 2 ? sum += 1 : sum += 0, 0),
+                    1: user_ratings.reduce((sum,rating) => rating.rating == 1 ? sum += 1 : sum += 0, 0),
+                    rating: Number((user_ratings.reduce((sum,rating) => sum += rating.rating, 0) / user_ratings.length).toFixed(2))
+                },
+                account_balance: daywave_account.balance,
+                reputation: {
+                    total: 0,
+                    squads: 0,
+                    daywave_challenges: 0,
+                    giveaways: 0,
+                    blessings: 0,
+                    user_ratings: 0,
+                }
+            }
+            const today_start = getTodayStartMs()
+            const week_start = getWeekStartMs()
+            const month_start = getMonthStartMs()
+    
+            filled_squads.forEach(squad => {
+                // top squads
+                if (!squad.squad_string) squad.squad_string = (relicBotSquadToString(squad,false,true)).toLowerCase().replace(/ /g,'_')
+                if (!statistics.squads.top_squads[squad.squad_string]) statistics.squads.top_squads[squad.squad_string] = 0
+                statistics.squads.top_squads[squad.squad_string]++
+                // all time squads
+                statistics.squads.total_squads.all_time++
+                if (squad.bot_type == 'relicbot') statistics.squads.total_relic_squads.all_time++
+                if (squad.bot_type == 'squadbot') statistics.squads.total_general_squads.all_time++
+                // monthly squads
+                if (squad.creation_timestamp >= month_start) {
+                    statistics.squads.total_squads.this_month++
+                    if (squad.bot_type == 'relicbot') statistics.squads.total_relic_squads.this_month++
+                    if (squad.bot_type == 'squadbot') statistics.squads.total_general_squads.this_month++
+                }
+                // weekly squads
+                if (squad.creation_timestamp >= week_start) {
+                    statistics.squads.total_squads.this_week++
+                    if (squad.bot_type == 'relicbot') statistics.squads.total_relic_squads.this_week++
+                    if (squad.bot_type == 'squadbot') statistics.squads.total_general_squads.this_week++
+                }
+                // todays squads
+                if (squad.creation_timestamp >= today_start) {
+                    statistics.squads.total_squads.today++
+                    if (squad.bot_type == 'relicbot') statistics.squads.total_relic_squads.today++
+                    if (squad.bot_type == 'squadbot') statistics.squads.total_general_squads.today++
+                }
+            })
+            statistics.squads.top_squads = Object.keys(statistics.squads.top_squads).map(squad_string => ({squad_string: squad_string, hosts: statistics.squads.top_squads[squad_string]})).sort(dynamicSortDesc("hosts"))
+            
+            statistics.reputation.squads = filled_squads.reduce((sum,squad) => sum += rep_scheme[squad.bot_type], 0)
+            statistics.reputation.daywave_challenges = completed_challenges.reduce((sum,challenge) => sum += rep_scheme.daywave_completion, 0)
+            statistics.reputation.giveaways = hosted_giveaways.reduce((sum,giveaway) => sum += rep_scheme.giveaway, 0)
+            statistics.reputation.blessings = hosted_blessings.reduce((sum,blessing) => sum += rep_scheme.blessing, 0)
+            statistics.reputation.user_ratings = user_ratings.reduce((sum,rating) => sum += rep_scheme.rating[rating.rating], 0)
+            statistics.reputation.total = Object.values(statistics.reputation).reduce((sum,val) => sum += val, 0)
+
+            return callback({
+                code: 200,
+                data: statistics
+            })
+    
+            const reputation = {
+                all_time: 0.0,
+                today: 0.0,
+                this_week: 0.0,
+                this_month: 0.0
+            }
+            db_squads.forEach(squad => {
+                if (squad.members.filter(id => !squad.invalidated_members?.includes(id)).includes(discord_id)) {
+                    const rep = rep_scheme[squad.bot_type]
+                    reputation.all_time += rep
+                    if (squad.creation_timestamp >= today_start) reputation.today += rep
+                    if (squad.creation_timestamp >= week_start) reputation.this_week += rep
+                    if (squad.creation_timestamp >= month_start) reputation.this_month += rep
+                }
+            })
+            db_giveaways.forEach(giveaway => {
+                if (giveaway.discord_id == discord_id) {
+                    const rep = rep_scheme.giveaway
+                    reputation.all_time += rep
+                    // if (giveaway.expiry_timestamp >= today_start) reputation.today += rep
+                    // if (giveaway.expiry_timestamp >= week_start) reputation.this_week += rep
+                    // if (giveaway.expiry_timestamp >= month_start) reputation.this_month += rep
+                }
+            })
+            db_blessings.forEach(blessing => {
+                if (blessing.discord_id == discord_id) {
+                    const rep = rep_scheme.blessing
+                    reputation.all_time += rep
+                    // if (blessing.creation_timestamp >= today_start) reputation.today += rep
+                    // if (blessing.creation_timestamp >= week_start) reputation.this_week += rep
+                    // if (blessing.creation_timestamp >= month_start) reputation.this_month += rep
+                }
+            })
+            db_daywave_challenges.forEach(daywave_challenge => {
+                if (daywave_challenge.discord_id == discord_id) {
+                    const rep = rep_scheme.daywave_completion
+                    reputation.all_time += rep
+                    if (daywave_challenge.timestamp >= today_start) reputation.today += rep 
+                    if (daywave_challenge.timestamp >= week_start) reputation.this_week += rep
+                    if (daywave_challenge.timestamp >= month_start) reputation.this_month += rep
+                }
+            })
+            // db_rank_roles.forEach(rank_role => {
+            //     if (rank_role.discord_id == discord_id) {
+            //         const rep = rep_scheme.ranks[rank_role.rank_type]
+            //         reputation.all_time += rep
+            //     }
+            // })
+            db_users_ratings.forEach(user_rating => {
+                if (user_rating.rated_user == discord_id) {
+                    const rep = rep_scheme.rating[user_rating.rating]
+                    reputation.all_time += rep
+                }
+            })
+            if (reputation.all_time > 0)
+                statistics.all_time.push({
+                    ...user,
+                    reputation: reputation.all_time
+                })
+            if (reputation.today > 0)
+                statistics.today.push({
+                    ...user,
+                    reputation: reputation.today
+                })
+            if (reputation.this_week > 0)
+                statistics.this_week.push({
+                    ...user,
+                    reputation: reputation.this_week
+                })
+            if (reputation.this_month > 0)
+                statistics.this_month.push({
+                    ...user,
+                    reputation: reputation.this_month
+                })
+            statistics.all_time = statistics.all_time.sort(dynamicSortDesc("reputation"))
+            statistics.today = statistics.today.sort(dynamicSortDesc("reputation"))
+            statistics.this_week = statistics.this_week.sort(dynamicSortDesc("reputation"))
+            statistics.this_month = statistics.this_month.sort(dynamicSortDesc("reputation"))
+            statistics.top_squads = Object.keys(statistics.top_squads).map(squad_string => ({squad_string: squad_string, hosts: statistics.top_squads[squad_string]})).sort(dynamicSortDesc("hosts"))
+            if (data.limit) {
+                statistics.all_time = statistics.all_time.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+                statistics.today = statistics.today.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+                statistics.this_week = statistics.this_week.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+                statistics.this_month = statistics.this_month.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
+                statistics.top_squads = statistics.top_squads.map((host,index) => index < data.limit ? host:null).filter(o => o != null)
+            }
+            // console.log(JSON.stringify(statistics))
+            if (data.exclude_squads) {
+                delete statistics.top_squads;
+                delete statistics.total_squads;
+            }
+            if (data.exclude_daily) 
+                delete statistics.today
+            return callback({
+                code: 200,
+                data: statistics
+            })
+        }).catch(err => {
+            console.log(err)
+            return callback({
+                code: 500,
+                message: err.stack
+            })
+        })
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+function leaderboardsFetch(data,callback) {
+    console.log('[allsquads.leaderboardsFetch] data:',data)
     db.query(`
         SELECT * FROM tradebot_users_list;
         SELECT * FROM rb_squads WHERE status = 'closed';
@@ -457,25 +716,6 @@ function statisticsFetch(data,callback) {
         SELECT * FROM as_rank_roles;
         SELECT * FROM as_users_ratings WHERE rating_type = 'squad_rating';
     `).then(res => {
-        const rep_scheme = {
-            relicbot: 0.5,
-            squadbot: 0.5,
-            giveaway: 2.0,
-            blessing: 0.5,
-            daywave_completion: 0.5,
-            ranks: {
-                rank_1: 5.0,
-                rank_2: 10.0,
-                rank_3: 15.0,
-                rank_4: 20.0,
-                rank_5: 25.0,
-            },
-            rating: {
-                1: 0.0,
-                2: 0.5,
-                3: 1.0,
-            }
-        }
         const db_users = res[0].rows
         const db_squads = res[1].rows.map(row => ({...row, bot_type: 'relicbot'})).concat(res[2].rows.map(row => ({...row, bot_type: 'squadbot'})))
         const db_giveaways = res[3].rows
