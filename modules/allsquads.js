@@ -37,6 +37,154 @@ const endpoints = {
 
     'allsquads/userslist': usersList,
 
+    'allsquads/reports/lodge': logdeReport,
+    'allsquads/reports/resolve': resolveReport,
+
+    'allsquads/admincommands/liftglobalban': adminLiftGlobalBan
+}
+
+function adminLiftGlobalBan(data, callback) {
+    console.log('[allsquads.resolveReport] data:',data)
+    if (!data.discord_id) return callback({code: 400, message: 'No discord_id provided'})
+    if (!data.identifier) return callback({code: 400, message: 'No identifier provided'})
+
+    const user = Object.values(as_users_list).filter(user => user.discord_id == data.identifier || user.ingame_name.toLowerCase() == data.identifier.toLowerCase())?.[0]
+    if (!user) return callback({code: 400, message: 'Given user does not exist'})
+    if (!user.is_suspended) return callback({code: 400, message: 'Given user is not suspended'})
+    if (user.suspended_by != data.discord_id) return callback({code: 400, message: 'Given was not suspended by you'})
+    db.query(`
+        UPDATE tradebot_users_list SET is_suspended = false WHERE discord_id = '${user.discord_id}'
+    `).then(res => {
+        if (res.rowCount == 1) {
+            callback({
+                code: 200,
+                data: 'Ban has been lifted'
+            })
+        } else {
+            callback({
+                code: 500,
+                data: 'Unexpected DB response'
+            })
+        }
+    }).catch(err => {
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
+}
+
+function resolveReport(data, callback) {
+    console.log('[allsquads.resolveReport] data:',data)
+    if (!data.discord_id) return callback({code: 400, message: 'No discord_id provided'})
+    if (!data.report_id) return callback({code: 400, message: 'No report_id provided'})
+    if (!data.remarks) return callback({code: 400, message: 'No remarks provided'})
+    if (!data.action) return callback({code: 400, message: 'No action provided'})
+    if (data.action != 'reject' && !data.expiry) return callback({code: 400, message: 'No expiry provided'})
+
+    if (data.action == 'reject') {
+        db.query(`
+            UPDATE as_reports SET status = 'rejected', action_taken = 'rejected', resolved_by = '${data.discord_id}', remarks = '${data.remarks.replace(/'/g,`''`)}'
+            WHERE report_id = ${data.report_id} AND status = 'under_review'
+        `).then(res => {
+            if (res.rowCount == 1) {
+                callback({
+                    code: 200,
+                    data: 'Report has been rejected'
+                })
+            } else {
+                callback({
+                    code: 500,
+                    data: 'Unexpected DB response'
+                })
+            }
+        }).catch(err => {
+            console.log(err)
+            return callback({
+                code: 500,
+                message: err.stack
+            })
+        })
+    } else if (data.action == 'global_ban') {
+        db.query(`
+            UPDATE tradebot_users_list SET is_suspended = true, suspended_by = '${data.discord_id}', suspension_expiry = ${data.expiry}
+            WHERE discord_id = (SELECT reported_user FROM as_reports WHERE report_id = ${data.report_id} AND status = 'under_review') 
+        `).then(res => {
+            if (res.rowCount == 1) {
+                db_modules.schedule_query(`UPDATE tradebot_users_list SET is_suspended = false WHERE discord_id = (SELECT reported_user FROM as_reports WHERE report_id = ${data.report_id})`, data.expiry - new Date().getTime())
+                db.query(`
+                    UPDATE as_reports SET status = 'resolved', action_taken = 'global_ban', resolved_by = '${data.discord_id}', remarks = '${data.remarks.replace(/'/g,`''`)}'
+                    WHERE report_id = ${data.report_id} AND status = 'under_review'
+                `).then(res => {
+                    if (res.rowCount == 1) {
+                        callback({
+                            code: 200,
+                            data: 'Report has been resolved'
+                        })
+                    } else {
+                        callback({
+                            code: 500,
+                            data: 'Unexpected DB response'
+                        })
+                    }
+                }).catch(err => {
+                    console.log(err)
+                    return callback({
+                        code: 500,
+                        message: err.stack
+                    })
+                })
+            } else {
+                callback({
+                    code: 500,
+                    data: 'Unexpected DB response'
+                })
+            }
+        }).catch(err => {
+            console.log(err)
+            return callback({
+                code: 500,
+                message: err.stack
+            })
+        })
+    }
+}
+
+function logdeReport(data, callback) {
+    console.log('[allsquads.logdeReport] data:',data)
+    if (!data.discord_id) return callback({code: 400, message: 'No discord_id provided'})
+    if (!data.identifier) return callback({code: 400, message: 'No identifier provided'})
+    if (!data.reason) return callback({code: 400, message: 'No reason provided'})
+    db.query(`
+        INSERT INTO as_reports (discord_id, reported_user, report) VALUES (
+            '${data.discord_id}',
+            (SELECT discord_id FROM tradebot_users_list WHERE LOWER(ingame_name) = LOWER('${data.identifier}')),
+            '${data.reason.replace(/'/g,`''`)}'
+        )
+    `).then(res => {
+        if (res.rowCount == 1) {
+            callback({
+                code: 200,
+                data: 'report added'
+            })
+        } else {
+            callback({
+                code: 500,
+                data: 'Unexpected DB response'
+            })
+        }
+    }).catch(err => {
+        if (err.code == '23502') return callback({
+            code: 400,
+            message: 'The given user does not exist'
+        })
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
+    })
 }
 
 function userfilledSquadsFetch(data, callback) {

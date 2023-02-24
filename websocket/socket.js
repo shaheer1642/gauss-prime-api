@@ -7,7 +7,7 @@ const io = new Server(server, {
 const {db} = require('../modules/db_connection')
 const uuid = require('uuid');
 const JSONbig = require('json-bigint');
-const {convertUpper, dynamicSort, dynamicSortDesc} = require('../modules/functions')
+const {convertUpper, dynamicSort, dynamicSortDesc, msToFullTime} = require('../modules/functions')
 const db_modules = require('../modules/db_modules')
 const relicbot = require('../modules/relicbot')
 const squadbot = require('../modules/squadbot')
@@ -32,6 +32,12 @@ io.on('connection', (socket) => {
         socket.addListener(key, (data,callback) => {
           if (data.discord_id) {
             if (as_users_list[data.discord_id]) {
+              if (as_users_list[data.discord_id].is_suspended) {
+                return callback({
+                  code: 480,
+                  message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.discord_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.discord_id].suspended_by}>`
+                })
+              }
               relicbot.endpoints[key](data, callback? callback : () => {})
             } else {
               return callback({
@@ -48,6 +54,12 @@ io.on('connection', (socket) => {
         socket.addListener(key, (data,callback) => {
           if (data.discord_id) {
             if (as_users_list[data.discord_id]) {
+              if (as_users_list[data.discord_id].is_suspended) {
+                return callback({
+                  code: 480,
+                  message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.discord_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.discord_id].suspended_by}>`
+                })
+              }
               squadbot.endpoints[key](data, callback? callback : () => {})
             } else {
               return callback({
@@ -64,6 +76,12 @@ io.on('connection', (socket) => {
         socket.addListener(key, (data,callback) => {
           if (data.discord_id) {
             if (as_users_list[data.discord_id]) {
+              if (as_users_list[data.discord_id].is_suspended) {
+                return callback({
+                  code: 480,
+                  message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.discord_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.discord_id].suspended_by}>`
+                })
+              }
               allsquads.endpoints[key](data, callback? callback : () => {})
             } else {
               return callback({
