@@ -683,7 +683,7 @@ function statisticsFetch(data,callback) {
                     1: user_ratings.reduce((sum,rating) => rating.rating == 1 ? sum += 1 : sum += 0, 0),
                     rating: Number((user_ratings.reduce((sum,rating) => sum += rating.rating, 0) / user_ratings.length).toFixed(2))
                 },
-                account_balance: daywave_account?.balance,
+                account_balance: daywave_account?.balance || 0,
                 reputation: {
                     total: 0,
                     squads: 0,
