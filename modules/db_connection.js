@@ -74,6 +74,8 @@ db.connect().then(async res => {
             LISTEN global_variables_list_insert;
             LISTEN global_variables_list_update;
             LISTEN global_variables_list_delete;
+
+            LISTEN as_push_notify_insert;
         `).then(res => {
             db.query(`SELECT * FROM scheduled_queries`).then(res => {
                 res.rows.forEach(row => {

@@ -12,7 +12,8 @@ const db_modules = require('../modules/db_modules')
 const relicbot = require('../modules/relicbot')
 const squadbot = require('../modules/squadbot')
 const allsquads = require('../modules/allsquads')
-const global_variables = require('../modules/global_variables')
+const global_variables = require('../modules/global_variables');
+const { pushNotify } = require('../modules/firebase/FCM');
 
 var clients = {}
 io.on('connection', (socket) => {
@@ -1139,6 +1140,14 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
           clients[socket].emit('relicbot/squads/selectedhost', payload[0])
       }
     }
+    // ---- send push notification ----
+    if (payload[0].status == 'opened' && payload[1].status == 'active') {
+      pushNotify({
+        discord_ids: payload[0].members,
+        title: 'Squad Filled',
+        body: relicbot.relicBotSquadToString(payload[0],true)
+      })
+    }
   }
 
   if (notification.channel == 'rb_squads_messages_insert') {
@@ -1214,6 +1223,14 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
         if (payload[0].squad_host && !payload[1].squad_host)
           clients[socket].emit('squadbot/squads/selectedhost', payload[0])
       }
+    }
+    // ---- send push notification ----
+    if (payload[0].status == 'opened' && payload[1].status == 'active') {
+      pushNotify({
+        discord_ids: payload[0].members,
+        title: 'Squad Filled',
+        body: convertUpper(payload[0].squad_string)
+      })
     }
   }
   

@@ -784,5 +784,6 @@ db.on('notification',(notification) => {
 module.exports = {
     endpoints,
     squad_closure,
-    relicBotSquadToString
+    relicBotSquadToString,
+    trackersfetchSubscribers
 }

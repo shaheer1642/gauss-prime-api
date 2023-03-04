@@ -729,5 +729,6 @@ db.on('notification',(notification) => {
 })
 
 module.exports = {
-    endpoints
+    endpoints,
+    trackersfetchSubscribers
 }
