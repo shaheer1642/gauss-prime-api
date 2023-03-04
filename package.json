@@ -20,6 +20,7 @@
     "discord.js": "^14.7.1",
     "dotenv": "^16.0.1",
     "express": "^4.18.1",
+    "firebase-admin": "^11.5.0",
     "json-bigint": "^1.0.0",
     "micro": "^9.4.1",
     "microrouter": "^3.1.3",
