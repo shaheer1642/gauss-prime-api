@@ -12,6 +12,7 @@ function pushNotify({discord_ids, title , body}) {
     console.log('[firebase/FCM.pushNotify] called')
     const tokens = discord_ids.reduce((arr,id) => arr.concat(as_users_fcm_tokens[id]),[]).filter(o => o != undefined)
     console.log('[firebase/FCM.pushNotify] tokens = ',tokens)
+    if (tokens.length == 0) return console.log('[firebase/FCM.pushNotify] no tokens to notify')
     messaging.sendMulticast({
         tokens: discord_ids.reduce((arr,id) => arr.concat(as_users_fcm_tokens[id]),[]).filter(o => o != undefined),
         notification: {
