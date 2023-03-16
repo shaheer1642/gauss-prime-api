@@ -32,19 +32,19 @@ const endpoints = {
 }
 
 const pa_relics_list = [
-    // baruuk prime
-    'lith_b10_relic',
-    'lith_h7_relic',
-    'lith_g6_relic',
-    'meso_a4_relic',
-    'meso_r5_relic',
-    'meso_k5_relic',
-    'neo_a8_relic',
-    'neo_c3_relic',
-    'neo_k5_relic',
-    'axi_b5_relic',
-    'axi_g9_relic',
-    'axi_n10_relic',
+    // hildryn prime
+    'lith_h8_relic',
+    'lith_k10_relic',
+    'lith_s15_relic',
+    'meso_p11_relic',
+    'meso_h4_relic',
+    'meso_n14_relic',
+    'neo_s17_relic',
+    'neo_l2_relic',
+    'neo_n22_relic',
+    'axi_h6_relic',
+    'axi_g10_relic',
+    'axi_b6_relic',
     // prime resurgence
     'lith_d5_relic',
     'lith_p7_relic',
