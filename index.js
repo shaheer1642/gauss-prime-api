@@ -3,5 +3,5 @@ require('./websocket/socket')
 
 // restart after 24.5h
 setTimeout(() => {
-    process.exit()
+    process.exit() 
 }, 88200000);
