@@ -49,29 +49,45 @@ function FCMTokenUpdate(data,callback) {
     if (!data.discord_id) return callback({code: 400, message: 'No discord_id provided'})
     if (!data.fcm_token) return callback({code: 400, message: 'No fcm_token provided'})
     db.query(`
-        INSERT INTO as_push_notify (discord_id,fcm_token) VALUES ('${data.discord_id}','${data.fcm_token}')
+        SELECT * FROM as_push_notify WHERE fcm_token = '${data.fcm_token}'
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
                 code: 200,
             })
         } else {
-            return callback({
-                code: 500,
-                message: 'error adding db record'
+            db.query(`
+                INSERT INTO as_push_notify (discord_id,fcm_token) VALUES ('${data.discord_id}','${data.fcm_token}')
+            `).then(res => {
+                if (res.rowCount == 1) {
+                    return callback({
+                        code: 200,
+                    })
+                } else {
+                    return callback({
+                        code: 500,
+                        message: 'error adding db record'
+                    })
+                }
+            }).catch(err => {
+                if (err.code == '23505') return callback({
+                    code: 200,
+                }) 
+                else {
+                    console.log(err)
+                    return callback({
+                        code: 500,
+                        message: err.stack
+                    })
+                }
             })
         }
     }).catch(err => {
-        if (err.code == '23505') return callback({
-            code: 200,
-        }) 
-        else {
-            console.log(err)
-            return callback({
-                code: 500,
-                message: err.stack
-            })
-        }
+        console.log(err)
+        return callback({
+            code: 500,
+            message: err.stack
+        })
     })
 }
 
