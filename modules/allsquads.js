@@ -953,6 +953,7 @@ function leaderboardsFetch(data,callback) {
                 this_week: 0.0,
                 this_month: 0.0
             }
+            user.last_squad_timestamp = 0
             db_squads.forEach(squad => {
                 if (squad.members.filter(id => !squad.invalidated_members?.includes(id)).includes(discord_id)) {
                     const rep = rep_scheme[squad.bot_type]
@@ -960,6 +961,7 @@ function leaderboardsFetch(data,callback) {
                     if (squad.creation_timestamp >= today_start) reputation.today += rep
                     if (squad.creation_timestamp >= week_start) reputation.this_week += rep
                     if (squad.creation_timestamp >= month_start) reputation.this_month += rep
+                    if (squad.creation_timestamp > user.last_squad_timestamp ) user.last_squad_timestamp = squad.creation_timestamp
                 }
             })
             db_giveaways.forEach(giveaway => {
