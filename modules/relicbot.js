@@ -699,9 +699,13 @@ function relicBotStringToSquad(str) {
     const subline = str.split(' with ')
 
     subline[0].split(' ').forEach((word,index) => {
-        if (['int','flaw','rad','intact','flawless','radiant'].includes(word)) {
+        if (['int','flaw','rad','intact','flawless','radiant','radshare','flawshare','intshare'].includes(word)) {
             word = word.replace('intact','int').replace('flawless','flaw').replace('radiant','rad')
+                    .replace('intshare','int').replace('flawshare','flaw').replace('radshare','rad');
             if (!squad.main_refinements.includes(word)) squad.main_refinements.push(word)
+            if (['radshare','flawshare','intshare'].includes(word)) {
+                squad.squad_type = '4b4'
+            }
         }
         else if (['1b1','2b2','3b3','4b4'].includes(word)) {
             squad.squad_type = word
