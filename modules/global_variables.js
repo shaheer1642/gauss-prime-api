@@ -1,6 +1,7 @@
 const { db } = require("./db_connection")
 const WorldState = require('warframe-worldstate-parser');
 const axios = require('axios');
+const { escapeDBCharacters } = require("./functions");
 
 const endpoints = {
     'globalVariables/fetch': globalVariablesFetch,
@@ -105,8 +106,8 @@ function updateNightwaveMissionsSquadBot() {
                         ]
                     }
                 })
-                console.log(JSON.stringify(default_squads))
-                db.query(`UPDATE global_variables_list SET var_value = '${JSON.stringify(default_squads)}' WHERE var_name = 'squadbot.default_squads'`)
+                // console.log(JSON.stringify(default_squads))
+                db.query(`UPDATE global_variables_list SET var_value = '${escapeDBCharacters(JSON.stringify(default_squads))}' WHERE var_name = 'squadbot.default_squads'`)
                 .then(res => {
                     if (res.rowCount == 1)
                         console.log('[global_variables.updateNightwaveMissionsSquadBot] success')

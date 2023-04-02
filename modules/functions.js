@@ -50,6 +50,10 @@ function msToTime(s) {
     return pad(secs) + ' seconds';
 }
 
+function escapeDBCharacters(str) {
+    return str.replace(/'/g,`''`).replace(/\"/g,`\\"`).replace(/\r\n/g,`\\n`).replace(/\n/g,`\\r\\n`)
+}
+
 function msToFullTime(ms) {
     console.log(ms)
     var seconds = Math.floor(ms / 1000),
@@ -136,4 +140,4 @@ function generateVerificationId() {
     return ID;
 }
 
-module.exports = {dynamicSort,dynamicSortDesc,msToTime,msToFullTime,getRandomColor,embedScore,convertUpper,getTodayStartMs,getWeekStartMs,getMonthStartMs,calcArrAvg,generateVerificationId};
+module.exports = {dynamicSort,dynamicSortDesc,msToTime,msToFullTime,getRandomColor,embedScore,convertUpper,getTodayStartMs,getWeekStartMs,getMonthStartMs,calcArrAvg,generateVerificationId,escapeDBCharacters};
