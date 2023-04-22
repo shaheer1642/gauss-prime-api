@@ -8,13 +8,13 @@ const firebaseApp = initializeApp({
 }, 'GaussPrime');
 const messaging = getMessaging(firebaseApp);
 
-function pushNotify({discord_ids, title , body}) {
+function pushNotify({user_ids, title , body}) {
     console.log('[firebase/FCM.pushNotify] called')
-    const tokens = discord_ids.reduce((arr,id) => arr.concat(as_users_fcm_tokens[id]),[]).filter(o => o != undefined)
+    const tokens = user_ids.reduce((arr,id) => arr.concat(as_users_fcm_tokens[id]),[]).filter(o => o != undefined)
     console.log('[firebase/FCM.pushNotify] tokens = ',tokens)
     if (tokens.length == 0) return console.log('[firebase/FCM.pushNotify] no tokens to notify')
     messaging.sendMulticast({
-        tokens: discord_ids.reduce((arr,id) => arr.concat(as_users_fcm_tokens[id]),[]).filter(o => o != undefined),
+        tokens: user_ids.reduce((arr,id) => arr.concat(as_users_fcm_tokens[id]),[]).filter(o => o != undefined),
         notification: {
             title: title,
             body: body

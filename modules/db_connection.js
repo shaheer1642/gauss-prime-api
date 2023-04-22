@@ -26,9 +26,9 @@ db.connect().then(async res => {
             LISTEN hub_recruitbot_squads_update;
             LISTEN hub_recruitbot_squads_delete;
     
-            LISTEN tradebot_users_list_insert;
-            LISTEN tradebot_users_list_update;
-            LISTEN tradebot_users_list_delete;
+            LISTEN as_users_list_insert;
+            LISTEN as_users_list_update;
+            LISTEN as_users_list_delete;
             
             LISTEN tradebot_users_orders_insert;
             LISTEN tradebot_users_orders_update;
@@ -40,17 +40,17 @@ db.connect().then(async res => {
     
             LISTEN hubapp_messages_channels_update;
     
-            LISTEN rb_squads_insert;
-            LISTEN rb_squads_update;
+            LISTEN as_rb_squads_insert;
+            LISTEN as_rb_squads_update;
     
             LISTEN scheduled_queries_insert;
     
-            LISTEN rb_squads_messages_insert;
+            LISTEN as_rb_squads_messages_insert;
             LISTEN as_sb_squads_messages_insert;
     
-            LISTEN rb_hosting_table_insert;
-            LISTEN rb_hosting_table_update;
-            LISTEN rb_hosting_table_delete;
+            LISTEN as_rb_hosting_table_insert;
+            LISTEN as_rb_hosting_table_update;
+            LISTEN as_rb_hosting_table_delete;
     
             LISTEN wfhub_keywords_insert;
             LISTEN wfhub_keywords_update;

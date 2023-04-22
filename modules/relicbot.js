@@ -24,8 +24,6 @@ const endpoints = {
     'relicbot/trackers/delete': trackersDelete,
     'relicbot/trackers/fetchSubscribers': trackersfetchSubscribers,
 
-    'relicbot/users/fetch': usersFetch,
-
     'relicbot/defaultHostingTable/create': defaultHostingTableCreate,
     'relicbot/defaultHostingTable/fetch': defaultHostingTableFetch,
     'relicbot/defaultHostingTable/delete': defaultHostingTableDelete,
@@ -57,7 +55,7 @@ const relics_list = {}
 var hosting_table = []
 
 event_emitter.on('db_connected', () => {
-    db.query(`SELECT * FROM items_list WHERE item_url LIKE '%relic';SELECT * FROM rb_hosting_table`)
+    db.query(`SELECT * FROM items_list WHERE item_url LIKE '%relic';SELECT * FROM as_rb_hosting_table`)
     .then(res => {
         res[0].rows.forEach(row => {
             relics_list[row.item_url] = row
@@ -77,10 +75,7 @@ event_emitter.on('db_connected', () => {
     }).catch(console.error)
 })
 
-const main_squads_channel = '1043987463049318450'
-
 const squad_expiry =  3600000 // in ms
-const squad_is_old =  900000 // in ms
 const squad_closure = 900000 // in ms
 
 function squadsMessageCreate(data,callback) {
@@ -89,14 +84,14 @@ function squadsMessageCreate(data,callback) {
     const fromWeb = data.thread_id.match('web') ? true : false
     if (fromWeb && !data.squad_id) return callback({code: 400, message: 'No squad_id provided'})
     db.query(`
-        INSERT INTO rb_squads_messages (message_id,message,discord_id,thread_id,squad_id,squad_thread_ids)
+        INSERT INTO as_rb_squads_messages (message_id,message,user_id,thread_id,squad_id,squad_thread_ids)
         VALUES (
             '${data.message_id}',
             '${data.message.replace(/'/g,`''`)}',
-            '${data.discord_id}',
+            '${data.user_id}',
             ${fromWeb ? 'null' : `'${data.thread_id}'`},
-            ${fromWeb ? `'${data.squad_id}'` : `(select squad_id FROM rb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')`},
-            ${fromWeb ? `(select thread_ids FROM rb_squads WHERE squad_id = '${data.squad_id}' AND status='opened')` : `(select thread_ids FROM rb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')`}
+            ${fromWeb ? `'${data.squad_id}'` : `(select squad_id FROM as_rb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')`},
+            ${fromWeb ? `(select thread_ids FROM as_rb_squads WHERE squad_id = '${data.squad_id}' AND status='opened')` : `(select thread_ids FROM as_rb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')`}
         )
     `).then(res => {
         if (res.rowCount == 1) {
@@ -123,7 +118,7 @@ function squadsMessagesFetch(data,callback) {
     console.log('[relicbot/squadsMessagesFetch] data:', data)
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
     db.query(`
-        SELECT * FROM rb_squads_messages WHERE squad_id = '${data.squad_id}' ORDER BY creation_timestamp ASC;
+        SELECT * FROM as_rb_squads_messages WHERE squad_id = '${data.squad_id}' ORDER BY creation_timestamp ASC;
     `).then(res => {
         return callback({
             code: 200,
@@ -140,7 +135,7 @@ function squadsMessagesFetch(data,callback) {
 function squadsCreate(data,callback) {
     console.log('[squadsCreate] data:',data)
     if (!data.message) return callback({code: 500, err: 'No message provided'})
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     const lines = data.message.toLowerCase().trim().split('\n')
     Promise.all(lines.map(line => {
         return new Promise((resolve,reject) => {
@@ -177,14 +172,14 @@ function squadsCreate(data,callback) {
             const squad_code = `${relicBotSquadToString(squad,true).toLowerCase().replace(/ /g,'_')}_${data.merge_squad == false ? `${new Date().getTime()}`:`${new Date(new Date().setHours(0,0,0,0)).getTime()}`}`
             console.log('squad_code:',squad_code)
 
-            db.query(`INSERT INTO rb_squads (squad_id,squad_code,tier,members,original_host,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp,joined_from_channel_ids,is_vaulted,logs) 
+            db.query(`INSERT INTO as_rb_squads (squad_id,squad_code,tier,members,original_host,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count,is_steelpath,is_railjack,creation_timestamp,joined_from_channel_ids,is_vaulted,logs) 
             VALUES 
                 (
-                (SELECT CASE WHEN (COUNT(squad_id) >= 24) THEN NULL ELSE '${squad_id}'::uuid END AS counted FROM rb_squads WHERE tier='${squad.tier}' AND status='active'),
+                (SELECT CASE WHEN (COUNT(squad_id) >= 24) THEN NULL ELSE '${squad_id}'::uuid END AS counted FROM as_rb_squads WHERE tier='${squad.tier}' AND status='active'),
                 '${squad_code}',
                 '${squad.tier}',
-                '["${data.discord_id}"]',
-                '${data.discord_id}',
+                '["${data.user_id}"]',
+                '${data.user_id}',
                 '${JSON.stringify(squad.main_relics)}',
                 '${JSON.stringify(squad.main_refinements)}',
                 '${JSON.stringify(squad.off_relics)}',
@@ -194,14 +189,12 @@ function squadsCreate(data,callback) {
                 ${squad.is_steelpath},
                 ${squad.is_railjack},
                 ${new Date().getTime()},
-                '${data.channel_id ? `{"${data.discord_id}":"${data.channel_id}"}`:'{}'}',
+                '${data.channel_id ? `{"${data.user_id}":"${data.channel_id}"}`:'{}'}',
                 ${squad.is_vaulted},
-                '["${new Date().getTime()} ${data.discord_id} created squad"]')
+                '["${new Date().getTime()} ${data.user_id} created squad"]')
             `).then(res => {
                 if (res.rowCount == 1) {
-                    //db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
-                    //db_modules.schedule_query(`UPDATE rb_squads SET status='expired' WHERE squad_id = '${squad_id}' AND status='active'`,squad_expiry)
-                    db_modules.schedule_query(`UPDATE rb_squads SET members = members-'${data.discord_id}', logs = logs || '"${new Date().getTime()} ${data.discord_id} removed from squad due to timeout"' WHERE members @> '"${data.discord_id}"' AND status='active' AND squad_id = '${squad_id}'`,squad_expiry)
+                    db_modules.schedule_query(`UPDATE as_rb_squads SET members = members-'${data.user_id}', logs = logs || '"${new Date().getTime()} ${data.user_id} removed from squad due to timeout"' WHERE members @> '"${data.user_id}"' AND status='active' AND squad_id = '${squad_id}'`,squad_expiry)
                     return resolve({code: 200})
                 } else return resolve({
                     code: 500,
@@ -214,10 +207,10 @@ function squadsCreate(data,callback) {
                         message: `${squad.tier} squads limit has been reached. Please __try hosting later__ or __join an existing squad__`
                     })
                 } else if (err.code == '23505') {
-                    db.query(`SELECT * FROM rb_squads WHERE squad_code='${squad_code}' AND status='active'`)
+                    db.query(`SELECT * FROM as_rb_squads WHERE squad_code='${squad_code}' AND status='active'`)
                     .then(res => {
                         if (res.rowCount > 0) {
-                            if (res.rows.some(row => row.members.includes(data.discord_id))) return resolve({code: 200})
+                            if (res.rows.some(row => row.members.includes(data.user_id))) return resolve({code: 200})
                             else return resolve({
                                 code: 399,
                                 message: `**${relicBotSquadToString(squad,true)}** already exists. Would you like to __join existing squad__ or __host a new one__?`,
@@ -249,7 +242,7 @@ function squadsCreate(data,callback) {
 function squadsFetch(data,callback) {
     console.log('[squadsFetch] data:',data)
     db.query(`
-        SELECT * FROM rb_squads WHERE status='active' ${data.tier ? `AND tier='${data.tier}'`:''};
+        SELECT * FROM as_rb_squads WHERE status='active' ${data.tier ? `AND tier='${data.tier}'`:''};
     `).then(res => {
         return callback({
             code: 200,
@@ -266,7 +259,7 @@ function squadsFetch(data,callback) {
 
 function squadsUpdate(data,callback) {
     if (!data.params) return callback({code: 500, err: 'No params provided'})
-    db.query(`UPDATE rb_squads SET ${data.params}`).then(res => {
+    db.query(`UPDATE as_rb_squads SET ${data.params}`).then(res => {
         if (!callback) return
         if (res.rowCount == 1) {
             return callback({
@@ -282,26 +275,26 @@ function squadsUpdate(data,callback) {
 function squadsAddMember(data,callback) {
     console.log('[squadsAddMember] data:',data)
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     db.query(`
-        UPDATE rb_squads 
-        SET members = CASE WHEN members @> '"${data.discord_id}"'
-        THEN members-'${data.discord_id}'
-        ELSE members||'"${data.discord_id}"' END
+        UPDATE as_rb_squads 
+        SET members = CASE WHEN members @> '"${data.user_id}"'
+        THEN members-'${data.user_id}'
+        ELSE members||'"${data.user_id}"' END
         ${data.channel_id ? `,joined_from_channel_ids = 
-        CASE WHEN members @> '"${data.discord_id}"'
-        THEN joined_from_channel_ids - '${data.discord_id}'
-        ELSE jsonb_set(joined_from_channel_ids, '{${data.discord_id}}', '"${data.channel_id}"') END
+        CASE WHEN members @> '"${data.user_id}"'
+        THEN joined_from_channel_ids - '${data.user_id}'
+        ELSE jsonb_set(joined_from_channel_ids, '{${data.user_id}}', '"${data.channel_id}"') END
         ` : ''},
-        logs = CASE WHEN members @> '"${data.discord_id}"'
-        THEN logs || '"${new Date().getTime()} ${data.discord_id} left squad"'
-        ELSE logs || '"${new Date().getTime()} ${data.discord_id} joined squad"' END
+        logs = CASE WHEN members @> '"${data.user_id}"'
+        THEN logs || '"${new Date().getTime()} ${data.user_id} left squad"'
+        ELSE logs || '"${new Date().getTime()} ${data.user_id} joined squad"' END
         WHERE status = 'active' AND squad_id = '${data.squad_id}'
         returning*;
     `).then(res => {
         if (res.rowCount == 1) {
-            if (res.rows[0].members.includes(data.discord_id)) {
-                db_modules.schedule_query(`UPDATE rb_squads SET members = members-'${data.discord_id}', logs = logs || '"${new Date().getTime()} ${data.discord_id} removed from squad due to timeout"' WHERE members @> '"${data.discord_id}"' AND status='active' AND squad_id = '${data.squad_id}'`,squad_expiry)
+            if (res.rows[0].members.includes(data.user_id)) {
+                db_modules.schedule_query(`UPDATE as_rb_squads SET members = members-'${data.user_id}', logs = logs || '"${new Date().getTime()} ${data.user_id} removed from squad due to timeout"' WHERE members @> '"${data.user_id}"' AND status='active' AND squad_id = '${data.squad_id}'`,squad_expiry)
             }
             return callback({
                 code: 200
@@ -321,8 +314,8 @@ function squadsAddMember(data,callback) {
 
 function squadsRemoveMember(data,callback) {
     console.log('[squadsRemoveMember] data:',data)
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
-    db.query(`UPDATE rb_squads SET members=members-'${data.discord_id}' WHERE status='active' ${data.squad_id ? ` AND squad_id = '${data.squad_id}'`:''} ${data.tier ? ` AND tier = '${data.tier}'`:''}`)
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
+    db.query(`UPDATE as_rb_squads SET members=members-'${data.user_id}' WHERE status='active' ${data.squad_id ? ` AND squad_id = '${data.squad_id}'`:''} ${data.tier ? ` AND tier = '${data.tier}'`:''}`)
     .then(res => {
         if (res.rowCount == 1) {
             return callback({
@@ -343,10 +336,10 @@ function squadsRemoveMember(data,callback) {
 
 function squadsLeave(data,callback) {
     console.log('[relicbot.squadsLeave] data:',data)
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     if (!data.tier) return callback({code: 500, err: 'No tier provided'})
     if (!['all','lith','meso','neo','axi'].includes(data.tier)) return callback({code: 500, err: `Invalid tier **${data.tier}**\nPlease include lith, meso, neo, or axi`})
-    db.query(`UPDATE rb_squads SET members=members-'${data.discord_id}', logs = logs || '"${new Date().getTime()} ${data.discord_id} left squad"'  WHERE status='active' AND members @> '"${data.discord_id}"' ${data.tier == 'all' ? '':` AND tier = '${data.tier}'`}`)
+    db.query(`UPDATE as_rb_squads SET members=members-'${data.user_id}', logs = logs || '"${new Date().getTime()} ${data.user_id} left squad"'  WHERE status='active' AND members @> '"${data.user_id}"' ${data.tier == 'all' ? '':` AND tier = '${data.tier}'`}`)
     .then(res => {
         return callback({
             code: 200
@@ -363,9 +356,9 @@ function squadsLeave(data,callback) {
 function squadsValidate(data,callback) {
     console.log('[squadsValidate] data:',data)
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     db.query(`
-        UPDATE rb_squads SET validated_by = '${data.discord_id}' WHERE status = 'closed' AND squad_id = '${data.squad_id}' AND validated_by is null AND invalidated_by is null;
+        UPDATE as_rb_squads SET validated_by = '${data.user_id}' WHERE status = 'closed' AND squad_id = '${data.squad_id}' AND validated_by is null AND invalidated_by is null;
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
@@ -387,10 +380,10 @@ function squadsValidate(data,callback) {
 function squadsInvalidate(data,callback) {
     console.log('[squadsInvalidate] data:',data)
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     if (!data.reason) return callback({code: 500, err: 'No reason provided'})
     db.query(`
-        UPDATE rb_squads SET status = '${data.invalidated_members ? 'closed':'invalidated'}', invalidated_by = '${data.discord_id}', invalidation_reason = '${data.reason}', invalidated_members = '${JSON.stringify(data.invalidated_members) || '[]'}' WHERE status = 'closed' AND squad_id = '${data.squad_id}' AND validated_by is null AND invalidated_by is null;
+        UPDATE as_rb_squads SET status = '${data.invalidated_members ? 'closed':'invalidated'}', invalidated_by = '${data.user_id}', invalidation_reason = '${data.reason}', invalidated_members = '${JSON.stringify(data.invalidated_members) || '[]'}' WHERE status = 'closed' AND squad_id = '${data.squad_id}' AND validated_by is null AND invalidated_by is null;
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
@@ -412,9 +405,9 @@ function squadsInvalidate(data,callback) {
 function squadsSelectHost(data,callback) {
     console.log('[relicbot.squadsSelectHost] data:',data)
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     db.query(`
-        UPDATE rb_squads SET squad_host = '${data.discord_id}' WHERE status = 'opened' AND squad_id = '${data.squad_id}' AND members @> '"${data.discord_id}"';
+        UPDATE as_rb_squads SET squad_host = '${data.user_id}' WHERE status = 'opened' AND squad_id = '${data.squad_id}' AND members @> '"${data.user_id}"';
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
@@ -436,7 +429,7 @@ function squadsSelectHost(data,callback) {
 function trackersCreate(data,callback) {
     console.log('[trackersCreate] data:',data)
     if (!data.message) return callback({code: 400, err: 'No message provided'})
-    if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 400, err: 'No user_id provided'})
     if (!data.channel_id) return callback({code: 400, err: 'No channel_id provided'})
     const lines = Array.isArray(data.message) ? data.message : data.message.toLowerCase().trim().split('\n')
     Promise.all(lines.map(line => {
@@ -454,10 +447,10 @@ function trackersCreate(data,callback) {
             if (squad.squad_type == '') squad.squad_type = '4b4'
             if (squad.main_refinements.length == 0) squad.main_refinements.push('rad')
 
-            db.query(`INSERT INTO rb_trackers (tracker_id,discord_id,channel_id,tier,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count) 
+            db.query(`INSERT INTO as_rb_trackers (tracker_id,user_id,channel_id,tier,main_relics,main_refinements,off_relics,off_refinements,squad_type,cycle_count) 
             VALUES (
                 '${tracker_id}',
-                '${data.discord_id}',
+                '${data.user_id}',
                 '${data.channel_id}',
                 '${squad.tier}',
                 '${JSON.stringify(squad.main_relics)}',
@@ -496,9 +489,9 @@ function trackersCreate(data,callback) {
 
 function trackersFetch(data,callback) {
     console.log('[trackersFetch] data:',data)
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     db.query(`
-        SELECT * FROM rb_trackers WHERE discord_id='${data.discord_id}';
+        SELECT * FROM as_rb_trackers WHERE user_id='${data.user_id}';
     `).then(res => {
         return callback({
             code: 200,
@@ -517,7 +510,7 @@ function trackersfetchSubscribers(data,callback) {
     console.log('[trackersfetchSubscribers] data:',data)
     if (!data.squad) return callback({code: 500, err: 'No squad obj provided'})
     const squad = data.squad
-    db.query(`SELECT * FROM rb_trackers WHERE discord_id != '${squad.original_host}' AND tier = '${squad.tier}';`)
+    db.query(`SELECT * FROM as_rb_trackers WHERE user_id != '${squad.original_host}' AND tier = '${squad.tier}';`)
     .then(res => {
         const channel_ids = {};
         const hosted_squad = relicBotSquadToString(squad,false,true)
@@ -529,8 +522,8 @@ function trackersfetchSubscribers(data,callback) {
                     && tracker.main_refinements.some(ref => squad.main_refinements.includes(ref)))) {
                 if (!channel_ids[tracker.channel_id]) 
                     channel_ids[tracker.channel_id] = []
-                if (!channel_ids[tracker.channel_id].includes(tracker.discord_id))
-                    channel_ids[tracker.channel_id].push(tracker.discord_id)
+                if (!channel_ids[tracker.channel_id].includes(tracker.user_id))
+                    channel_ids[tracker.channel_id].push(tracker.user_id)
             }
         })
         return callback({
@@ -548,36 +541,18 @@ function trackersfetchSubscribers(data,callback) {
 
 function trackersDelete(data,callback) {
     console.log('[trackersDelete] data:',data)
-    if (!data.discord_id && !data.tracker_ids) return callback({code: 500, err: 'No discord_id or tracker_ids provided'})
+    if (!data.user_id && !data.tracker_ids) return callback({code: 500, err: 'No user_id or tracker_ids provided'})
     var query = ''
-    if (data.discord_id) {
-        query = `DELETE FROM rb_trackers WHERE discord_id='${data.discord_id}';`
+    if (data.user_id) {
+        query = `DELETE FROM as_rb_trackers WHERE user_id='${data.user_id}';`
     } else {
         data.tracker_ids.forEach(tracker_id => {
-            query += `DELETE FROM rb_trackers WHERE tracker_id='${tracker_id}';`
+            query += `DELETE FROM as_rb_trackers WHERE tracker_id='${tracker_id}';`
         })
     }
     db.query(query).then(res => {
         return callback({
             code: 200,
-        })
-    }).catch(err => {
-        console.log(err)
-        return callback({
-            code: 500,
-            message: err.stack
-        })
-    })
-}
-
-function usersFetch(data,callback) {
-    console.log('[usersFetch] data:',data)
-    db.query(`
-        SELECT * FROM tradebot_users_list;
-    `).then(res => {
-        return callback({
-            code: 200,
-            data: res.rows
         })
     }).catch(err => {
         console.log(err)
@@ -595,7 +570,7 @@ function defaultHostingTableCreate(data, callback) {
     if (!data.main_refinements) return callback({code: 400, message: 'No main_refinements provided'})
     if (!data.squad_type) return callback({code: 400, message: 'No squad_type provided'})
     db.query(`
-        INSERT INTO rb_hosting_table (
+        INSERT INTO as_rb_hosting_table (
             tier,
             main_relics,
             main_refinements,
@@ -630,7 +605,7 @@ function defaultHostingTableCreate(data, callback) {
 function defaultHostingTableFetch(data,callback) {
     console.log('[defaultHostingTableFetch] data:',data)
     db.query(`
-        SELECT * FROM rb_hosting_table;
+        SELECT * FROM as_rb_hosting_table;
     `).then(res => {
         return callback({
             code: 200,
@@ -651,7 +626,7 @@ function defaultHostingTableDelete(data,callback) {
         if (callback) callback({code: 400, message: 'No id provided'})
         return
     }
-    db.query(`DELETE FROM rb_hosting_table WHERE id=${data.id}`)
+    db.query(`DELETE FROM as_rb_hosting_table WHERE id=${data.id}`)
     .then(res => {
         if (!callback) return
         if (res.rowCount == 0) {
@@ -771,8 +746,8 @@ function relicBotSquadToString(squad,include_sp_rj,exclude_cycle_count) {
 
 db.on('notification',(notification) => {
     const payload = JSONbig.parse(notification.payload);
-    if (['rb_hosting_table_insert','rb_hosting_table_update','rb_hosting_table_delete'].includes(notification.channel)) {
-        db.query(`SELECT * FROM rb_hosting_table;`)
+    if (['as_rb_hosting_table_insert','as_rb_hosting_table_update','as_rb_hosting_table_delete'].includes(notification.channel)) {
+        db.query(`SELECT * FROM as_rb_hosting_table;`)
         .then(res => {
             hosting_table = []
             res.rows.forEach(row => {

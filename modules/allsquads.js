@@ -46,7 +46,7 @@ const endpoints = {
 }
 
 function FCMTokenUpdate(data,callback) {
-    if (!data.discord_id) return callback({code: 400, message: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 400, message: 'No user_id provided'})
     if (!data.fcm_token) return callback({code: 400, message: 'No fcm_token provided'})
     db.query(`
         SELECT * FROM as_push_notify WHERE fcm_token = '${data.fcm_token}'
@@ -57,7 +57,7 @@ function FCMTokenUpdate(data,callback) {
             })
         } else {
             db.query(`
-                INSERT INTO as_push_notify (discord_id,fcm_token) VALUES ('${data.discord_id}','${data.fcm_token}')
+                INSERT INTO as_push_notify (user_id,fcm_token) VALUES ('${data.user_id}','${data.fcm_token}')
             `).then(res => {
                 if (res.rowCount == 1) {
                     return callback({
@@ -93,15 +93,15 @@ function FCMTokenUpdate(data,callback) {
 
 function adminLiftGlobalBan(data, callback) {
     console.log('[allsquads.resolveReport] data:',data)
-    if (!data.discord_id) return callback({code: 400, message: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 400, message: 'No user_id provided'})
     if (!data.identifier) return callback({code: 400, message: 'No identifier provided'})
 
-    const user = Object.values(as_users_list).filter(user => user.discord_id == data.identifier || user.ingame_name.toLowerCase() == data.identifier.toLowerCase())?.[0]
+    const user = Object.values(as_users_list).filter(user => user.user_id == data.user_id || user.discord_id == data.identifier || user.ingame_name.toLowerCase() == data.identifier.toLowerCase())?.[0]
     if (!user) return callback({code: 400, message: 'Given user does not exist'})
     if (!user.is_suspended) return callback({code: 400, message: 'Given user is not suspended'})
-    if (user.suspended_by != data.discord_id) return callback({code: 400, message: 'Given was not suspended by you'})
+    if (user.suspended_by != data.user_id) return callback({code: 400, message: 'Given user was not suspended by you'})
     db.query(`
-        UPDATE tradebot_users_list SET is_suspended = false WHERE discord_id = '${user.discord_id}'
+        UPDATE as_users_list SET is_suspended = false WHERE user_id = '${user.user_id}'
     `).then(res => {
         if (res.rowCount == 1) {
             callback({
@@ -125,7 +125,7 @@ function adminLiftGlobalBan(data, callback) {
 
 function resolveReport(data, callback) {
     console.log('[allsquads.resolveReport] data:',data)
-    if (!data.discord_id) return callback({code: 400, message: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 400, message: 'No user_id provided'})
     if (!data.report_id) return callback({code: 400, message: 'No report_id provided'})
     if (!data.remarks) return callback({code: 400, message: 'No remarks provided'})
     if (!data.action) return callback({code: 400, message: 'No action provided'})
@@ -133,7 +133,7 @@ function resolveReport(data, callback) {
 
     if (data.action == 'reject') {
         db.query(`
-            UPDATE as_reports SET status = 'rejected', action_taken = 'rejected', resolved_by = '${data.discord_id}', remarks = '${data.remarks.replace(/'/g,`''`)}'
+            UPDATE as_reports SET status = 'rejected', action_taken = 'rejected', resolved_by = '${data.user_id}', remarks = '${data.remarks.replace(/'/g,`''`)}'
             WHERE report_id = ${data.report_id} AND status = 'under_review'
         `).then(res => {
             if (res.rowCount == 1) {
@@ -156,13 +156,13 @@ function resolveReport(data, callback) {
         })
     } else if (data.action == 'global_ban') {
         db.query(`
-            UPDATE tradebot_users_list SET is_suspended = true, suspended_by = '${data.discord_id}', suspension_expiry = ${data.expiry}
-            WHERE discord_id = (SELECT reported_user FROM as_reports WHERE report_id = ${data.report_id} AND status = 'under_review') 
+            UPDATE as_users_list SET is_suspended = true, suspended_by = '${data.user_id}', suspension_expiry = ${data.expiry}
+            WHERE user_id = (SELECT reported_user FROM as_reports WHERE report_id = ${data.report_id} AND status = 'under_review') 
         `).then(res => {
             if (res.rowCount == 1) {
-                db_modules.schedule_query(`UPDATE tradebot_users_list SET is_suspended = false WHERE discord_id = (SELECT reported_user FROM as_reports WHERE report_id = ${data.report_id})`, data.expiry - new Date().getTime())
+                db_modules.schedule_query(`UPDATE as_users_list SET is_suspended = false WHERE user_id = (SELECT reported_user FROM as_reports WHERE report_id = ${data.report_id})`, data.expiry - new Date().getTime())
                 db.query(`
-                    UPDATE as_reports SET status = 'resolved', action_taken = 'global_ban', resolved_by = '${data.discord_id}', remarks = '${data.remarks.replace(/'/g,`''`)}'
+                    UPDATE as_reports SET status = 'resolved', action_taken = 'global_ban', resolved_by = '${data.user_id}', remarks = '${data.remarks.replace(/'/g,`''`)}'
                     WHERE report_id = ${data.report_id} AND status = 'under_review'
                 `).then(res => {
                     if (res.rowCount == 1) {
@@ -201,13 +201,13 @@ function resolveReport(data, callback) {
 
 function logdeReport(data, callback) {
     console.log('[allsquads.logdeReport] data:',data)
-    if (!data.discord_id) return callback({code: 400, message: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 400, message: 'No user_id provided'})
     if (!data.identifier) return callback({code: 400, message: 'No identifier provided'})
     if (!data.reason) return callback({code: 400, message: 'No reason provided'})
     db.query(`
-        INSERT INTO as_reports (discord_id, reported_user, report) VALUES (
-            '${data.discord_id}',
-            (SELECT discord_id FROM tradebot_users_list WHERE LOWER(ingame_name) = LOWER('${data.identifier}')),
+        INSERT INTO as_reports (user_id, reported_user, report) VALUES (
+            '${data.user_id}',
+            (SELECT user_id FROM as_users_list WHERE LOWER(ingame_name) = LOWER('${data.identifier}')),
             '${data.reason.replace(/'/g,`''`)}'
         )
     `).then(res => {
@@ -237,10 +237,10 @@ function logdeReport(data, callback) {
 
 function userfilledSquadsFetch(data, callback) {
     console.log('[allsquads.userfilledSquadsFetch] data:',data)
-    if (!data.discord_id) return callback({code: 400, message: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 400, message: 'No user_id provided'})
     db.query(`
-        SELECT * FROM as_sb_squads WHERE members @> '"${data.discord_id}"' AND (status = 'opened' OR status = 'closed' OR status = 'disbanded');
-        SELECT * FROM rb_squads WHERE members @> '"${data.discord_id}"' AND (status = 'opened' OR status = 'closed' OR status = 'disbanded');
+        SELECT * FROM as_sb_squads WHERE members @> '"${data.user_id}"' AND (status = 'opened' OR status = 'closed' OR status = 'disbanded');
+        SELECT * FROM as_rb_squads WHERE members @> '"${data.user_id}"' AND (status = 'opened' OR status = 'closed' OR status = 'disbanded');
     `).then(res => {
         callback({
             code: 200,
@@ -257,15 +257,15 @@ function userfilledSquadsFetch(data, callback) {
 
 function userChatsFetch(data, callback) {
     console.log('[allsquads.userChatsFetch] data:',data)
-    if (!data.squad_id) return callback({code: 400, message: 'No discord_id provided'})
+    if (!data.squad_id) return callback({code: 400, message: 'No user_id provided'})
     db.query(`
         SELECT * FROM as_sb_squads_messages SM
         JOIN as_sb_squads S ON S.squad_id = SM.squad_id
-        WHERE S.members @> '"${data.discord_id}"'
+        WHERE S.members @> '"${data.user_id}"'
         ORDER BY SM.creation_timestamp ASC;
-        SELECT * FROM rb_squads_messages SM
-        JOIN rb_squads S ON S.squad_id = SM.squad_id
-        WHERE S.members @> '"${data.discord_id}"'
+        SELECT * FROM as_rb_squads_messages SM
+        JOIN as_rb_squads S ON S.squad_id = SM.squad_id
+        WHERE S.members @> '"${data.user_id}"'
         ORDER BY SM.creation_timestamp ASC;
     `).then(res => {
         const chats = res[0].rows.concat(res[1].rows)
@@ -290,7 +290,7 @@ function userChatsFetch(data, callback) {
 function usersList(data,callback) {
     console.log('[usersFetch] data:',data)
     db.query(`
-        SELECT * FROM tradebot_users_list;
+        SELECT * FROM as_users_list;
     `).then(res => {
         return callback({
             code: 200,
@@ -572,12 +572,12 @@ function clanAffiliateEmbed(clan) {
 
 function pingmutesCreate(data,callback) {
     console.log('[trackersCreate] data:',data)
-    if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 400, err: 'No user_id provided'})
     if (!data.squad_string) return callback({code: 400, err: 'No squad_string provided'})
     if (!data.revoke_after) return callback({code: 400, err: 'No revoke_after provided'})
     const pingmute_id = uuid.v1()
-    db.query(`INSERT INTO as_ping_mutes (discord_id,squad_string,pingmute_id) VALUES (
-        '${data.discord_id}',
+    db.query(`INSERT INTO as_ping_mutes (user_id,squad_string,pingmute_id) VALUES (
+        '${data.user_id}',
         '${data.squad_string}',
         '${pingmute_id}'
     )`).then(res => {
@@ -601,9 +601,9 @@ function pingmutesCreate(data,callback) {
 
 function pingmutesFetch(data,callback) {
     console.log('[allsquads/pingmutesFetch] data:', data)
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     db.query(`
-        SELECT * FROM as_ping_mutes WHERE discord_id='${data.discord_id}';
+        SELECT * FROM as_ping_mutes WHERE user_id='${data.user_id}';
     `).then(res => {
         return callback({
             code: 200,
@@ -620,10 +620,10 @@ function pingmutesFetch(data,callback) {
 
 function pingmutesDelete(data,callback) {
     console.log('[allsquads/pingmutesDelete] data:',data)
-    if (!data.discord_id && !data.pingmute_ids) return callback({code: 500, err: 'No discord_id or squad_strings provided'})
+    if (!data.user_id && !data.pingmute_ids) return callback({code: 500, err: 'No user_id or squad_strings provided'})
     var query = ''
-    if (data.discord_id) {
-        query = `DELETE FROM as_ping_mutes WHERE discord_id='${data.discord_id}';`
+    if (data.user_id) {
+        query = `DELETE FROM as_ping_mutes WHERE user_id='${data.user_id}';`
     } else {
         data.pingmute_ids.forEach(pingmute_id => {
             query += `DELETE FROM as_ping_mutes WHERE pingmute_id='${pingmute_id}';`
@@ -666,21 +666,21 @@ function statisticsFetch(data,callback) {
     console.log('[allsquads.statisticsFetch] data:',data)
     if (!data.identifier) return callback({code: 500, err: 'No identifier provided'})
     db.query(`
-        SELECT * FROM tradebot_users_list WHERE LOWER(${Number(data.identifier) ? 'discord_id' : 'ingame_name'}) = LOWER('${data.identifier}');
+        SELECT * FROM as_users_list WHERE LOWER(${Number(data.identifier) ? 'discord_id' : 'ingame_name'}) = LOWER('${data.identifier}');
     `).then(res => {
         if (res.rowCount == 0) return callback({code: 400, message: 'Given user does not exist'})
         const db_user = res.rows[0]
         delete db_user.login_token
-        const discord_id = db_user.discord_id
+        const user_id = db_user.user_id
         db.query(`
-            SELECT * FROM rb_squads WHERE status = 'closed' AND members @> '"${discord_id}"';
-            SELECT * FROM as_sb_squads WHERE status = 'closed' AND members @> '"${discord_id}"';
-            SELECT * FROM as_gabot_giveaways WHERE status = 'ended' AND discord_id = '${discord_id}';
-            SELECT * FROM as_gabot_giveaways WHERE status = 'ended' AND winners_list @> '"${discord_id}"';
-            SELECT * FROM as_bb_blesses WHERE status = 'closed' AND discord_id = '${discord_id}';
-            SELECT * FROM challenges_completed WHERE discord_id = '${discord_id}';
-            SELECT * FROM as_users_ratings WHERE rating_type = 'squad_rating' AND rated_user = '${discord_id}';
-            SELECT * FROM challenges_accounts WHERE discord_id = '${discord_id}';
+            SELECT * FROM as_rb_squads WHERE status = 'closed' AND members @> '"${user_id}"';
+            SELECT * FROM as_sb_squads WHERE status = 'closed' AND members @> '"${user_id}"';
+            SELECT * FROM as_gabot_giveaways WHERE status = 'ended' AND user_id = '${user_id}';
+            SELECT * FROM as_gabot_giveaways WHERE status = 'ended' AND winners_list @> '"${user_id}"';
+            SELECT * FROM as_bb_blesses WHERE status = 'closed' AND user_id = '${user_id}';
+            SELECT * FROM challenges_completed WHERE user_id = '${user_id}';
+            SELECT * FROM as_users_ratings WHERE rating_type = 'squad_rating' AND rated_user = '${user_id}';
+            SELECT * FROM challenges_accounts WHERE user_id = '${user_id}';
         `).then(res => {
             const filled_squads = res[0].rows.concat(res[1].rows)
             const hosted_giveaways = res[2].rows
@@ -786,104 +786,6 @@ function statisticsFetch(data,callback) {
                 code: 200,
                 data: statistics
             })
-    
-            const reputation = {
-                all_time: 0.0,
-                today: 0.0,
-                this_week: 0.0,
-                this_month: 0.0
-            }
-            db_squads.forEach(squad => {
-                if (squad.members.filter(id => !squad.invalidated_members?.includes(id)).includes(discord_id)) {
-                    const rep = rep_scheme[squad.bot_type]
-                    reputation.all_time += rep
-                    if (squad.creation_timestamp >= today_start) reputation.today += rep
-                    if (squad.creation_timestamp >= week_start) reputation.this_week += rep
-                    if (squad.creation_timestamp >= month_start) reputation.this_month += rep
-                }
-            })
-            db_giveaways.forEach(giveaway => {
-                if (giveaway.discord_id == discord_id) {
-                    const rep = rep_scheme.giveaway
-                    reputation.all_time += rep
-                    // if (giveaway.expiry_timestamp >= today_start) reputation.today += rep
-                    // if (giveaway.expiry_timestamp >= week_start) reputation.this_week += rep
-                    // if (giveaway.expiry_timestamp >= month_start) reputation.this_month += rep
-                }
-            })
-            db_blessings.forEach(blessing => {
-                if (blessing.discord_id == discord_id) {
-                    const rep = rep_scheme.blessing
-                    reputation.all_time += rep
-                    // if (blessing.creation_timestamp >= today_start) reputation.today += rep
-                    // if (blessing.creation_timestamp >= week_start) reputation.this_week += rep
-                    // if (blessing.creation_timestamp >= month_start) reputation.this_month += rep
-                }
-            })
-            db_daywave_challenges.forEach(daywave_challenge => {
-                if (daywave_challenge.discord_id == discord_id) {
-                    const rep = rep_scheme.daywave_completion
-                    reputation.all_time += rep
-                    if (daywave_challenge.timestamp >= today_start) reputation.today += rep 
-                    if (daywave_challenge.timestamp >= week_start) reputation.this_week += rep
-                    if (daywave_challenge.timestamp >= month_start) reputation.this_month += rep
-                }
-            })
-            // db_rank_roles.forEach(rank_role => {
-            //     if (rank_role.discord_id == discord_id) {
-            //         const rep = rep_scheme.ranks[rank_role.rank_type]
-            //         reputation.all_time += rep
-            //     }
-            // })
-            db_users_ratings.forEach(user_rating => {
-                if (user_rating.rated_user == discord_id) {
-                    const rep = rep_scheme.rating[user_rating.rating]
-                    reputation.all_time += rep
-                }
-            })
-            if (reputation.all_time > 0)
-                statistics.all_time.push({
-                    ...user,
-                    reputation: reputation.all_time
-                })
-            if (reputation.today > 0)
-                statistics.today.push({
-                    ...user,
-                    reputation: reputation.today
-                })
-            if (reputation.this_week > 0)
-                statistics.this_week.push({
-                    ...user,
-                    reputation: reputation.this_week
-                })
-            if (reputation.this_month > 0)
-                statistics.this_month.push({
-                    ...user,
-                    reputation: reputation.this_month
-                })
-            statistics.all_time = statistics.all_time.sort(dynamicSortDesc("reputation"))
-            statistics.today = statistics.today.sort(dynamicSortDesc("reputation"))
-            statistics.this_week = statistics.this_week.sort(dynamicSortDesc("reputation"))
-            statistics.this_month = statistics.this_month.sort(dynamicSortDesc("reputation"))
-            statistics.top_squads = Object.keys(statistics.top_squads).map(squad_string => ({squad_string: squad_string, hosts: statistics.top_squads[squad_string]})).sort(dynamicSortDesc("hosts"))
-            if (data.limit) {
-                statistics.all_time = statistics.all_time.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
-                statistics.today = statistics.today.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
-                statistics.this_week = statistics.this_week.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
-                statistics.this_month = statistics.this_month.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
-                statistics.top_squads = statistics.top_squads.map((host,index) => index < data.limit ? host:null).filter(o => o != null)
-            }
-            // console.log(JSON.stringify(statistics))
-            if (data.exclude_squads) {
-                delete statistics.top_squads;
-                delete statistics.total_squads;
-            }
-            if (data.exclude_daily) 
-                delete statistics.today
-            return callback({
-                code: 200,
-                data: statistics
-            })
         }).catch(err => {
             console.log(err)
             return callback({
@@ -903,13 +805,12 @@ function statisticsFetch(data,callback) {
 function leaderboardsFetch(data,callback) {
     console.log('[allsquads.leaderboardsFetch] data:',data)
     db.query(`
-        SELECT * FROM tradebot_users_list;
-        SELECT * FROM rb_squads WHERE status = 'closed';
+        SELECT * FROM as_users_list;
+        SELECT * FROM as_rb_squads WHERE status = 'closed';
         SELECT * FROM as_sb_squads WHERE status = 'closed';
         SELECT * FROM as_gabot_giveaways WHERE status = 'ended';
         SELECT * FROM as_bb_blesses WHERE status = 'closed';
         SELECT * FROM challenges_completed;
-        SELECT * FROM as_rank_roles;
         SELECT * FROM as_users_ratings WHERE rating_type = 'squad_rating';
     `).then(res => {
         const db_users = res[0].rows
@@ -917,8 +818,7 @@ function leaderboardsFetch(data,callback) {
         const db_giveaways = res[3].rows
         const db_blessings = res[4].rows
         const db_daywave_challenges = res[5].rows
-        const db_rank_roles = res[6].rows
-        const db_users_ratings = res[7].rows
+        const db_users_ratings = res[6].rows
 
         var statistics = {
             all_time: [],
@@ -944,9 +844,9 @@ function leaderboardsFetch(data,callback) {
         })
         const skip_users = data.skip_users || []
         db_users.forEach(user => {
-            const discord_id = user.discord_id
-            if (!discord_id || discord_id == "0") return
-            if (skip_users.includes(discord_id)) return
+            const user_id = user.user_id
+            if (!user_id || user_id == "0") return
+            if (skip_users.includes(user_id)) return
             var reputation = {
                 all_time: 0.0,
                 today: 0.0,
@@ -955,7 +855,7 @@ function leaderboardsFetch(data,callback) {
             }
             user.last_squad_timestamp = 0
             db_squads.forEach(squad => {
-                if (squad.members.filter(id => !squad.invalidated_members?.includes(id)).includes(discord_id)) {
+                if (squad.members.filter(id => !squad.invalidated_members?.includes(id)).includes(user_id)) {
                     const rep = rep_scheme[squad.bot_type]
                     reputation.all_time += rep
                     if (squad.creation_timestamp >= today_start) reputation.today += rep
@@ -965,7 +865,7 @@ function leaderboardsFetch(data,callback) {
                 }
             })
             db_giveaways.forEach(giveaway => {
-                if (giveaway.discord_id == discord_id) {
+                if (giveaway.user_id == user_id) {
                     const rep = rep_scheme.giveaway
                     reputation.all_time += rep
                     // if (giveaway.expiry_timestamp >= today_start) reputation.today += rep
@@ -974,7 +874,7 @@ function leaderboardsFetch(data,callback) {
                 }
             })
             db_blessings.forEach(blessing => {
-                if (blessing.discord_id == discord_id) {
+                if (blessing.user_id == user_id) {
                     const rep = rep_scheme.blessing
                     reputation.all_time += rep
                     // if (blessing.creation_timestamp >= today_start) reputation.today += rep
@@ -983,7 +883,7 @@ function leaderboardsFetch(data,callback) {
                 }
             })
             db_daywave_challenges.forEach(daywave_challenge => {
-                if (daywave_challenge.discord_id == discord_id) {
+                if (daywave_challenge.user_id == user_id) {
                     const rep = rep_scheme.daywave_completion
                     reputation.all_time += rep
                     if (daywave_challenge.timestamp >= today_start) reputation.today += rep 
@@ -998,7 +898,7 @@ function leaderboardsFetch(data,callback) {
             //     }
             // })
             db_users_ratings.forEach(user_rating => {
-                if (user_rating.rated_user == discord_id) {
+                if (user_rating.rated_user == user_id) {
                     const rep = rep_scheme.rating[user_rating.rating]
                     reputation.all_time += rep
                 }
@@ -1058,10 +958,10 @@ function leaderboardsFetch(data,callback) {
 
 function userRatingsFetch(data,callback) {
     console.log('[allsquads.userRatingsFetch] data:',data)
-    if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 400, err: 'No user_id provided'})
     if (!data.rating_type) return callback({code: 400, err: 'No rating_type provided'})
     db.query(`
-        SELECT * FROM as_users_ratings WHERE discord_id = '${data.discord_id}' AND rating_type = '${data.rating_type}';
+        SELECT * FROM as_users_ratings WHERE user_id = '${data.user_id}' AND rating_type = '${data.rating_type}';
     `).then(res => {
         const user_ratings = {}
         res.rows.forEach(row => {
@@ -1081,8 +981,8 @@ function userRatingsFetch(data,callback) {
 }
 function userRatingsCreate(data,callback) {
     console.log('[allsquads.userRatingsCreate] data:',data)
-    if (!data.discord_id) {
-        if (callback) callback({code: 400, err: 'No discord_id provided'})
+    if (!data.user_id) {
+        if (callback) callback({code: 400, err: 'No user_id provided'})
         return
     }
     if (!data.rated_user) {
@@ -1103,15 +1003,15 @@ function userRatingsCreate(data,callback) {
     }
     db.query(`
         INSERT INTO as_users_ratings 
-        (discord_id, rated_user, rating, rating_type, reason) 
+        (user_id, rated_user, rating, rating_type, reason) 
         VALUES (
-            '${data.discord_id}',
+            '${data.user_id}',
             '${data.rated_user}',
             ${Number(data.rating)},
             '${data.rating_type}',
             ${data.reason ? `'${data.reason}'` : 'null'}
         )
-        ON CONFLICT (discord_id,rated_user,rating_type)
+        ON CONFLICT (user_id,rated_user,rating_type)
         DO UPDATE SET 
         rating = EXCLUDED.rating;
     `).then(res => {
@@ -1140,15 +1040,14 @@ function userRatingsCreate(data,callback) {
 
 function userSettingsUpdate(data,callback) {
     console.log('[allsquads.userSettingsUpdate] data:',data)
-    if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 400, err: 'No user_id provided'})
     if (!data.setting_type) return callback({code: 400, err: 'No setting_type provided'})
     if (data.setting_value == undefined) return callback({code: 400, err: 'No setting_value provided'})
     if (['ping_dnd', 'ping_off'].includes(data.setting_type)) {
         db.query(`
-            UPDATE tradebot_users_list
-            SET
+            UPDATE as_users_list SET
             allowed_pings_status = allowed_pings_status ${data.setting_type == 'ping_dnd' ? data.setting_value ? `|| '"dnd"'`:`- 'dnd'` : data.setting_type == 'ping_off' ? data.setting_value ? `|| '"invisible"' || '"offline"'`:`- 'offline' - 'invisible'` : '[]'}
-            WHERE discord_id = '${data.discord_id}'
+            WHERE user_id = '${data.user_id}'
             returning *;
         `).then(res => {
             if (res.rowCount == 1) {
@@ -1172,12 +1071,12 @@ function userSettingsUpdate(data,callback) {
     }
 }
 
-function calculateBestPingRating(discord_ids) {
+function calculateBestPingRating(user_ids) {
     const hosts_rating = {}
-    discord_ids.forEach(host_id => {
+    user_ids.forEach(host_id => {
         // calculate relative ping
         const relative_ratings = []
-        discord_ids.filter(id => id != host_id).forEach(client_id => {
+        user_ids.filter(id => id != host_id).forEach(client_id => {
             const ping_rating = as_hosts_ratings[host_id]?.[client_id]
             if (ping_rating) relative_ratings.push(ping_rating)
         })
@@ -1193,7 +1092,7 @@ function calculateBestPingRating(discord_ids) {
         const global_ping = calcArrAvg(global_ratings)
         const global_ping_precision = global_ratings.length
         // calculate considered ping
-        const considered_ping = (((relative_ping_precision/(discord_ids.length - 1)) >= 0.5) ? relative_ping : (global_ping_precision >= 5 ? global_ping : Infinity)) || Infinity
+        const considered_ping = (((relative_ping_precision/(user_ids.length - 1)) >= 0.5) ? relative_ping : (global_ping_precision >= 5 ? global_ping : Infinity)) || Infinity
         // assign values
         hosts_rating[host_id] = {
             relative_ping: relative_ping || Infinity,
@@ -1204,7 +1103,7 @@ function calculateBestPingRating(discord_ids) {
             avg_squad_ping: getPingFromRating(considered_ping)
         }
     })
-    var hosts = Object.keys(hosts_rating).map(key => ({...hosts_rating[key], discord_id: key, ign: as_users_list[key]?.ingame_name}))
+    var hosts = Object.keys(hosts_rating).map(user_id => ({...hosts_rating[user_id], user_id: user_id}))
     hosts = hosts.sort(dynamicSort('considered_ping'))
     return hosts
 
@@ -1217,23 +1116,23 @@ function calculateBestPingRating(discord_ids) {
 
 function pingmuteOnSquadOpen(squad) {
     if (squad.squad_string.match('sortie')) {
-        squad.members.forEach(discord_id => {
-            pingmutesCreate({discord_id: discord_id, squad_string: 'sortie', revoke_after: getStateExpiry('sortie')})
+        squad.members.forEach(user_id => {
+            pingmutesCreate({user_id: user_id, squad_string: 'sortie', revoke_after: getStateExpiry('sortie')})
         })
     }
     if (squad.squad_string.match('archon')) {
-        squad.members.forEach(discord_id => {
-            pingmutesCreate({discord_id: discord_id, squad_string: 'archon', revoke_after: getStateExpiry('archon_hunt')})
+        squad.members.forEach(user_id => {
+            pingmutesCreate({user_id: user_id, squad_string: 'archon', revoke_after: getStateExpiry('archon_hunt')})
         })
     }
     if (squad.squad_string.match('incursion')) {
-        squad.members.forEach(discord_id => {
-            pingmutesCreate({discord_id: discord_id, squad_string: 'incursions', revoke_after: getStateExpiry('incursions')})
+        squad.members.forEach(user_id => {
+            pingmutesCreate({user_id: user_id, squad_string: 'incursions', revoke_after: getStateExpiry('incursions')})
         })
     }
     if (squad.squad_string.match('eidolon')) {
-        squad.members.forEach(discord_id => {
-            pingmutesCreate({discord_id: discord_id, squad_string: 'eidolon', revoke_after: 3000000})
+        squad.members.forEach(user_id => {
+            pingmutesCreate({user_id: user_id, squad_string: 'eidolon', revoke_after: 3000000})
         })
     }
 }

@@ -167,11 +167,11 @@ function squadsMessageCreate(data,callback) {
     const fromWeb = data.thread_id.match('web') ? true : false
     if (fromWeb && !data.squad_id) return callback({code: 400, message: 'No squad_id provided'})
     db.query(`
-        INSERT INTO as_sb_squads_messages (message_id,message,discord_id,thread_id,squad_id,squad_thread_ids)
+        INSERT INTO as_sb_squads_messages (message_id,message,user_id,thread_id,squad_id,squad_thread_ids)
         VALUES (
             '${data.message_id}',
             '${data.message.replace(/'/g,`''`)}',
-            '${data.discord_id}',
+            '${data.user_id}',
             ${fromWeb ? 'null' : `'${data.thread_id}'`},
             ${fromWeb ? `'${data.squad_id}'` : `(select squad_id FROM as_sb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')`},
             ${fromWeb ? `(select thread_ids FROM as_sb_squads WHERE squad_id = '${data.squad_id}' AND status='opened')` : `(select thread_ids FROM as_sb_squads WHERE thread_ids @> '"${data.thread_id}"' AND status='opened')`}
@@ -218,9 +218,9 @@ function squadsMessagesFetch(data,callback) {
 
 function squadsAutofillFetch(data,callback) {
     console.log('[squadbot.squadsAutofillFetch] data:',data)
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     db.query(`
-        SELECT * FROM as_sb_squads WHERE status='active' AND members @> '"${data.discord_id}"' AND jsonb_array_length(members) > 1 ORDER BY creation_timestamp ASC;
+        SELECT * FROM as_sb_squads WHERE status='active' AND members @> '"${data.user_id}"' AND jsonb_array_length(members) > 1 ORDER BY creation_timestamp ASC;
     `).then(res => {
         if (res.rowCount == 0) {
             return callback({
@@ -246,10 +246,10 @@ function squadsAutofillFetch(data,callback) {
 
 function squadsAutofillExecute(data,callback) {
     console.log('[squadbot.squadsAutofillExecute] data:',data)
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
     db.query(`
-        UPDATE as_sb_squads SET spots = jsonb_array_length(members), autofilled_by = '${data.discord_id}' WHERE status='active' AND members @> '"${data.discord_id}"' AND jsonb_array_length(members) > 1 AND squad_id = '${data.squad_id}';
+        UPDATE as_sb_squads SET spots = jsonb_array_length(members), autofilled_by = '${data.user_id}' WHERE status='active' AND members @> '"${data.user_id}"' AND jsonb_array_length(members) > 1 AND squad_id = '${data.squad_id}';
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
@@ -258,7 +258,7 @@ function squadsAutofillExecute(data,callback) {
             })
         } else {
             db.query(`
-                SELECT * FROM as_sb_squads WHERE status='active' AND members @> '"${data.discord_id}"' AND jsonb_array_length(members) > 1 ORDER BY creation_timestamp ASC;
+                SELECT * FROM as_sb_squads WHERE status='active' AND members @> '"${data.user_id}"' AND jsonb_array_length(members) > 1 ORDER BY creation_timestamp ASC;
             `).then(res => {
                 if (res.rowCount == 0) {
                     return callback({
@@ -292,7 +292,7 @@ function squadsAutofillExecute(data,callback) {
 function squadsCreate(data,callback) {
     console.log('[squadbot/squadsCreate] data:',data)
     if (!data.message) return callback({code: 500, err: 'No message provided'})
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     const lines = data.message.toLowerCase().trim().split('\n')
     Promise.all(lines.map(line => {
         return new Promise((resolve,reject) => {
@@ -341,16 +341,16 @@ function squadsCreate(data,callback) {
                 '${squad_code}',
                 '${squad_string}',
                 ${spots},
-                '["${data.discord_id}"]',
-                '${data.discord_id}',
-                '${data.channel_id ? `{"${data.discord_id}":"${data.channel_id}"}`:'{}'}',
+                '["${data.user_id}"]',
+                '${data.user_id}',
+                '${data.channel_id ? `{"${data.user_id}":"${data.channel_id}"}`:'{}'}',
                 ${getSquadClosure(squad_string)},
-                '["${new Date().getTime()} ${data.discord_id} created squad"]')
+                '["${new Date().getTime()} ${data.user_id} created squad"]')
             `).then(res => {
                 if (res.rowCount == 1) {
                     //db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
                     //db_modules.schedule_query(`UPDATE as_sb_squads SET status='expired' WHERE squad_id = '${squad_id}' AND status='active'`,squad_expiry)
-                    db_modules.schedule_query(`UPDATE as_sb_squads SET members = members-'${data.discord_id}', logs = logs || '"${new Date().getTime()} ${data.discord_id} removed from squad due to timeout"' WHERE members @> '"${data.discord_id}"' AND status='active' AND squad_id = '${squad_id}'`,squad_expiry)
+                    db_modules.schedule_query(`UPDATE as_sb_squads SET members = members-'${data.user_id}', logs = logs || '"${new Date().getTime()} ${data.user_id} removed from squad due to timeout"' WHERE members @> '"${data.user_id}"' AND status='active' AND squad_id = '${squad_id}'`,squad_expiry)
                     return resolve({code: 200})
                 } else return resolve({
                     code: 500,
@@ -367,7 +367,7 @@ function squadsCreate(data,callback) {
                     db.query(`SELECT * FROM as_sb_squads WHERE squad_code='${squad_code}' AND status='active'`)
                     .then(res => {
                         if (res.rowCount > 0) {
-                            if (res.rows.some(row => row.members.includes(data.discord_id))) return resolve({code: 200})
+                            if (res.rows.some(row => row.members.includes(data.user_id))) return resolve({code: 200})
                             else return resolve({
                                 code: 399,
                                 message: `**${convertUpper(squad_string)}** already exists. Would you like to __join existing squad__ or __host a new one__?`,
@@ -433,26 +433,26 @@ function squadsUpdate(data,callback) {
 function squadsAddMember(data,callback) {
     console.log('[squadsAddMember] data:',data)
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     db.query(`
         UPDATE as_sb_squads SET members =
-        CASE WHEN members @> '"${data.discord_id}"'
-        THEN members-'${data.discord_id}'
-        ELSE members||'"${data.discord_id}"' END
+        CASE WHEN members @> '"${data.user_id}"'
+        THEN members-'${data.user_id}'
+        ELSE members||'"${data.user_id}"' END
         ${data.channel_id ? `,joined_from_channel_ids = 
-        CASE WHEN members @> '"${data.discord_id}"'
-        THEN joined_from_channel_ids - '${data.discord_id}'
-        ELSE jsonb_set(joined_from_channel_ids, '{${data.discord_id}}', '"${data.channel_id}"') END
+        CASE WHEN members @> '"${data.user_id}"'
+        THEN joined_from_channel_ids - '${data.user_id}'
+        ELSE jsonb_set(joined_from_channel_ids, '{${data.user_id}}', '"${data.channel_id}"') END
         ` : ''},
-        logs = CASE WHEN members @> '"${data.discord_id}"'
-        THEN logs || '"${new Date().getTime()} ${data.discord_id} left squad"'
-        ELSE logs || '"${new Date().getTime()} ${data.discord_id} joined squad"' END
+        logs = CASE WHEN members @> '"${data.user_id}"'
+        THEN logs || '"${new Date().getTime()} ${data.user_id} left squad"'
+        ELSE logs || '"${new Date().getTime()} ${data.user_id} joined squad"' END
         WHERE status = 'active' AND squad_id = '${data.squad_id}'
         returning*;
     `).then(res => {
         if (res.rowCount == 1) {
-            if (res.rows[0].members.includes(data.discord_id)) {
-                db_modules.schedule_query(`UPDATE as_sb_squads SET members = members-'${data.discord_id}', logs = logs || '"${new Date().getTime()} ${data.discord_id} removed from squad due to timeout"' WHERE members @> '"${data.discord_id}"' AND status='active' AND squad_id = '${data.squad_id}'`,squad_expiry)
+            if (res.rows[0].members.includes(data.user_id)) {
+                db_modules.schedule_query(`UPDATE as_sb_squads SET members = members-'${data.user_id}', logs = logs || '"${new Date().getTime()} ${data.user_id} removed from squad due to timeout"' WHERE members @> '"${data.user_id}"' AND status='active' AND squad_id = '${data.squad_id}'`,squad_expiry)
             }
             return callback({
                 code: 200
@@ -472,8 +472,8 @@ function squadsAddMember(data,callback) {
 
 // function squadsRemoveMember(data,callback) {
 //     console.log('[squadsRemoveMember] data:',data)
-//     if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
-//     db.query(`UPDATE rb_squads SET members=members-'${data.discord_id}' WHERE status='active' ${data.squad_id ? ` AND squad_id = '${data.squad_id}'`:''} ${data.tier ? ` AND tier = '${data.tier}'`:''}`)
+//     if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
+//     db.query(`UPDATE rb_squads SET members=members-'${data.user_id}' WHERE status='active' ${data.squad_id ? ` AND squad_id = '${data.squad_id}'`:''} ${data.tier ? ` AND tier = '${data.tier}'`:''}`)
 //     .then(res => {
 //         if (res.rowCount == 1) {
 //             return callback({
@@ -494,8 +494,8 @@ function squadsAddMember(data,callback) {
 
 function squadsLeaveAll(data,callback) {
     console.log('[squadbot/squadsLeaveAll] data:',data)
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
-    db.query(`UPDATE as_sb_squads SET members=members-'${data.discord_id}', logs = logs || '"${new Date().getTime()} ${data.discord_id} left squad"' WHERE status='active' AND members @> '"${data.discord_id}"'`)
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
+    db.query(`UPDATE as_sb_squads SET members=members-'${data.user_id}', logs = logs || '"${new Date().getTime()} ${data.user_id} left squad"' WHERE status='active' AND members @> '"${data.user_id}"'`)
     .then(res => {
         return callback({
             code: 200
@@ -512,9 +512,9 @@ function squadsLeaveAll(data,callback) {
 function squadsValidate(data,callback) {
     console.log('[squadbot.squadsValidate] data:',data)
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     db.query(`
-        UPDATE as_sb_squads SET validated_by = '${data.discord_id}' WHERE status = 'closed' AND squad_id = '${data.squad_id}' AND validated_by is null AND invalidated_by is null;
+        UPDATE as_sb_squads SET validated_by = '${data.user_id}' WHERE status = 'closed' AND squad_id = '${data.squad_id}' AND validated_by is null AND invalidated_by is null;
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
@@ -536,10 +536,10 @@ function squadsValidate(data,callback) {
 function squadsInvalidate(data,callback) {
     console.log('[squadbot.squadsInvalidate] data:',data)
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     if (!data.reason) return callback({code: 500, err: 'No reason provided'})
     db.query(`
-        UPDATE as_sb_squads SET status = '${data.invalidated_members ? 'closed':'invalidated'}', invalidated_by = '${data.discord_id}', invalidation_reason = '${data.reason}', invalidated_members = '${JSON.stringify(data.invalidated_members) || '[]'}' WHERE status = 'closed' AND squad_id = '${data.squad_id}' AND validated_by is null AND invalidated_by is null;
+        UPDATE as_sb_squads SET status = '${data.invalidated_members ? 'closed':'invalidated'}', invalidated_by = '${data.user_id}', invalidation_reason = '${data.reason}', invalidated_members = '${JSON.stringify(data.invalidated_members) || '[]'}' WHERE status = 'closed' AND squad_id = '${data.squad_id}' AND validated_by is null AND invalidated_by is null;
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
@@ -561,9 +561,9 @@ function squadsInvalidate(data,callback) {
 function squadsSelectHost(data,callback) {
     console.log('[squadbot.squadsSelectHost] data:',data)
     if (!data.squad_id) return callback({code: 500, err: 'No squad_id provided'})
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     db.query(`
-        UPDATE as_sb_squads SET squad_host = '${data.discord_id}' WHERE status = 'opened' AND squad_id = '${data.squad_id}' AND members @> '"${data.discord_id}"';
+        UPDATE as_sb_squads SET squad_host = '${data.user_id}' WHERE status = 'opened' AND squad_id = '${data.squad_id}' AND members @> '"${data.user_id}"';
     `).then(res => {
         if (res.rowCount == 1) {
             return callback({
@@ -585,7 +585,7 @@ function squadsSelectHost(data,callback) {
 function trackersCreate(data,callback) {
     console.log('[squadbot/trackersCreate] data:',data)
     if (!data.message) return callback({code: 400, err: 'No message provided'})
-    if (!data.discord_id) return callback({code: 400, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 400, err: 'No user_id provided'})
     if (!data.channel_id) return callback({code: 400, err: 'No channel_id provided'})
     const lines = Array.isArray(data.message) ? data.message : data.message.toLowerCase().trim().split('\n')
     Promise.all(lines.map(line => {
@@ -593,10 +593,10 @@ function trackersCreate(data,callback) {
             const tracker_id = uuid.v4()
             const squad_string = line.toLowerCase().trim().replace(/ /g,'_')
 
-            db.query(`INSERT INTO as_sb_trackers (tracker_id,discord_id,channel_id,squad_string) 
+            db.query(`INSERT INTO as_sb_trackers (tracker_id,user_id,channel_id,squad_string) 
             VALUES (
                 '${tracker_id}',
-                '${data.discord_id}',
+                '${data.user_id}',
                 '${data.channel_id}',
                 '${squad_string}'
             )`).then(res => {
@@ -635,9 +635,9 @@ function trackersCreate(data,callback) {
 
 function trackersFetch(data,callback) {
     console.log('[squadbot/trackersFetch] data:',data)
-    if (!data.discord_id) return callback({code: 500, err: 'No discord_id provided'})
+    if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
     db.query(`
-        SELECT * FROM as_sb_trackers WHERE discord_id='${data.discord_id}';
+        SELECT * FROM as_sb_trackers WHERE user_id='${data.user_id}';
     `).then(res => {
         return callback({
             code: 200,
@@ -656,7 +656,7 @@ function trackersfetchSubscribers(data,callback) {
     console.log('[squadbot/trackersfetchSubscribers] data:',data)
     if (!data.squad) return callback({code: 500, err: 'No squad obj provided'})
     const squad = data.squad
-    db.query(`SELECT * FROM as_sb_trackers WHERE discord_id != '${squad.original_host}'; SELECT * FROM as_ping_mutes;`)
+    db.query(`SELECT * FROM as_sb_trackers WHERE user_id != '${squad.original_host}'; SELECT * FROM as_ping_mutes;`)
     .then(res => {
         const channel_ids = {};
         const hosted_squad = squad.squad_string
@@ -664,7 +664,7 @@ function trackersfetchSubscribers(data,callback) {
         const ping_mutes = res[1].rows
         trackers.forEach(tracker => {
             for (const mute of ping_mutes) {
-                if (mute.discord_id == tracker.discord_id) {
+                if (mute.user_id == tracker.user_id) {
                     if (mute.squad_string == 'global') return
                     if (tracker.squad_string.match(mute.squad_string) || mute.squad_string.match(tracker.squad_string)) return
                 }
@@ -672,8 +672,8 @@ function trackersfetchSubscribers(data,callback) {
             if (tracker.squad_string.match(hosted_squad) || hosted_squad.match(tracker.squad_string)) {
                 if (!channel_ids[tracker.channel_id]) 
                     channel_ids[tracker.channel_id] = []
-                if (!channel_ids[tracker.channel_id].includes(tracker.discord_id))
-                    channel_ids[tracker.channel_id].push(tracker.discord_id)
+                if (!channel_ids[tracker.channel_id].includes(tracker.user_id))
+                    channel_ids[tracker.channel_id].push(tracker.user_id)
             }
         })
         return callback({
@@ -691,10 +691,10 @@ function trackersfetchSubscribers(data,callback) {
 
 function trackersDelete(data,callback) {
     console.log('[squadbot/trackersDelete] data:',data)
-    if (!data.discord_id && !data.tracker_ids) return callback({code: 500, err: 'No discord_id or tracker_ids provided'})
+    if (!data.user_id && !data.tracker_ids) return callback({code: 500, err: 'No user_id or tracker_ids provided'})
     var query = ''
-    if (data.discord_id) {
-        query = `DELETE FROM as_sb_trackers WHERE discord_id='${data.discord_id}';`
+    if (data.user_id) {
+        query = `DELETE FROM as_sb_trackers WHERE user_id='${data.user_id}';`
     } else {
         data.tracker_ids.forEach(tracker_id => {
             query += `DELETE FROM as_sb_trackers WHERE tracker_id='${tracker_id}';`

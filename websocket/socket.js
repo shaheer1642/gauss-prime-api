@@ -31,12 +31,12 @@ io.on('connection', (socket) => {
     if ((socket.handshake.query.bot_token && socket.handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (socket.handshake.auth.token && socket.handshake.auth.conn_type == 'web-user')) {
       Object.keys(relicbot.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
-          if (data.discord_id) {
-            if (as_users_list[data.discord_id]) {
-              if (as_users_list[data.discord_id].is_suspended) {
+          if (data.user_id) {
+            if (as_users_list[data.user_id]) {
+              if (as_users_list[data.user_id].is_suspended) {
                 return callback({
                   code: 480,
-                  message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.discord_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.discord_id].suspended_by}>`
+                  message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.user_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.user_id].suspended_by}>`
                 })
               }
               relicbot.endpoints[key](data, callback? callback : () => {})
@@ -53,12 +53,12 @@ io.on('connection', (socket) => {
       })
       Object.keys(squadbot.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
-          if (data.discord_id) {
-            if (as_users_list[data.discord_id]) {
-              if (as_users_list[data.discord_id].is_suspended) {
+          if (data.user_id) {
+            if (as_users_list[data.user_id]) {
+              if (as_users_list[data.user_id].is_suspended) {
                 return callback({
                   code: 480,
-                  message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.discord_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.discord_id].suspended_by}>`
+                  message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.user_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.user_id].suspended_by}>`
                 })
               }
               squadbot.endpoints[key](data, callback? callback : () => {})
@@ -75,12 +75,12 @@ io.on('connection', (socket) => {
       })
       Object.keys(allsquads.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
-          if (data.discord_id) {
-            if (as_users_list[data.discord_id]) {
-              if (as_users_list[data.discord_id].is_suspended) {
+          if (data.user_id) {
+            if (as_users_list[data.user_id]) {
+              if (as_users_list[data.user_id].is_suspended) {
                 return callback({
                   code: 480,
-                  message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.discord_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.discord_id].suspended_by}>`
+                  message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.user_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.user_id].suspended_by}>`
                 })
               }
               allsquads.endpoints[key](data, callback? callback : () => {})
@@ -97,8 +97,8 @@ io.on('connection', (socket) => {
       })
       Object.keys(global_variables.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
-          if (data.discord_id) {
-            if (as_users_list[data.discord_id]) {
+          if (data.user_id) {
+            if (as_users_list[data.user_id]) {
               global_variables.endpoints[key](data, callback? callback : () => {})
             } else {
               return callback({
@@ -1101,29 +1101,29 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     io.emit('tradebotUsersUpdated', payload)
   }
 
-  if (notification.channel == 'rb_squads_insert') {
+  if (notification.channel == 'as_rb_squads_insert') {
     for (const socket in clients) {
       if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
         clients[socket].emit('squadCreate', payload)
       }
     }
   }
-  if (notification.channel == 'rb_squads_update') {
+  if (notification.channel == 'as_rb_squads_update') {
     if (payload[0].members.length == 0 && payload[1].members.length > 0) {
-      db.query(`UPDATE rb_squads SET status = 'abandoned' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}'`).catch(console.error)
+      db.query(`UPDATE as_rb_squads SET status = 'abandoned' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}'`).catch(console.error)
     }
     if (payload[0].members.length == 4 && payload[1].members.length < 4) {
       const host_recommendation = allsquads.calculateBestPingRating(payload[0].members)
       db.query(`
-        UPDATE rb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
-        UPDATE rb_squads SET status='opened',open_timestamp=${new Date().getTime()}, host_recommendation = '${JSON.stringify(host_recommendation)}' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
-        UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"'`).join(' OR ')});
-        UPDATE as_sb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"'`).join(' OR ')});
+        UPDATE as_rb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
+        UPDATE as_rb_squads SET status='opened',open_timestamp=${new Date().getTime()}, host_recommendation = '${JSON.stringify(host_recommendation)}' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
+        UPDATE as_rb_squads SET members=members${payload[0].members.map(user_id => `-'${user_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"'`).join(' OR ')});
+        UPDATE as_sb_squads SET members=members${payload[0].members.map(user_id => `-'${user_id}'`).join('')} WHERE status='active' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"'`).join(' OR ')});
       `).catch(console.error)
-      db_modules.schedule_query(`UPDATE rb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,relicbot.squad_closure)
+      db_modules.schedule_query(`UPDATE as_rb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,relicbot.squad_closure)
     }
     if (payload[0].status != 'active' && payload[1].status == 'active') {
-      db.query(`UPDATE rb_squads SET squad_code='${payload[0].squad_code}_${payload[0].creation_timestamp}' WHERE squad_id='${payload[0].squad_id}'`).catch(console.error)
+      db.query(`UPDATE as_rb_squads SET squad_code='${payload[0].squad_code}_${payload[0].creation_timestamp}' WHERE squad_id='${payload[0].squad_id}'`).catch(console.error)
     }
     for (const socket in clients) {
       if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
@@ -1143,14 +1143,14 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     // ---- send push notification ----
     if (payload[0].status == 'opened' && payload[1].status == 'active') {
       pushNotify({
-        discord_ids: payload[0].members,
+        user_ids: payload[0].members,
         title: 'Squad Filled',
         body: relicbot.relicBotSquadToString(payload[0],true)
       })
     }
   }
 
-  if (notification.channel == 'rb_squads_messages_insert') {
+  if (notification.channel == 'as_rb_squads_messages_insert') {
     for (const socket in clients) {
       if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
         clients[socket].emit('squadMessageCreate', payload)
@@ -1158,7 +1158,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     }
   }
   
-  if (['rb_hosting_table_insert','rb_hosting_table_update','rb_hosting_table_delete'].includes(notification.channel)) {
+  if (['as_rb_hosting_table_insert','as_rb_hosting_table_update','as_rb_hosting_table_delete'].includes(notification.channel)) {
     for (const socket in clients) {
       if ((clients[socket].handshake.query.bot_token && clients[socket].handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (clients[socket].handshake.auth.token && clients[socket].handshake.auth.conn_type == 'web-user')) {
         clients[socket].emit('defaultHostingTableUpdate', payload)
@@ -1196,10 +1196,10 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     if (payload[0].members.length == payload[0].spots && payload[0].status == 'active') {
       const host_recommendation = allsquads.calculateBestPingRating(payload[0].members)
       db.query(`
-        UPDATE as_sb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
+        UPDATE as_sb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
         UPDATE as_sb_squads SET status='opened',open_timestamp=${new Date().getTime()}, host_recommendation = '${JSON.stringify(host_recommendation)}' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
-        UPDATE as_sb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"'`).join(' OR ')});
-        UPDATE rb_squads SET members=members${payload[0].members.map(discord_id => `-'${discord_id}'`).join('')} WHERE status='active' AND (${payload[0].members.map(discord_id => `members @> '"${discord_id}"'`).join(' OR ')});
+        UPDATE as_sb_squads SET members=members${payload[0].members.map(user_id => `-'${user_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"'`).join(' OR ')});
+        UPDATE as_rb_squads SET members=members${payload[0].members.map(user_id => `-'${user_id}'`).join('')} WHERE status='active' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"'`).join(' OR ')});
       `).then(res => {
         console.log('--------------finished executing removal query----------------------')
       }).catch(console.error)
@@ -1227,7 +1227,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     // ---- send push notification ----
     if (payload[0].status == 'opened' && payload[1].status == 'active') {
       pushNotify({
-        discord_ids: payload[0].members,
+        user_ids: payload[0].members,
         title: 'Squad Filled',
         body: convertUpper(payload[0].squad_string)
       })
