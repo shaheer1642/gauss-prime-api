@@ -52,7 +52,7 @@ app.get('/api/patreon/oauth', (req,res) => {
       const patreon_id = patreon_user.data.data.id
       console.log('[/patreon/oauth] patreon_id',patreon_id)
       if (!patreon_id) return res.status(500).send('INTERNAL ERROR: Unable to get patreon_id')
-      db.query(`UPDATE tradebot_users_list SET patreon_id=${patreon_id} WHERE discord_id = ${discord_id}`)
+      db.query(`UPDATE as_users_list SET patreon_id=${patreon_id} WHERE discord_id = ${discord_id}`)
       .then(db_res => {
         if (db_res.rowCount == 1) return res.redirect('https://www.patreon.com/join/warframehub')
         else if (db_res.rowCount == 0) return res.status(400).send('ERROR: Could not find your Discord ID in DB')
@@ -102,7 +102,7 @@ app.post('/api/patreon/webhook', (req, res, next) => {
       if (patron_status.toLowerCase() != 'active_patron') return
       const last_charge_date = new Date(payment_obj.data.attributes.last_charge_date).getTime()
       const next_charge_date = new Date(payment_obj.data.attributes.next_charge_date).getTime()
-      db.query(`UPDATE tradebot_users_list SET is_patron=true, patreon_join_timestamp=${last_charge_date}, patreon_expiry_timestamp=${next_charge_date} WHERE patreon_id=${patreon_id}`).catch(console.error)
+      db.query(`UPDATE as_users_list SET is_patron=true, patreon_join_timestamp=${last_charge_date}, patreon_expiry_timestamp=${next_charge_date} WHERE patreon_id=${patreon_id}`).catch(console.error)
     }).catch(console.error)
 });
 
@@ -213,7 +213,7 @@ app.get('/api/allsquads/discordOAuth2/authorize', async (req, res) => {
       if (userData.message && userData.message == '401: Unauthorized')
         return
       db.query(`
-        UPDATE tradebot_users_list SET login_token = '${login_token}' WHERE discord_id = '${userData.id}';
+        UPDATE as_users_list SET login_token = '${login_token}' WHERE discord_id = '${userData.id}';
       `).then(db_res => {
         if (db_res.rowCount == 1) {
           res.redirect(origin)
@@ -255,7 +255,7 @@ app.get('/api/allsquads/authenticate', async (req, res) => {
     })
   }
   db.query(`
-    SELECT * FROM tradebot_users_list WHERE login_token = '${req.query.login_token}';
+    SELECT * FROM as_users_list WHERE login_token = '${req.query.login_token}';
   `).then(db_res => {
       if (db_res.rowCount == 1) {
           return res.send({
