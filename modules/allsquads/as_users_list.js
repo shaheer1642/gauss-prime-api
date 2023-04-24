@@ -20,7 +20,7 @@ function updateUsersList() {
 
 function updateUser(user_id) {
     console.log('[as_users_list.updateUser] called')
-    db.query(`SELECT * FROM as_users_list WHERE user_id = ${user_id}`).then(res => {
+    db.query(`SELECT * FROM as_users_list WHERE user_id = '${user_id}'`).then(res => {
         res.rows.forEach(row => {
             as_users_list[row.user_id] = row
         })

@@ -348,8 +348,6 @@ function squadsCreate(data,callback) {
                 '["${new Date().getTime()} ${data.user_id} created squad"]')
             `).then(res => {
                 if (res.rowCount == 1) {
-                    //db_modules.schedule_query(`UPDATE rb_squads SET is_old=true WHERE squad_id = '${squad_id}' AND status = 'active'`,squad_is_old)
-                    //db_modules.schedule_query(`UPDATE as_sb_squads SET status='expired' WHERE squad_id = '${squad_id}' AND status='active'`,squad_expiry)
                     db_modules.schedule_query(`UPDATE as_sb_squads SET members = members-'${data.user_id}', logs = logs || '"${new Date().getTime()} ${data.user_id} removed from squad due to timeout"' WHERE members @> '"${data.user_id}"' AND status='active' AND squad_id = '${squad_id}'`,squad_expiry)
                     return resolve({code: 200})
                 } else return resolve({
@@ -469,28 +467,6 @@ function squadsAddMember(data,callback) {
         })
     })
 }
-
-// function squadsRemoveMember(data,callback) {
-//     console.log('[squadsRemoveMember] data:',data)
-//     if (!data.user_id) return callback({code: 500, err: 'No user_id provided'})
-//     db.query(`UPDATE rb_squads SET members=members-'${data.user_id}' WHERE status='active' ${data.squad_id ? ` AND squad_id = '${data.squad_id}'`:''} ${data.tier ? ` AND tier = '${data.tier}'`:''}`)
-//     .then(res => {
-//         if (res.rowCount == 1) {
-//             return callback({
-//                 code: 200
-//             })
-//         } else return callback({
-//             code: 500,
-//             message: 'unexpected db response'
-//         })
-//     }).catch(err => {
-//         console.log(err)
-//         return callback({
-//             code: 500,
-//             message: err.stack
-//         })
-//     })
-// }
 
 function squadsLeaveAll(data,callback) {
     console.log('[squadbot/squadsLeaveAll] data:',data)
