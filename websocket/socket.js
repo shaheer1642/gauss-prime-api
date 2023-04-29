@@ -31,7 +31,7 @@ io.on('connection', (socket) => {
     if ((socket.handshake.query.bot_token && socket.handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (socket.handshake.auth.token && socket.handshake.auth.conn_type == 'web-user')) {
       Object.keys(relicbot.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
-          if (data.user_id) {
+          if (Object.keys(data).includes('user_id')) {
             if (as_users_list[data.user_id]) {
               if (as_users_list[data.user_id].is_suspended) {
                 return callback({
@@ -53,7 +53,7 @@ io.on('connection', (socket) => {
       })
       Object.keys(squadbot.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
-          if (data.user_id) {
+          if (Object.keys(data).includes('user_id')) {
             if (as_users_list[data.user_id]) {
               if (as_users_list[data.user_id].is_suspended) {
                 return callback({
@@ -75,7 +75,7 @@ io.on('connection', (socket) => {
       })
       Object.keys(allsquads.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
-          if (data.user_id) {
+          if (Object.keys(data).includes('user_id')) {
             if (as_users_list[data.user_id]) {
               if (as_users_list[data.user_id].is_suspended) {
                 return callback({
@@ -97,7 +97,7 @@ io.on('connection', (socket) => {
       })
       Object.keys(global_variables.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
-          if (data.user_id) {
+          if (Object.keys(data).includes('user_id')) {
             if (as_users_list[data.user_id]) {
               global_variables.endpoints[key](data, callback? callback : () => {})
             } else {
