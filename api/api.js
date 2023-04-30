@@ -1,29 +1,27 @@
 const express = require('express');
-const app = express();
+const api = express();
 const path = require('path')
-const http = require('http');
-const server = http.createServer(app);
 const {db} = require('../modules/db_connection')
-const axios = require('axios')
 const { request } = require('undici');
 const uuid = require('uuid');
 const cors = require('cors')
 const bodyParser = require('body-parser')
-const crypto = require('crypto')
-const {generateVerificationId} = require('../modules/functions')
 
-app.use(cors())
-app.use(bodyParser.urlencoded({
-  extended: true
-}));
-app.use(bodyParser.json())
+api.use(cors())
 
-app.use(express.static(path.join(__dirname, '../frontend/build')))
+api.use(bodyParser.urlencoded({extended: true}));
+api.use(bodyParser.json())
 
-app.get('/api', (req, res) => {
-    res.send('Hello, this is the API for Gauss Prime. Nothing fancy to show on the web-page');
+api.use('/api/database',require('./routes/database'))
+api.use('/api/patreon',require('./routes/patreon'))
+api.use('/api/allsquads',require('./routes/allsquads'))
+api.use('/api/wfrim',require('./routes/wfrim'))
+
+api.get('/api', (req, res) => {
+  res.send('Hello, this is the API for Gauss Prime. Nothing fancy to show on the web-page');
 });
 
+<<<<<<< Updated upstream
 app.get('/api/patreon/oauth', (req,res) => {
   console.log('[/patreon/oauth] called')
 
@@ -113,6 +111,9 @@ app.get('/api/items/fetch', (req, res) => {
 });
 
 app.get('/api/discordOAuth2/authorize', async (req, res) => {
+=======
+api.get('/api/discordOAuth2/authorize', async (req, res) => {
+>>>>>>> Stashed changes
   if (!req.query.state) {
     res.send('<html><body><h1>session_key not found, please try again</h1></body></html>')
     return
@@ -175,6 +176,7 @@ app.get('/api/discordOAuth2/authorize', async (req, res) => {
   }
 });
 
+<<<<<<< Updated upstream
 app.get('/api/allsquads/discordOAuth2/authorize', async (req, res) => {
   if (!req.query.state) {
     res.send('<html><body><h1>login_token not found, please try again</h1></body></html>')
@@ -312,7 +314,11 @@ app.get("*", (req, res) => {
 server.listen(process.env.PORT, () => {
   console.log('Server is listening to port',process.env.PORT);
 });
+=======
+api.use(express.static(path.join(__dirname, '../frontend/build')))
+api.get("*", (req, res) => res.sendFile(path.join(__dirname, '../frontend/build', 'index.html')));
+>>>>>>> Stashed changes
 
 module.exports = {
-    server
+  api
 }
