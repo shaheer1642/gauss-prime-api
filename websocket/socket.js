@@ -14,7 +14,7 @@ const squadbot = require('../modules/squadbot')
 const allsquads = require('../modules/allsquads')
 const global_variables = require('../modules/global_variables');
 const { pushNotify } = require('../modules/firebase/FCM');
-
+// console.log('websocket started')
 var clients = {}
 io.on('connection', (socket) => {
     console.log('[websocket] a user connected',socket.id);

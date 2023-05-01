@@ -6,6 +6,7 @@ const { request } = require('undici');
 const uuid = require('uuid');
 const cors = require('cors')
 const bodyParser = require('body-parser')
+const http = require('http');
 
 api.use(cors())
 
@@ -14,7 +15,7 @@ api.use(bodyParser.json())
 
 api.use('/api/database',require('./routes/database'))
 api.use('/api/patreon',require('./routes/patreon'))
-api.use('/api/allsquads',require('./routes/allsquads'))
+api.use('/api/allsquads',require('./routes/allsquads/allsquads'))
 api.use('/api/wfrim',require('./routes/wfrim'))
 
 api.get('/api', (req, res) => {
@@ -87,6 +88,11 @@ api.get('/api/discordOAuth2/authorize', async (req, res) => {
 api.use(express.static(path.join(__dirname, '../frontend/build')))
 api.get("*", (req, res) => res.sendFile(path.join(__dirname, '../frontend/build', 'index.html')));
 
+const server = http.createServer(api);
+server.listen(process.env.PORT, () => {
+    console.log('Server is listening to port',process.env.PORT);
+});
+
 module.exports = {
-  api
+  server
 }

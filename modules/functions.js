@@ -1,3 +1,5 @@
+const fetch = require("node-fetch");
+
 function dynamicSort(property) {
     var sortOrder = 1;
     if(property[0] === "-") {
@@ -131,7 +133,7 @@ function calcArrAvg(arr) {
     return sum / arr.length
 }
 
-function generateVerificationId() {
+function generateVerificationCode() {
     let ID = "";
     let characters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     for ( var i = 0; i < 6; i++ ) {
@@ -140,4 +142,27 @@ function generateVerificationId() {
     return ID;
 }
 
-module.exports = {dynamicSort,dynamicSortDesc,msToTime,msToFullTime,getRandomColor,embedScore,convertUpper,getTodayStartMs,getWeekStartMs,getMonthStartMs,calcArrAvg,generateVerificationId,escapeDBCharacters};
+function fetchDiscordUserProfile(discord_token) {
+    return new Promise((resolve,reject) => {
+        fetch('https://discord.com/api/users/@me', {
+            headers: {
+                authorization: discord_token,
+            },
+        }).then(res => res.json())
+        .then(userData => {
+            if (userData.message && userData.message == '401: Unauthorized') return resolve()
+            if (!userData.id) return resolve()
+            return resolve(userData)
+        }).catch((err) => {
+            console.log(err)
+            resolve()
+        })
+    })
+}
+
+module.exports = {
+    dynamicSort,dynamicSortDesc,msToTime,msToFullTime,
+    getRandomColor,embedScore,convertUpper,getTodayStartMs,getWeekStartMs,getMonthStartMs,calcArrAvg,
+    generateVerificationCode,escapeDBCharacters,
+    fetchDiscordUserProfile
+};
