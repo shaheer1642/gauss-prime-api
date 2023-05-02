@@ -77,7 +77,7 @@ router.get('/signup/email', async (req, res) => {
     }).catch(err => {
         return res.send({
             code: 500,
-            message: err
+            message: JSON.stringify(err.detail || err.message || err)
         })
     })
 });
@@ -105,7 +105,7 @@ router.get('/login/email', async (req, res) => {
         }
         return res.send({
             code: 500,
-            message: err
+            message: JSON.stringify(err.detail || err.message || err)
         })
     })
 });
@@ -154,10 +154,11 @@ router.get('/verification/ign/fetchCode', async (req, res) => {
     const code = generateVerificationCode()
     db.query(`
         INSERT INTO as_users_secret 
-        (code, identifier) 
+        (code, identifier, id_type) 
         VALUES (
             '${code}',
-            (SELECT user_id FROM as_users_list WHERE login_tokens @> '[{"token": "${req.query.login_token}"}]')
+            (SELECT user_id FROM as_users_list WHERE login_tokens @> '[{"token": "${req.query.login_token}"}]'),
+            'user_id'
         )
     `).then(db_res => {
         if (db_res.rowCount == 1) {
@@ -189,7 +190,7 @@ async function userRegistration(type, data) {
             const discord_user = await fetchDiscordUserProfile(data.discord_token)
             if (!discord_user) return reject('[userRegistration] bad parameters: no discord_token')
             query = `
-                INSERT INTO as_users_list (discord_id,login_tokens, discord_token) VALUES ('${discord_user.id}','[${JSON.stringify(generateLoginToken(login_token))}]','${data.discord_token}')
+                INSERT INTO as_users_list (discord_id,login_tokens, discord_token) VALUES ('${discord_user.id}','[${JSON.stringify(generateLoginToken(data.login_token))}]','${data.discord_token}')
                 RETURNING *;
             `
         }
@@ -197,14 +198,17 @@ async function userRegistration(type, data) {
             if (!data.email) return reject('[userRegistration] bad parameters: no email')
             if (!data.password) return reject('[userRegistration] bad parameters: no password')
             query = `
-                INSERT INTO as_users_list (email,password,login_tokens) VALUES ('${data.email}','${data.password}','[${JSON.stringify(generateLoginToken(login_token))}]')
+                INSERT INTO as_users_list (email,password,login_tokens) VALUES ('${data.email}','${data.password}','[${JSON.stringify(generateLoginToken(data.login_token))}]')
                 RETURNING *;
             `
         }
         db.query(query).then(res => {
             if (res.rowCount == 1) return resolve(res.rows[0])
             else return reject('[userRegistration] failed to register the account')
-        }).catch(reject)
+        }).catch((err) => {
+            if (err.code == 23505) return reject('The email already exists')
+            else reject(err)
+        })
     })
 }
 

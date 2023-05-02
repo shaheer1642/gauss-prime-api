@@ -35,7 +35,7 @@ const endpoints = {
     'allsquads/user/chats/fetch': userChatsFetch,
     'allsquads/user/filledSquads/fetch': userfilledSquadsFetch,
 
-    'allsquads/userslist': usersList,
+    'allsquads/users/fetch': usersFetch,
 
     'allsquads/reports/lodge': logdeReport,
     'allsquads/reports/resolve': resolveReport,
@@ -287,11 +287,18 @@ function userChatsFetch(data, callback) {
     })
 }
 
-function usersList(data,callback) {
+function usersFetch(data,callback) {
     console.log('[usersFetch] data:',data)
     db.query(`
         SELECT * FROM as_users_list;
     `).then(res => {
+        res.rows.map((row,index) => {
+            delete row.login_tokens
+            delete row.email
+            delete row.password
+            delete row.discord_token
+            res[index] = row
+        })
         return callback({
             code: 200,
             data: res.rows
@@ -300,7 +307,7 @@ function usersList(data,callback) {
         console.log(err)
         return callback({
             code: 500,
-            message: err.stack
+            message: JSON.stringify(err.detail || err.stack || err)
         })
     })
 }

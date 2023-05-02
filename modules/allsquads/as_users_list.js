@@ -5,7 +5,7 @@ const JSONbig = require('json-bigint');
 var as_users_list = {}
 var as_users_list_discord = {}
 
-event_emitter.on('db_connected', () => {
+db.on('connected', () => {
     updateUsersList()
 })
 
@@ -21,14 +21,24 @@ function updateUsersList() {
 }
 
 function updateUser(user_id) {
-    console.log('[as_users_list.updateUser] called')
     db.query(`SELECT * FROM as_users_list WHERE user_id = '${user_id}'`).then(res => {
         res.rows.forEach(row => {
             as_users_list[row.user_id] = row
             if (row.discord_id) as_users_list_discord[row.discord_id] = row
+            notifySocketOnUpdate(row)
         })
-        console.log('[as_users_list.updateUser] finished')
     }).catch(console.error)
+}
+
+function notifySocketOnUpdate(user) {
+    delete user.login_tokens
+    delete user.email
+    delete user.password
+    delete user.discord_token
+    event_emitter.emit('socketNotifyAll',{
+        event: 'allsquads/users/update',
+        data: user
+    })
 }
 
 db.on('notification',(notification) => {

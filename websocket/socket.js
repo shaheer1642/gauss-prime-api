@@ -14,6 +14,7 @@ const squadbot = require('../modules/squadbot')
 const allsquads = require('../modules/allsquads')
 const global_variables = require('../modules/global_variables');
 const { pushNotify } = require('../modules/firebase/FCM');
+const { event_emitter } = require('../modules/event_emitter');
 // console.log('websocket started')
 var clients = {}
 io.on('connection', (socket) => {
@@ -1241,4 +1242,9 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       }
     }
   }
+})
+
+event_emitter.on('socketNotifyAll',(data) => {
+  console.log('[socketNotifyAll]',data)
+  io.emit(data.event,data.data)
 })
