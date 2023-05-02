@@ -34,18 +34,24 @@ io.on('connection', (socket) => {
         socket.addListener(key, (data,callback) => {
           if (data.user_id) {
             if (as_users_list[data.user_id]) {
+              if (!as_users_list[data.user_id].ingame_name) {
+                return callback ? callback({
+                  code: 470,
+                  message: 'Please verify your ign'
+                }) : null
+              }
               if (as_users_list[data.user_id].is_suspended) {
-                return callback({
+                return callback ? callback({
                   code: 480,
                   message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.user_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.user_id].suspended_by}>`
-                })
+                }) : null
               }
               relicbot.endpoints[key](data, callback? callback : () => {})
             } else {
-              return callback({
+              return callback ? callback({
                 code: 499,
                 message: 'unauthorized'
-              })
+              }) : null
             }
           } else {
             relicbot.endpoints[key](data, callback? callback : () => {})
@@ -56,18 +62,24 @@ io.on('connection', (socket) => {
         socket.addListener(key, (data,callback) => {
           if (data.user_id) {
             if (as_users_list[data.user_id]) {
+              if (!as_users_list[data.user_id].ingame_name) {
+                return callback ? callback({
+                  code: 470,
+                  message: 'Please verify your ign'
+                }) : null
+              }
               if (as_users_list[data.user_id].is_suspended) {
-                return callback({
+                return callback ? callback({
                   code: 480,
                   message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.user_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.user_id].suspended_by}>`
-                })
+                }) : null
               }
               squadbot.endpoints[key](data, callback? callback : () => {})
             } else {
-              return callback({
+              return callback ? callback({
                 code: 499,
                 message: 'unauthorized'
-              })
+              }) : null
             }
           } else {
             squadbot.endpoints[key](data, callback? callback : () => {})
@@ -78,18 +90,24 @@ io.on('connection', (socket) => {
         socket.addListener(key, (data,callback) => {
           if (data.user_id) {
             if (as_users_list[data.user_id]) {
+              if (!as_users_list[data.user_id].ingame_name) {
+                return callback ? callback({
+                  code: 470,
+                  message: 'Please verify your ign'
+                }) : null
+              }
               if (as_users_list[data.user_id].is_suspended) {
-                return callback({
+                return callback ? callback({
                   code: 480,
                   message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.user_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.user_id].suspended_by}>`
-                })
+                }) : null
               }
               allsquads.endpoints[key](data, callback? callback : () => {})
             } else {
-              return callback({
+              return callback ? callback({
                 code: 499,
                 message: 'unauthorized'
-              })
+              }) : null
             }
           } else {
             allsquads.endpoints[key](data, callback? callback : () => {})
@@ -102,10 +120,10 @@ io.on('connection', (socket) => {
             if (as_users_list[data.user_id]) {
               global_variables.endpoints[key](data, callback? callback : () => {})
             } else {
-              return callback({
+              return callback ? callback({
                 code: 499,
                 message: 'unauthorized'
-              })
+              }) : null
             }
           } else {
             global_variables.endpoints[key](data, callback? callback : () => {})
