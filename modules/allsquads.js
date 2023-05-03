@@ -26,7 +26,6 @@ const endpoints = {
     'allsquads/pingmutes/delete': pingmutesDelete,
 
     'allsquads/leaderboards/fetch': leaderboardsFetch,
-    'allsquads/statistics/fetch': statisticsFetch,
 
     'allsquads/user/ratings/fetch': userRatingsFetch,
     'allsquads/user/ratings/create': userRatingsCreate,
@@ -34,6 +33,7 @@ const endpoints = {
     'allsquads/user/settings/update': userSettingsUpdate,
     'allsquads/user/chats/fetch': userChatsFetch,
     'allsquads/user/filledSquads/fetch': userfilledSquadsFetch,
+    'allsquads/user/statistics/fetch': statisticsFetch,
 
     'allsquads/users/fetch': usersFetch,
 
@@ -669,6 +669,16 @@ const rep_scheme = {
     }
 }
 
+function updateProfileView(viewer_id, viewee_id) {
+    if (!viewer_id || !viewee_id) return
+    if (viewer_id == viewee_id) return
+    const value = `${viewer_id}_${new Date().setHours(0,0,0,0)}`
+    db.query(`UPDATE as_users_list SET profile_views = profile_views || '"${value}"' WHERE user_id = '${viewee_id}' AND NOT profile_views @> '"${value}"'`)
+    .then(res => {
+        if (res.rowCount == 1) console.log(user,as_users_list[viewee_id].ingame_name,'has gained +1 profile view from',as_users_list[viewer_id].ingame_name)
+    }).catch(console.error)
+}
+
 function statisticsFetch(data,callback) {
     console.log('[allsquads.statisticsFetch] data:',data)
     if (!data.identifier) return callback({code: 500, err: 'No identifier provided'})
@@ -679,6 +689,7 @@ function statisticsFetch(data,callback) {
         const db_user = res.rows[0]
         delete db_user.login_token
         const user_id = db_user.user_id
+        if (data.user_id) updateProfileView(data.user_id, user_id)
         db.query(`
             SELECT * FROM as_rb_squads WHERE status = 'closed' AND members @> '"${user_id}"';
             SELECT * FROM as_sb_squads WHERE status = 'closed' AND members @> '"${user_id}"';
