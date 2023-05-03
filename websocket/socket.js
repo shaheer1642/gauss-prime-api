@@ -33,7 +33,7 @@ io.on('connection', (socket) => {
       Object.keys(relicbot.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
           if (Object.keys(data).includes('user_id')) {
-            if (as_users_list[data.user_id]) {
+            if (as_users_list[data.user_id] && as_users_list[data.user_id].ingame_name) {
               if (!as_users_list[data.user_id].ingame_name) {
                 return callback ? callback({
                   code: 470,
@@ -61,7 +61,7 @@ io.on('connection', (socket) => {
       Object.keys(squadbot.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
           if (Object.keys(data).includes('user_id')) {
-            if (as_users_list[data.user_id]) {
+            if (as_users_list[data.user_id] && as_users_list[data.user_id].ingame_name) {
               if (!as_users_list[data.user_id].ingame_name) {
                 return callback ? callback({
                   code: 470,
@@ -89,7 +89,7 @@ io.on('connection', (socket) => {
       Object.keys(allsquads.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
           if (Object.keys(data).includes('user_id')) {
-            if (as_users_list[data.user_id]) {
+            if (as_users_list[data.user_id] && as_users_list[data.user_id].ingame_name) {
               if (!as_users_list[data.user_id].ingame_name) {
                 return callback ? callback({
                   code: 470,
@@ -117,7 +117,7 @@ io.on('connection', (socket) => {
       Object.keys(global_variables.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
           if (Object.keys(data).includes('user_id')) {
-            if (as_users_list[data.user_id]) {
+            if (as_users_list[data.user_id] && as_users_list[data.user_id].ingame_name) {
               global_variables.endpoints[key](data, callback? callback : () => {})
             } else {
               return callback ? callback({
