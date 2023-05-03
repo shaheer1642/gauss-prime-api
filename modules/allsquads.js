@@ -675,7 +675,7 @@ function updateProfileView(viewer_id, viewee_id) {
     const value = `${viewer_id}_${new Date().setHours(0,0,0,0)}`
     db.query(`UPDATE as_users_list SET profile_views = profile_views || '"${value}"' WHERE user_id = '${viewee_id}' AND NOT profile_views @> '"${value}"'`)
     .then(res => {
-        if (res.rowCount == 1) console.log(user,as_users_list[viewee_id].ingame_name,'has gained +1 profile view from',as_users_list[viewer_id].ingame_name)
+        if (res.rowCount == 1) console.log('user',as_users_list[viewee_id].ingame_name,'has gained +1 profile view from',as_users_list[viewer_id].ingame_name)
     }).catch(console.error)
 }
 
@@ -757,7 +757,8 @@ function statisticsFetch(data,callback) {
                     giveaways: 0,
                     blessings: 0,
                     user_ratings: 0,
-                }
+                }, 
+                total_profile_views: db_user.profile_views.length
             }
             const today_start = getTodayStartMs()
             const week_start = getWeekStartMs()

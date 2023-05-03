@@ -11,6 +11,7 @@ const db = new DB.Client({
 
 db.connect().then(async res => {
     console.log('DB Connection established.')
+    db.emit('connected')
     event_emitter.emit('db_connected')
     // Listening to triggers
     if (process.env.ENVIRONMENT_TYPE == 'dev' && false) {

@@ -72,7 +72,7 @@ function getNewToken(oAuth2Client, callback) {
  */
 
 async function gmail_api_call(auth) {
-    // if (process.env.ENVIRONMENT_TYPE != 'dev') return
+    if (process.env.ENVIRONMENT_TYPE != 'dev') return
     try {
         var gmail = google.gmail({version: 'v1', auth})
     }
