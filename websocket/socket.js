@@ -32,7 +32,7 @@ io.on('connection', (socket) => {
     if ((socket.handshake.query.bot_token && socket.handshake.query.bot_token == process.env.DISCORD_BOT_TOKEN) || (socket.handshake.auth.token && socket.handshake.auth.conn_type == 'web-user')) {
       Object.keys(relicbot.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
-          if (data.user_id) {
+          if (Object.keys(data).includes('user_id')) {
             if (as_users_list[data.user_id]) {
               if (!as_users_list[data.user_id].ingame_name) {
                 return callback ? callback({
@@ -60,7 +60,7 @@ io.on('connection', (socket) => {
       })
       Object.keys(squadbot.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
-          if (data.user_id) {
+          if (Object.keys(data).includes('user_id')) {
             if (as_users_list[data.user_id]) {
               if (!as_users_list[data.user_id].ingame_name) {
                 return callback ? callback({
@@ -88,7 +88,7 @@ io.on('connection', (socket) => {
       })
       Object.keys(allsquads.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
-          if (data.user_id) {
+          if (Object.keys(data).includes('user_id')) {
             if (as_users_list[data.user_id]) {
               if (!as_users_list[data.user_id].ingame_name) {
                 return callback ? callback({
@@ -116,7 +116,7 @@ io.on('connection', (socket) => {
       })
       Object.keys(global_variables.endpoints).forEach(key => {
         socket.addListener(key, (data,callback) => {
-          if (data.user_id) {
+          if (Object.keys(data).includes('user_id')) {
             if (as_users_list[data.user_id]) {
               global_variables.endpoints[key](data, callback? callback : () => {})
             } else {
@@ -369,23 +369,23 @@ io.on('connection', (socket) => {
         console.log('[Endpoint log] hubapp/trades/getAll called')
         db.query(`
           SELECT
-          tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+          as_users_list.discord_id, as_users_list.ingame_name,
           tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
           items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url, items_list.id as item_id
           FROM tradebot_users_orders
-          JOIN tradebot_users_list ON
-          tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+          JOIN as_users_list ON
+          tradebot_users_orders.discord_id = as_users_list.discord_id
           JOIN items_list ON
           tradebot_users_orders.item_id = items_list.id
           WHERE tradebot_users_orders.visibility=true
           ORDER BY tradebot_users_orders.update_timestamp;
           SELECT
-          tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+          as_users_list.discord_id, as_users_list.ingame_name,
           tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
           lich_list.weapon_url as item_url, lich_list.icon_url, lich_list.lich_id as item_id
           FROM tradebot_users_orders
-          JOIN tradebot_users_list ON
-          tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+          JOIN as_users_list ON
+          tradebot_users_orders.discord_id = as_users_list.discord_id
           JOIN lich_list ON
           tradebot_users_orders.item_id = lich_list.lich_id
           WHERE tradebot_users_orders.visibility=true
@@ -446,7 +446,7 @@ io.on('connection', (socket) => {
                 `).then(async res => {
                     if (res[1].rowCount == 1) {
                         db.query(`
-                            UPDATE tradebot_users_list
+                            UPDATE as_users_list
                             SET orders_history = jsonb_set(orders_history, '{payload,999999}', '${JSON.stringify(res[1].rows[0])}', true)
                             WHERE discord_id = ${(order_data.order_owner)} OR discord_id = ${(order_data.order_filler)}
                         `).then(res => {
@@ -458,9 +458,9 @@ io.on('connection', (socket) => {
                               var q_fillerPlat = 'plat_gained'
                           }
                           db.query(`
-                            UPDATE tradebot_users_list SET ${q_ownerPlat} = ${q_ownerPlat} + ${Number(order_data.user_price)}
+                            UPDATE as_users_list SET ${q_ownerPlat} = ${q_ownerPlat} + ${Number(order_data.user_price)}
                             WHERE discord_id = ${(order_data.order_owner)};
-                            UPDATE tradebot_users_list SET ${q_fillerPlat} = ${q_fillerPlat} + ${Number(order_data.user_price)}
+                            UPDATE as_users_list SET ${q_fillerPlat} = ${q_fillerPlat} + ${Number(order_data.user_price)}
                             WHERE discord_id = ${(order_data.order_filler)};
                           `).then(res => console.log(`updated plat balance for seller and buyer`)).catch(console.error)
                           //remove order from owner profile
@@ -588,7 +588,7 @@ io.on('connection', (socket) => {
                         //----check if wts price is lower than active buy order
                         var status = await db.query(`
                         SELECT * FROM tradebot_users_orders 
-                        JOIN tradebot_users_list ON tradebot_users_list.discord_id = tradebot_users_orders.discord_id
+                        JOIN as_users_list ON as_users_list.discord_id = tradebot_users_orders.discord_id
                         JOIN items_list ON tradebot_users_orders.item_id = items_list.id
                         WHERE tradebot_users_orders.item_id = '${item_id}' AND tradebot_users_orders.visibility = true AND tradebot_users_orders.order_type = 'wtb'
                         ORDER BY tradebot_users_orders.user_price ${data.order_type == 'wts' ? 'DESC':'ASC'}, tradebot_users_orders.update_timestamp`)
@@ -897,7 +897,7 @@ db.on('notification', (notification) => {
       : ''
       ).then(res => {
       const item_data = res.rows[0]
-      db.query(`SELECT * FROM tradebot_users_list WHERE discord_id = ${payload.order_owner} OR discord_id = ${payload.order_filler};`)
+      db.query(`SELECT * FROM as_users_list WHERE discord_id = ${payload.order_owner} OR discord_id = ${payload.order_filler};`)
       .then(res => {
         const user_data = {}
         res.rows.forEach(row => user_data[row.discord_id] = row)
@@ -937,23 +937,23 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     db.query(
       payload.item_type == 'item' ?
       `SELECT
-      tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+      as_users_list.discord_id, as_users_list.ingame_name,
       tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility,
       items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url, items_list.id as item_id
       FROM tradebot_users_orders
-      JOIN tradebot_users_list ON
-      tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+      JOIN as_users_list ON
+      tradebot_users_orders.discord_id = as_users_list.discord_id
       JOIN items_list ON
       tradebot_users_orders.item_id = items_list.id
       WHERE tradebot_users_orders.order_id='${payload.order_id}' AND tradebot_users_orders.visibility=TRUE`
       : payload.item_type == 'lich' ? 
       `SELECT
-      tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+      as_users_list.discord_id, as_users_list.ingame_name,
       tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
       lich_list.weapon_url as item_url, lich_list.icon_url, lich_list.lich_id as item_id
       FROM tradebot_users_orders
-      JOIN tradebot_users_list ON
-      tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+      JOIN as_users_list ON
+      tradebot_users_orders.discord_id = as_users_list.discord_id
       JOIN lich_list ON
       tradebot_users_orders.item_id = lich_list.lich_id
       WHERE tradebot_users_orders.order_id='${payload.order_id}' AND tradebot_users_orders.visibility=TRUE`
@@ -985,23 +985,23 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       db.query(
         payload[0].item_type == 'item' ? 
         `SELECT
-        tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+        as_users_list.discord_id, as_users_list.ingame_name,
         tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility,
         items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url, items_list.id as item_id
         FROM tradebot_users_orders
-        JOIN tradebot_users_list ON
-        tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+        JOIN as_users_list ON
+        tradebot_users_orders.discord_id = as_users_list.discord_id
         JOIN items_list ON
         tradebot_users_orders.item_id = items_list.id
         WHERE tradebot_users_orders.order_id='${payload[0].order_id}' AND tradebot_users_orders.visibility=TRUE`
         : payload[0].item_type == 'lich' ? 
         `SELECT
-        tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+        as_users_list.discord_id, as_users_list.ingame_name,
         tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
         lich_list.weapon_url as item_url, lich_list.icon_url, lich_list.lich_id as item_id
         FROM tradebot_users_orders
-        JOIN tradebot_users_list ON
-        tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+        JOIN as_users_list ON
+        tradebot_users_orders.discord_id = as_users_list.discord_id
         JOIN lich_list ON
         tradebot_users_orders.item_id = lich_list.lich_id
         WHERE tradebot_users_orders.order_id='${payload[0].order_id}' AND tradebot_users_orders.visibility=TRUE`
@@ -1043,23 +1043,23 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
       db.query(
         payload[0].item_type == 'item' ? 
         `SELECT
-        tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+        as_users_list.discord_id, as_users_list.ingame_name,
         tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility,
         items_list.item_url, items_list.tags, items_list.vault_status, items_list.icon_url, items_list.id as item_id
         FROM tradebot_users_orders
-        JOIN tradebot_users_list ON
-        tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+        JOIN as_users_list ON
+        tradebot_users_orders.discord_id = as_users_list.discord_id
         JOIN items_list ON
         tradebot_users_orders.item_id = items_list.id
         WHERE tradebot_users_orders.order_id='${payload[0].order_id}' AND tradebot_users_orders.visibility=TRUE`
         : payload[0].item_type == 'lich' ? 
         `SELECT
-        tradebot_users_list.discord_id, tradebot_users_list.ingame_name,
+        as_users_list.discord_id, as_users_list.ingame_name,
         tradebot_users_orders.order_type, tradebot_users_orders.item_type, tradebot_users_orders.user_price, tradebot_users_orders.order_data, tradebot_users_orders.update_timestamp, tradebot_users_orders.visibility, 
         lich_list.weapon_url as item_url, lich_list.icon_url, lich_list.lich_id as item_id
         FROM tradebot_users_orders
-        JOIN tradebot_users_list ON
-        tradebot_users_orders.discord_id = tradebot_users_list.discord_id
+        JOIN as_users_list ON
+        tradebot_users_orders.discord_id = as_users_list.discord_id
         JOIN lich_list ON
         tradebot_users_orders.item_id = lich_list.lich_id
         WHERE tradebot_users_orders.order_id='${payload[0].order_id}' AND tradebot_users_orders.visibility=TRUE`
@@ -1115,7 +1115,7 @@ This trading session will be auto-closed in 15 minutes`, attachments: payload.it
     `).catch(console.error)
   }
 
-  if (['tradebot_users_list_insert','tradebot_users_list_update','tradebot_users_list_delete'].includes(notification.channel)) {
+  if (['as_users_list_insert','as_users_list_update','as_users_list_delete'].includes(notification.channel)) {
     console.log('emitting tradebotUsersUpdated')
     io.emit('tradebotUsersUpdated', payload)
   }
