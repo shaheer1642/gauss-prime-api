@@ -34,12 +34,6 @@ io.on('connection', (socket) => {
         socket.addListener(key, (data,callback) => {
           if (Object.keys(data).includes('user_id')) {
             if (as_users_list[data.user_id] && as_users_list[data.user_id].ingame_name) {
-              if (!as_users_list[data.user_id].ingame_name) {
-                return callback ? callback({
-                  code: 470,
-                  message: 'Please verify your ign'
-                }) : null
-              }
               if (as_users_list[data.user_id].is_suspended) {
                 return callback ? callback({
                   code: 480,
@@ -62,12 +56,6 @@ io.on('connection', (socket) => {
         socket.addListener(key, (data,callback) => {
           if (Object.keys(data).includes('user_id')) {
             if (as_users_list[data.user_id] && as_users_list[data.user_id].ingame_name) {
-              if (!as_users_list[data.user_id].ingame_name) {
-                return callback ? callback({
-                  code: 470,
-                  message: 'Please verify your ign'
-                }) : null
-              }
               if (as_users_list[data.user_id].is_suspended) {
                 return callback ? callback({
                   code: 480,
@@ -90,12 +78,6 @@ io.on('connection', (socket) => {
         socket.addListener(key, (data,callback) => {
           if (Object.keys(data).includes('user_id')) {
             if (as_users_list[data.user_id] && as_users_list[data.user_id].ingame_name) {
-              if (!as_users_list[data.user_id].ingame_name) {
-                return callback ? callback({
-                  code: 470,
-                  message: 'Please verify your ign'
-                }) : null
-              }
               if (as_users_list[data.user_id].is_suspended) {
                 return callback ? callback({
                   code: 480,
