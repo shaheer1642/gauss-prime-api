@@ -46,8 +46,8 @@ const endpoints = {
 }
 
 function FCMTokenUpdate(data,callback) {
-    console.log('[allsquads.FCMTokenUpdate] called')
-    if (!data.user_id || !data.login_token) return callback({code: 400, message: 'No user_id or login_token provided'})
+    console.log('[allsquads.FCMTokenUpdate] called',data)
+    if (!data.user_id && !data.login_token) return callback({code: 400, message: 'No user_id or login_token provided'})
     if (!data.fcm_token) return callback({code: 400, message: 'No fcm_token provided'})
     db.query(`
         SELECT * FROM as_push_notify WHERE fcm_token = '${data.fcm_token}'

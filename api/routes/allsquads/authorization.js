@@ -40,11 +40,10 @@ router.get('/discordOAuth2', async (req, res) => {
             console.log(userData)
             userAuthentication('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, link_account: link_account, cookies: req.cookies})
             .then((login_token) => {
-                if (!link_account)
-                    res.cookie('login_token',login_token)
+                if (!link_account) res.cookie('login_token',login_token)
                 res.redirect(origin)
             }).catch(err => {
-                if (err.code && err.code == 399) {
+                if (err?.code == 399) {
                     userRegistration('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, cookies: req.cookies})
                     .then((login_token) => {
                         res.cookie('login_token',login_token)
@@ -53,12 +52,11 @@ router.get('/discordOAuth2', async (req, res) => {
                         console.log(err)
                         res.send(err)
                     })
+                } else if (err?.code == 23505 && link_account) {
+                    res.send('That discord account is already linked to another profile. Please use a different discord account')
                 } else {
-                    if (err.code == 23505 && link_account) {
-                        res.send('That discord account is already linked to another profile. Please use a different discord account')
-                    } else {
-                        console.error(err)
-                    }
+                    console.error(err)
+                    res.send(err)
                 }
             })
         }).catch((err) => {
