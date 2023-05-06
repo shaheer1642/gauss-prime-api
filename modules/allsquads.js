@@ -100,7 +100,7 @@ function adminLiftGlobalBan(data, callback) {
     if (!data.user_id) return callback({code: 400, message: 'No user_id provided'})
     if (!data.identifier) return callback({code: 400, message: 'No identifier provided'})
 
-    const user = Object.values(as_users_list).filter(user => user.user_id == data.user_id || user.discord_id == data.identifier || user.ingame_name.toLowerCase() == data.identifier.toLowerCase())?.[0]
+    const user = Object.values(as_users_list).filter(user => user.user_id == data.identifier || user.ingame_name?.toLowerCase() == data.identifier.toLowerCase())?.[0]
     if (!user) return callback({code: 400, message: 'Given user does not exist'})
     if (!user.is_suspended) return callback({code: 400, message: 'Given user is not suspended'})
     if (user.suspended_by != data.user_id) return callback({code: 400, message: 'Given user was not suspended by you'})
@@ -133,7 +133,7 @@ function resolveReport(data, callback) {
     if (!data.report_id) return callback({code: 400, message: 'No report_id provided'})
     if (!data.remarks) return callback({code: 400, message: 'No remarks provided'})
     if (!data.action) return callback({code: 400, message: 'No action provided'})
-    if (data.action != 'reject' && !data.expiry) return callback({code: 400, message: 'No expiry provided'})
+    if (data.action == 'global_ban' && !data.expiry) return callback({code: 400, message: 'No expiry provided'})
 
     if (data.action == 'reject') {
         db.query(`
@@ -144,6 +144,29 @@ function resolveReport(data, callback) {
                 callback({
                     code: 200,
                     data: 'Report has been rejected'
+                })
+            } else {
+                callback({
+                    code: 500,
+                    data: 'Unexpected DB response'
+                })
+            }
+        }).catch(err => {
+            console.log(err)
+            return callback({
+                code: 500,
+                message: err.stack
+            })
+        })
+    } else if (data.action == 'warned') {
+        db.query(`
+            UPDATE as_reports SET status = 'resolved', action_taken = 'warned', resolved_by = '${data.user_id}', remarks = '${data.remarks.replace(/'/g,`''`)}'
+            WHERE report_id = ${data.report_id} AND status = 'under_review'
+        `).then(res => {
+            if (res.rowCount == 1) {
+                callback({
+                    code: 200,
+                    data: 'Report has been marked as warned'
                 })
             } else {
                 callback({
@@ -199,6 +222,11 @@ function resolveReport(data, callback) {
                 code: 500,
                 message: err.stack
             })
+        })
+    } else {
+        callback({
+            code: 400,
+            data: 'Invalid action'
         })
     }
 }
