@@ -85,4 +85,11 @@ router.post('/webhook', (req, res, next) => {
     }).catch(console.error)
 });
 
+router.get('/', (req, res) => {
+    res.send({
+        code: 404,
+        message: 'invalid endpoint'
+    })
+});
+
 module.exports = router

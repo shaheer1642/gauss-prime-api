@@ -9,4 +9,11 @@ router.get('/items/fetch', (req, res) => {
     }).catch(console.error)
 });
 
+router.get('/', (req, res) => {
+    res.send({
+        code: 404,
+        message: 'invalid endpoint'
+    })
+});
+
 module.exports = router

@@ -30,4 +30,11 @@ router.post('/uploadrelicsdb', async (req, res) => {
     })
 })
 
+router.get('/', (req, res) => {
+    res.send({
+        code: 404,
+        message: 'invalid endpoint'
+    })
+});
+
 module.exports = router
