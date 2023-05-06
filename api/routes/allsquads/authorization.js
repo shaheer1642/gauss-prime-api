@@ -3,6 +3,7 @@ const express = require('express');
 const router = new express.Router();
 const { request } = require('undici');
 const { generateVerificationCode, fetchDiscordUserProfile } = require('../../../modules/functions')
+const uuid = require('uuid')
 
 router.get('/discordOAuth2', async (req, res) => {
     if (!req.query.state || !req.query.code) {
@@ -11,8 +12,8 @@ router.get('/discordOAuth2', async (req, res) => {
             message: 'Bad parameters'
         })
     }
-    const login_token = req.query.state.split('_')[0]
-    const origin = req.query.state.split('_')[1]
+    const origin = req.query.state.split('_')[0]
+    const link_account = req.query.state.split('_')[1]
     console.log('origin', origin)
     request('https://discord.com/api/oauth2/token', {
         method: 'POST',
@@ -37,17 +38,27 @@ router.get('/discordOAuth2', async (req, res) => {
         }).then(async userResult => {
             const userData = await getJSONResponse(userResult.body);
             console.log(userData)
-            userAuthentication('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, login_token: login_token})
-            .then(() => {
+            userAuthentication('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, link_account: link_account, cookies: req.cookies})
+            .then((login_token) => {
+                if (!link_account)
+                    res.cookie('login_token',login_token)
                 res.redirect(origin)
             }).catch(err => {
                 if (err.code && err.code == 399) {
-                    userRegistration('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, login_token: login_token})
-                    .then(() => {
+                    userRegistration('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, cookies: req.cookies})
+                    .then((login_token) => {
+                        res.cookie('login_token',login_token)
                         res.redirect(origin)
                     }).catch(err => {
+                        console.log(err)
                         res.send(err)
                     })
+                } else {
+                    if (err.code == 23505 && link_account) {
+                        res.send('That discord account is already linked to another profile. Please use a different discord account')
+                    } else {
+                        console.error(err)
+                    }
                 }
             })
         }).catch((err) => {
@@ -61,18 +72,19 @@ router.get('/discordOAuth2', async (req, res) => {
 });
 
 router.get('/signup/email', async (req, res) => {
-    if (!req.query.email || !req.query.password || !req.query.login_token) {
+    if (!req.query.email || !req.query.password) {
         return res.send({
             code: 400,
             message: 'Bad parameters'
         })
     }
     
-    userRegistration('email',{email: req.query.email, password: req.query.password, login_token: req.query.login_token})
-    .then((f_res) => {
+    userRegistration('email',{email: req.query.email, password: req.query.password, cookies: req.cookies})
+    .then((login_token) => {
+        res.cookie('login_token',login_token)
         return res.send({
             code: 200,
-            data: f_res
+            message: 'logged in'
         })
     }).catch(err => {
         return res.send({
@@ -83,18 +95,21 @@ router.get('/signup/email', async (req, res) => {
 });
 
 router.get('/login/email', async (req, res) => {
-    if (!req.query.email || !req.query.password || !req.query.login_token) {
+    console.log(req.cookies)
+    if (!req.query.email || !req.query.password) {
         return res.send({
             code: 400,
             message: 'Bad parameters'
         })
     }
     
-    userAuthentication('email',{email: req.query.email, password: req.query.password, login_token: req.query.login_token})
-    .then((f_res) => {
+    userAuthentication('email',{email: req.query.email, password: req.query.password, link_account: req.query.link_account, cookies: req.cookies})
+    .then((login_token) => {
+        if (!req.query.link_account)
+            res.cookie('login_token',login_token)
         return res.send({
             code: 200,
-            data: f_res
+            message: 'logged in'
         })
     }).catch(err => {
         if (err.code && err.code == 399) {
@@ -112,15 +127,15 @@ router.get('/login/email', async (req, res) => {
 
 router.get('/authenticate', async (req, res) => {
     console.log('/authenticate called',req.query)
-    if (!req.query.login_token) {
-        console.log('No login_token provided')
+    if (!req.cookies.login_token) {
+        console.log('No login_token found')
         return res.send({
             code: 400,
-            message: 'No login_token provided'
+            message: 'No login_token found'
         })
     }
     db.query(`
-      SELECT * FROM as_users_list WHERE login_tokens @> '[{"token": "${req.query.login_token}"}]';
+      SELECT * FROM as_users_list WHERE login_tokens @> '[{"token": "${req.cookies.login_token}"}]';
     `).then(db_res => {
         if (db_res.rowCount == 1) {
             console.log('token found')
@@ -145,10 +160,10 @@ router.get('/authenticate', async (req, res) => {
 })
 
 router.get('/verification/ign/fetchCode', async (req, res) => {
-    if (!req.query.login_token) {
+    if (!req.cookies.login_token) {
         return res.send({
             code: 400,
-            message: 'Bad parameters'
+            message: 'No login_token found'
         })
     }
     const code = generateVerificationCode()
@@ -157,7 +172,7 @@ router.get('/verification/ign/fetchCode', async (req, res) => {
         (code, identifier, id_type) 
         VALUES (
             '${code}',
-            (SELECT user_id FROM as_users_list WHERE login_tokens @> '[{"token": "${req.query.login_token}"}]'),
+            (SELECT user_id FROM as_users_list WHERE login_tokens @> '[{"token": "${req.cookies.login_token}"}]'),
             'user_id'
         )
     `).then(db_res => {
@@ -182,15 +197,15 @@ router.get('/verification/ign/fetchCode', async (req, res) => {
 
 async function userRegistration(type, data) {
     return new Promise(async (resolve,reject) => {
+        const login_token = uuid.v4()
         if (!type) return reject('[userRegistration] bad parameters: no type')
-        if (!data.login_token) return reject('[userRegistration] bad parameters: no login_token')
         var query = ''
         if (type == 'discord') {
             if (!data.discord_token) return reject('[userRegistration] bad parameters: no discord_token')
             const discord_user = await fetchDiscordUserProfile(data.discord_token)
             if (!discord_user) return reject('[userRegistration] bad parameters: no discord_token')
             query = `
-                INSERT INTO as_users_list (discord_id,login_tokens, discord_token) VALUES ('${discord_user.id}','[${JSON.stringify(generateLoginToken(data.login_token))}]','${data.discord_token}')
+                INSERT INTO as_users_list (discord_id,login_tokens, discord_profile) VALUES ('${discord_user.id}','[${JSON.stringify(generateLoginToken(login_token))}]','${JSON.stringify(discord_user)}')
                 RETURNING *;
             `
         }
@@ -198,12 +213,12 @@ async function userRegistration(type, data) {
             if (!data.email) return reject('[userRegistration] bad parameters: no email')
             if (!data.password) return reject('[userRegistration] bad parameters: no password')
             query = `
-                INSERT INTO as_users_list (email,password,login_tokens) VALUES ('${data.email}','${data.password}','[${JSON.stringify(generateLoginToken(data.login_token))}]')
+                INSERT INTO as_users_list (email,password,login_tokens) VALUES ('${data.email}','${data.password}','[${JSON.stringify(generateLoginToken(login_token))}]')
                 RETURNING *;
             `
         }
         db.query(query).then(res => {
-            if (res.rowCount == 1) return resolve(res.rows[0])
+            if (res.rowCount == 1) return resolve(login_token)
             else return reject('[userRegistration] failed to register the account')
         }).catch((err) => {
             if (err.code == 23505) return reject('The email already exists')
@@ -215,32 +230,54 @@ async function userRegistration(type, data) {
 async function userAuthentication(type,data) {
     return new Promise(async (resolve,reject) => {
         if (!type) return reject('[userAuthentication] bad parameters: no type')
-        if (!data.login_token) return reject('[userAuthentication] bad parameters: no login_token')
+        const login_token = uuid.v4()
         var query = ''
         if (type == 'discord') {
             if (!data.discord_token) return reject('[userAuthentication] bad parameters: no discord_token')
             const discord_user = await fetchDiscordUserProfile(data.discord_token)
             if (!discord_user) return reject('[userAuthentication] bad parameters: no discord_token')
-            query = `
-                UPDATE as_users_list SET 
-                login_tokens = login_tokens || '[${JSON.stringify(generateLoginToken(data.login_token))}]',
-                discord_token = '${data.discord_token}'
-                WHERE discord_id = '${discord_user.id}'
-                RETURNING *;
-            `
+            if (data.link_account) {
+                if (!data.cookies?.login_token) return reject('[userAuthentication] unauthorized: no login_token found')
+                query = `
+                    UPDATE as_users_list SET 
+                    discord_id = '${discord_user.id}',
+                    discord_profile = '${JSON.stringify(discord_user)}'
+                    WHERE login_tokens @> '[{"token": "${data.cookies.login_token}"}]'
+                    RETURNING *;
+                `
+            } else {
+                query = `
+                    UPDATE as_users_list SET 
+                    login_tokens = login_tokens || '[${JSON.stringify(generateLoginToken(login_token))}]',
+                    discord_profile = '${JSON.stringify(discord_user)}'
+                    WHERE discord_id = '${discord_user.id}'
+                    RETURNING *;
+                `
+            }
         }
         if (type == 'email') {
             if (!data.email) return reject('[userAuthentication] bad parameters: no email')
             if (!data.password) return reject('[userAuthentication] bad parameters: no password')
-            query = `
-                UPDATE as_users_list SET 
-                login_tokens = login_tokens || '[${JSON.stringify(generateLoginToken(data.login_token))}]'
-                WHERE email = '${data.email}' AND password = '${data.password}'
-                RETURNING *;
-            `
+            if (data.link_account) {
+                if (!data.cookies?.login_token) return reject('[userAuthentication] unauthorized: no login_token found')
+                query = `
+                    UPDATE as_users_list SET 
+                    email = '${data.email}',
+                    password = '${data.password}'
+                    WHERE login_tokens @> '[{"token": "${data.cookies.login_token}"}]'
+                    RETURNING *;
+                `
+            } else {
+                query = `
+                    UPDATE as_users_list SET 
+                    login_tokens = login_tokens || '[${JSON.stringify(generateLoginToken(login_token))}]'
+                    WHERE email = '${data.email}' AND password = '${data.password}'
+                    RETURNING *;
+                `
+            }
         }
         db.query(query).then(res => {
-            if (res.rowCount == 1) return resolve(res.rows[0])
+            if (res.rowCount == 1) return resolve(login_token)
             else return reject({code: 399})
         }).catch(reject)
     })

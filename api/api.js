@@ -7,11 +7,16 @@ const uuid = require('uuid');
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const http = require('http');
+const cookieParser = require('cookie-parser');
 
-api.use(cors())
+api.use(cors({
+  origin: "http://localhost:3000", //origin from where you requesting
+  credentials: true
+}))
+api.use(cookieParser());
+// api.use(bodyParser.urlencoded({extended: true}));
+// api.use(bodyParser.json())
 
-api.use(bodyParser.urlencoded({extended: true}));
-api.use(bodyParser.json())
 
 api.use('/api/database',require('./routes/database'))
 api.use('/api/patreon',require('./routes/patreon'))
