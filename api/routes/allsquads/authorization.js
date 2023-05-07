@@ -5,10 +5,6 @@ const { request } = require('undici');
 const { generateVerificationCode, fetchDiscordUserProfile } = require('../../../modules/functions')
 const uuid = require('uuid')
 
-const cookieOps = {
-  httpOnly: false,
-}
-
 router.get('/discordOAuth2', async (req, res) => {
     console.log('[api/allsquads/authorization/discordOAuth2] called',req.query)
     if (!req.query.state || !req.query.code) {
@@ -45,14 +41,13 @@ router.get('/discordOAuth2', async (req, res) => {
             userAuthentication('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, link_account: link_account, cookies: req.cookies})
             .then((login_token) => {
                 console.log('login_token',login_token)
-                if (!link_account) res.cookie('login_token',login_token,cookieOps)
-                res.redirect(origin)
+                if (!link_account) res.redirect(`${origin}?login_token=${login_token}`)
+                else res.redirect(origin)
             }).catch(err => {
                 if (err?.code == 399) {
                     userRegistration('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, cookies: req.cookies})
                     .then((login_token) => {
-                        res.cookie('login_token',login_token,cookieOps)
-                        res.redirect(origin)
+                        res.redirect(`${origin}?login_token=${login_token}`)
                     }).catch(err => {
                         console.log(err)
                         res.send(err)
@@ -84,10 +79,12 @@ router.get('/signup/email', async (req, res) => {
     
     userRegistration('email',{email: req.query.email, password: req.query.password, cookies: req.cookies})
     .then((login_token) => {
-        res.cookie('login_token',login_token,cookieOps)
         return res.send({
             code: 200,
-            message: 'logged in'
+            message: 'logged in',
+            data: {
+                login_token: login_token
+            }
         })
     }).catch(err => {
         return res.send({
@@ -108,11 +105,12 @@ router.get('/login/email', async (req, res) => {
     
     userAuthentication('email',{email: req.query.email, password: req.query.password, link_account: req.query.link_account, cookies: req.cookies})
     .then((login_token) => {
-        if (!req.query.link_account)
-            res.cookie('login_token',login_token,cookieOps)
         return res.send({
             code: 200,
-            message: 'logged in'
+            message: 'logged in',
+            data: {
+                login_token: req.query.link_account ? null : login_token
+            }
         })
     }).catch(err => {
         if (err.code && err.code == 399) {
