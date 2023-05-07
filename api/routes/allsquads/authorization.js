@@ -128,7 +128,8 @@ router.get('/login/email', async (req, res) => {
 
 router.get('/authenticate', async (req, res) => {
     console.log('/authenticate called',req.query)
-    if (!req.cookies.login_token) {
+    const login_token = req.cookies.login_token || req.query.login_token
+    if (!login_token) {
         console.log('No login_token found')
         return res.send({
             code: 400,
@@ -136,7 +137,7 @@ router.get('/authenticate', async (req, res) => {
         })
     }
     db.query(`
-      SELECT * FROM as_users_list WHERE login_tokens @> '[{"token": "${req.cookies.login_token}"}]';
+      SELECT * FROM as_users_list WHERE login_tokens @> '[{"token": "${login_token}"}]';
     `).then(db_res => {
         if (db_res.rowCount == 1) {
             console.log('token found')
@@ -161,7 +162,8 @@ router.get('/authenticate', async (req, res) => {
 })
 
 router.get('/verification/ign/fetchCode', async (req, res) => {
-    if (!req.cookies.login_token) {
+    const login_token = req.cookies.login_token || req.query.login_token
+    if (!login_token) {
         return res.send({
             code: 400,
             message: 'No login_token found'
@@ -173,7 +175,7 @@ router.get('/verification/ign/fetchCode', async (req, res) => {
         (code, identifier, id_type) 
         VALUES (
             '${code}',
-            (SELECT user_id FROM as_users_list WHERE login_tokens @> '[{"token": "${req.cookies.login_token}"}]'),
+            (SELECT user_id FROM as_users_list WHERE login_tokens @> '[{"token": "${login_token}"}]'),
             'user_id'
         )
     `).then(db_res => {
