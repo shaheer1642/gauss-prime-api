@@ -5,6 +5,13 @@ const { request } = require('undici');
 const { generateVerificationCode, fetchDiscordUserProfile } = require('../../../modules/functions')
 const uuid = require('uuid')
 
+const cookieOps = {
+  domain: '.allsquads.com',
+  httpOnly: false,
+  sameSite: 'none',
+  secure: false,
+}
+
 router.get('/discordOAuth2', async (req, res) => {
     console.log('[api/allsquads/authorization/discordOAuth2] called',req.query)
     if (!req.query.state || !req.query.code) {
@@ -41,13 +48,13 @@ router.get('/discordOAuth2', async (req, res) => {
             userAuthentication('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, link_account: link_account, cookies: req.cookies})
             .then((login_token) => {
                 console.log('login_token',login_token)
-                if (!link_account) res.cookie('login_token',login_token,{httpOnly: false, maxAge: 2592000000})
+                if (!link_account) res.cookie('login_token',login_token,cookieOps)
                 res.redirect(origin)
             }).catch(err => {
                 if (err?.code == 399) {
                     userRegistration('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, cookies: req.cookies})
                     .then((login_token) => {
-                        res.cookie('login_token',login_token,{httpOnly: false, maxAge: 2592000000})
+                        res.cookie('login_token',login_token,cookieOps)
                         res.redirect(origin)
                     }).catch(err => {
                         console.log(err)
@@ -80,7 +87,7 @@ router.get('/signup/email', async (req, res) => {
     
     userRegistration('email',{email: req.query.email, password: req.query.password, cookies: req.cookies})
     .then((login_token) => {
-        res.cookie('login_token',login_token,{httpOnly: false, maxAge: 2592000000})
+        res.cookie('login_token',login_token,cookieOps)
         return res.send({
             code: 200,
             message: 'logged in'
@@ -105,7 +112,7 @@ router.get('/login/email', async (req, res) => {
     userAuthentication('email',{email: req.query.email, password: req.query.password, link_account: req.query.link_account, cookies: req.cookies})
     .then((login_token) => {
         if (!req.query.link_account)
-            res.cookie('login_token',login_token,{httpOnly: false, maxAge: 2592000000})
+            res.cookie('login_token',login_token,cookieOps)
         return res.send({
             code: 200,
             message: 'logged in'
