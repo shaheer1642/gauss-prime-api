@@ -8,7 +8,6 @@ const uuid = require('uuid')
 const cookieOps = {
   domain: 'dev.allsquads.com',
   httpOnly: false,
-  sameSite: 'none',
 }
 
 router.get('/discordOAuth2', async (req, res) => {
