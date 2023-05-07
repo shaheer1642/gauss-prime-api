@@ -40,6 +40,7 @@ router.get('/discordOAuth2', async (req, res) => {
             console.log(userData)
             userAuthentication('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, link_account: link_account, cookies: req.cookies})
             .then((login_token) => {
+                console.log('login_token',login_token)
                 if (!link_account) res.cookie('login_token',login_token,{httpOnly: false})
                 res.redirect(origin)
             }).catch(err => {
