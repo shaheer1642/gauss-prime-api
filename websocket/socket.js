@@ -37,7 +37,7 @@ io.on('connection', (socket) => {
             if (as_users_list[data.user_id].is_suspended) {
               return callback ? callback({
                 code: 480,
-                message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.user_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[data.user_id].suspended_by}>`
+                message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.user_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[as_users_list[data.user_id].suspended_by].discord_id}>`
               }) : null
             }
             relicbot.endpoints[key](data, callback? callback : () => {})
