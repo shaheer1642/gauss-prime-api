@@ -6,6 +6,7 @@ const { generateVerificationCode, fetchDiscordUserProfile } = require('../../../
 const uuid = require('uuid')
 
 router.get('/discordOAuth2', async (req, res) => {
+    console.log('[api/allsquads/authorization/discordOAuth2] called',req.query)
     if (!req.query.state || !req.query.code) {
         return res.send({
             code: 400,
@@ -14,7 +15,6 @@ router.get('/discordOAuth2', async (req, res) => {
     }
     const origin = req.query.state.split('_')[0]
     const link_account = req.query.state.split('_')[1]
-    console.log('origin', origin)
     request('https://discord.com/api/oauth2/token', {
         method: 'POST',
         body: new URLSearchParams({
