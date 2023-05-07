@@ -6,7 +6,6 @@ const { generateVerificationCode, fetchDiscordUserProfile } = require('../../../
 const uuid = require('uuid')
 
 const cookieOps = {
-  domain: 'dev.allsquads.com',
   httpOnly: false,
 }
 
