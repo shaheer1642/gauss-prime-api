@@ -13,8 +13,8 @@ api.use(cors({
   origin: process.env.ENVIRONMENT_TYPE == 'dev' ? ['http://localhost:3000','https://dev.allsquads.com'] : ['https://dev.allsquads.com'],
   credentials: true
 }))
-// api.use(bodyParser.urlencoded({extended: true}));
-// api.use(bodyParser.json())
+api.use(bodyParser.urlencoded({extended: true}));
+api.use(bodyParser.json())
 api.use(cookieParser());
 
 

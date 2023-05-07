@@ -3,8 +3,8 @@ const express = require('express');
 const router = new express.Router();
 
 router.post('/uploadrelicsdb', async (req, res) => {
-    console.log('[/api/wfrim/uploadrelicsdb] username=', req.body.username)
-    if (!req.body.username) return
+    console.log('[/api/wfrim/uploadrelicsdb] username=', req.body?.username)
+    if (!req.body?.username) return
     db.query(`
       UPDATE wfrim_relicsdb
       SET data = '${JSON.stringify(req.body.data)}', timestamp = ${new Date().getTime()}
