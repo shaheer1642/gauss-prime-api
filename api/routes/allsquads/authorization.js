@@ -6,10 +6,9 @@ const { generateVerificationCode, fetchDiscordUserProfile } = require('../../../
 const uuid = require('uuid')
 
 const cookieOps = {
-  domain: '.allsquads.com',
+  domain: 'dev.allsquads.com',
   httpOnly: false,
   sameSite: 'none',
-  secure: false,
 }
 
 router.get('/discordOAuth2', async (req, res) => {
