@@ -730,7 +730,6 @@ function statisticsFetch(data,callback) {
             SELECT * FROM as_bb_blesses WHERE status = 'closed' AND user_id = '${user_id}';
             SELECT * FROM challenges_completed WHERE user_id = '${user_id}';
             SELECT * FROM as_users_ratings WHERE rating_type = 'squad_rating' AND rated_user = '${user_id}';
-            SELECT * FROM challenges_accounts WHERE user_id = '${user_id}';
         `).then(res => {
             const filled_squads = res[0].rows.concat(res[1].rows)
             const hosted_giveaways = res[2].rows
@@ -738,7 +737,6 @@ function statisticsFetch(data,callback) {
             const hosted_blessings = res[4].rows
             const completed_challenges = res[5].rows
             const user_ratings = res[6].rows
-            const daywave_account = res[7].rows[0]
             
             var statistics = {
                 user: {
@@ -781,7 +779,7 @@ function statisticsFetch(data,callback) {
                     1: user_ratings.reduce((sum,rating) => rating.rating == 1 ? sum += 1 : sum += 0, 0),
                     rating: Number((user_ratings.reduce((sum,rating) => sum += rating.rating, 0) / user_ratings.length).toFixed(2))
                 },
-                account_balance: daywave_account?.balance || 0,
+                account_balance: db_user?.balance || 0,
                 reputation: {
                     total: 0,
                     squads: 0,
