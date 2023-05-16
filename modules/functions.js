@@ -124,6 +124,9 @@ function getWeekStartMs() {
 function getMonthStartMs() {
     return new Date(new Date(new Date().getFullYear(), new Date().getMonth(), 1)).getTime()
 }
+function getWeekEndMs() {
+    return getWeekStartMs() + 604800000;
+}
 
 function calcArrAvg(arr) {
     var sum = 0
@@ -162,7 +165,9 @@ function fetchDiscordUserProfile(discord_token) {
 
 module.exports = {
     dynamicSort,dynamicSortDesc,msToTime,msToFullTime,
-    getRandomColor,embedScore,convertUpper,getTodayStartMs,getWeekStartMs,getMonthStartMs,calcArrAvg,
+    getRandomColor,embedScore,convertUpper,
+    getTodayStartMs,getWeekStartMs,getMonthStartMs,getWeekEndMs,
+    calcArrAvg,
     generateVerificationCode,escapeDBCharacters,
     fetchDiscordUserProfile
 };

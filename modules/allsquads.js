@@ -1,6 +1,6 @@
 const { db } = require("./db_connection")
 const uuid = require('uuid')
-const {convertUpper, dynamicSort, dynamicSortDesc, getTodayStartMs, getWeekStartMs, getMonthStartMs, calcArrAvg} = require('./functions')
+const {convertUpper, dynamicSort, dynamicSortDesc, getTodayStartMs, getWeekStartMs, getMonthStartMs, calcArrAvg, getWeekEndMs} = require('./functions')
 const db_modules = require('./db_modules')
 const {event_emitter} = require('./event_emitter')
 const JSONbig = require('json-bigint');
@@ -804,19 +804,19 @@ function statisticsFetch(data,callback) {
                 if (squad.bot_type == 'relicbot') statistics.squads.total_relic_squads.all_time++
                 if (squad.bot_type == 'squadbot') statistics.squads.total_general_squads.all_time++
                 // monthly squads
-                if (squad.creation_timestamp >= month_start) {
+                if (squad.open_timestamp >= month_start) {
                     statistics.squads.total_squads.this_month++
                     if (squad.bot_type == 'relicbot') statistics.squads.total_relic_squads.this_month++
                     if (squad.bot_type == 'squadbot') statistics.squads.total_general_squads.this_month++
                 }
                 // weekly squads
-                if (squad.creation_timestamp >= week_start) {
+                if (squad.open_timestamp >= week_start) {
                     statistics.squads.total_squads.this_week++
                     if (squad.bot_type == 'relicbot') statistics.squads.total_relic_squads.this_week++
                     if (squad.bot_type == 'squadbot') statistics.squads.total_general_squads.this_week++
                 }
                 // todays squads
-                if (squad.creation_timestamp >= today_start) {
+                if (squad.open_timestamp >= today_start) {
                     statistics.squads.total_squads.today++
                     if (squad.bot_type == 'relicbot') statistics.squads.total_relic_squads.today++
                     if (squad.bot_type == 'squadbot') statistics.squads.total_general_squads.today++
@@ -863,7 +863,7 @@ function leaderboardsFetch(data,callback) {
         SELECT * FROM as_users_ratings WHERE rating_type = 'squad_rating';
     `).then(res => {
         const db_users = res[0].rows
-        const db_squads = res[1].rows.map(row => ({...row, bot_type: 'relicbot'})).concat(res[2].rows.map(row => ({...row, bot_type: 'squadbot'})))
+        const db_squads = res[1].rows.concat(res[2].rows)
         const db_giveaways = res[3].rows
         const db_blessings = res[4].rows
         const db_daywave_challenges = res[5].rows
@@ -875,14 +875,22 @@ function leaderboardsFetch(data,callback) {
             this_week: [],
             today: [],
             top_squads: {},
-            total_squads: 0
+            total_squads: 0,
+            top_runners: {
+                relic_runners: [],
+                non_relic_runners: [],
+                squad_runners: [],
+                event_runners: [],
+            },
         }
         const today_start = getTodayStartMs()
         const week_start = getWeekStartMs()
         const month_start = getMonthStartMs()
+        const top_runners_start_ts = data.options?.top_runners?.start_timestamp || getWeekStartMs()
+        const top_runners_end_ts = data.options?.top_runners?.end_timestamp || getWeekEndMs()
 
         db_squads.forEach(squad => {
-            if (squad.creation_timestamp >= week_start) {
+            if (squad.open_timestamp >= week_start) {
                 if (!squad.squad_string) 
                     squad.squad_string = (relicBotSquadToString(squad,false,true)).toLowerCase().replace(/ /g,'_')
                 if (!statistics.top_squads[squad.squad_string]) 
@@ -891,44 +899,47 @@ function leaderboardsFetch(data,callback) {
                 statistics.total_squads++
             }
         })
-        const skip_users = data.skip_users || []
         db_users.forEach(user => {
             const user_id = user.user_id
             if (!user_id || user_id == "0") return
-            if (skip_users.includes(user_id)) return
+            if (data.options?.skip_users?.includes(user_id)) return
             var reputation = {
                 all_time: 0.0,
-                today: 0.0,
+                this_month: 0.0,
                 this_week: 0.0,
-                this_month: 0.0
+                today: 0.0
             }
             user.last_squad_timestamp = 0
+            const squads_count = {squads: 0, relic_squads: 0, non_relic_squads: 0, event_squads: 0}
             db_squads.forEach(squad => {
                 if (squad.members.filter(id => !squad.invalidated_members?.includes(id)).includes(user_id)) {
                     const rep = rep_scheme[squad.bot_type]
                     reputation.all_time += rep
-                    if (squad.creation_timestamp >= today_start) reputation.today += rep
-                    if (squad.creation_timestamp >= week_start) reputation.this_week += rep
-                    if (squad.creation_timestamp >= month_start) reputation.this_month += rep
-                    if (squad.creation_timestamp > user.last_squad_timestamp ) user.last_squad_timestamp = squad.creation_timestamp
+                    if (squad.open_timestamp >= today_start) reputation.today += rep
+                    if (squad.open_timestamp >= week_start) reputation.this_week += rep
+                    if (squad.open_timestamp >= month_start) reputation.this_month += rep
+                    if (squad.open_timestamp > user.last_squad_timestamp ) user.last_squad_timestamp = squad.open_timestamp
+                    
+                    if (squad.open_timestamp > top_runners_start_ts && squad.open_timestamp < top_runners_end_ts && !user.is_staff && !user.is_admin) {
+                        squads_count.squads++
+                        if (squad.bot_type == 'relicbot') squads_count.relic_squads++
+                        if (squad.bot_type == 'squadbot') squads_count.non_relic_squads++
+                        
+                        if (squad.bot_type == 'relicbot') squads_count.event_squads++
+                        if (squad.bot_type == 'squadbot' && (squad.squad_string.match(/\btraces\b/) || squad.squad_string.match(/\btrace\b/))) squads_count.event_squads++
+                    }
                 }
             })
             db_giveaways.forEach(giveaway => {
                 if (giveaway.user_id == user_id) {
                     const rep = rep_scheme.giveaway
                     reputation.all_time += rep
-                    // if (giveaway.expiry_timestamp >= today_start) reputation.today += rep
-                    // if (giveaway.expiry_timestamp >= week_start) reputation.this_week += rep
-                    // if (giveaway.expiry_timestamp >= month_start) reputation.this_month += rep
                 }
             })
             db_blessings.forEach(blessing => {
                 if (blessing.user_id == user_id) {
                     const rep = rep_scheme.blessing
                     reputation.all_time += rep
-                    // if (blessing.creation_timestamp >= today_start) reputation.today += rep
-                    // if (blessing.creation_timestamp >= week_start) reputation.this_week += rep
-                    // if (blessing.creation_timestamp >= month_start) reputation.this_month += rep
                 }
             })
             db_daywave_challenges.forEach(daywave_challenge => {
@@ -940,58 +951,45 @@ function leaderboardsFetch(data,callback) {
                     if (daywave_challenge.timestamp >= month_start) reputation.this_month += rep
                 }
             })
-            // db_rank_roles.forEach(rank_role => {
-            //     if (rank_role.discord_id == discord_id) {
-            //         const rep = rep_scheme.ranks[rank_role.rank_type]
-            //         reputation.all_time += rep
-            //     }
-            // })
             db_users_ratings.forEach(user_rating => {
                 if (user_rating.rated_user == user_id) {
                     const rep = rep_scheme.rating[user_rating.rating]
                     reputation.all_time += rep
                 }
             })
-            if (reputation.all_time > 0)
-                statistics.all_time.push({
-                    ...user,
-                    reputation: reputation.all_time
-                })
-            if (reputation.today > 0)
-                statistics.today.push({
-                    ...user,
-                    reputation: reputation.today
-                })
-            if (reputation.this_week > 0)
-                statistics.this_week.push({
-                    ...user,
-                    reputation: reputation.this_week
-                })
-            if (reputation.this_month > 0)
-                statistics.this_month.push({
-                    ...user,
-                    reputation: reputation.this_month
-                })
+            if (reputation.all_time > 0) statistics.all_time.push({ discord_id: user.discord_id, user_id: user.user_id, ingame_name: user.ingame_name, reputation: reputation.all_time })
+            if (reputation.today > 0) statistics.today.push({ discord_id: user.discord_id, user_id: user.user_id, ingame_name: user.ingame_name, reputation: reputation.today })
+            if (reputation.this_week > 0) statistics.this_week.push({ discord_id: user.discord_id, user_id: user.user_id, ingame_name: user.ingame_name, reputation: reputation.this_week })
+            if (reputation.this_month > 0) statistics.this_month.push({ discord_id: user.discord_id, user_id: user.user_id, ingame_name: user.ingame_name, reputation: reputation.this_month })
+            if (squads_count.relic_squads > 0) statistics.top_runners.relic_runners.push({ discord_id: user.discord_id, user_id: user.user_id, ingame_name: user.ingame_name, squads_count: squads_count.relic_squads })
+            if (squads_count.non_relic_squads > 0) statistics.top_runners.non_relic_runners.push({ discord_id: user.discord_id, user_id: user.user_id, ingame_name: user.ingame_name, squads_count: squads_count.non_relic_squads })
+            if (squads_count.squads > 0) statistics.top_runners.squad_runners.push({ discord_id: user.discord_id, user_id: user.user_id, ingame_name: user.ingame_name, squads_count: squads_count.squads })
+            if (squads_count.event_squads > 0) statistics.top_runners.event_runners.push({ discord_id: user.discord_id, user_id: user.user_id, ingame_name: user.ingame_name, squads_count: squads_count.event_squads })
         })
         statistics.all_time = statistics.all_time.sort(dynamicSortDesc("reputation"))
         statistics.today = statistics.today.sort(dynamicSortDesc("reputation"))
         statistics.this_week = statistics.this_week.sort(dynamicSortDesc("reputation"))
         statistics.this_month = statistics.this_month.sort(dynamicSortDesc("reputation"))
+        statistics.top_runners.relic_runners = statistics.top_runners.relic_runners.sort(dynamicSortDesc("squads_count"))
+        statistics.top_runners.non_relic_runners = statistics.top_runners.non_relic_runners.sort(dynamicSortDesc("squads_count"))
+        statistics.top_runners.squad_runners = statistics.top_runners.squad_runners.sort(dynamicSortDesc("squads_count"))
+        statistics.top_runners.event_runners = statistics.top_runners.event_runners.sort(dynamicSortDesc("squads_count"))
         statistics.top_squads = Object.keys(statistics.top_squads).map(squad_string => ({squad_string: squad_string, hosts: statistics.top_squads[squad_string]})).sort(dynamicSortDesc("hosts"))
-        if (data.limit) {
-            statistics.all_time = statistics.all_time.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
-            statistics.today = statistics.today.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
-            statistics.this_week = statistics.this_week.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
-            statistics.this_month = statistics.this_month.map((user,index) => index < data.limit ? user:null).filter(o => o != null)
-            statistics.top_squads = statistics.top_squads.map((host,index) => index < data.limit ? host:null).filter(o => o != null)
+        if (data.options?.limit) {
+            statistics.all_time = statistics.all_time.map((o,index) => index < data.options.limit ? o:null).filter(o => o != null)
+            statistics.today = statistics.today.map((o,index) => index < data.options.limit ? o:null).filter(o => o != null)
+            statistics.this_week = statistics.this_week.map((o,index) => index < data.options.limit ? o:null).filter(o => o != null)
+            statistics.this_month = statistics.this_month.map((o,index) => index < data.options.limit ? o:null).filter(o => o != null)
+            statistics.top_squads = statistics.top_squads.map((o,index) => index < data.options.limit ? o:null).filter(o => o != null)
+            statistics.top_runners.relic_runners = statistics.top_runners.relic_runners.map((o,index) => index < data.options.limit ? o:null).filter(o => o != null)
+            statistics.top_runners.non_relic_runners = statistics.top_runners.non_relic_runners.map((o,index) => index < data.options.limit ? o:null).filter(o => o != null)
+            statistics.top_runners.squad_runners = statistics.top_runners.squad_runners.map((o,index) => index < data.options.limit ? o:null).filter(o => o != null)
+            statistics.top_runners.event_runners = statistics.top_runners.event_runners.map((o,index) => index < data.options.limit ? o:null).filter(o => o != null)
         }
-        // console.log(JSON.stringify(statistics))
-        if (data.exclude_squads) {
-            delete statistics.top_squads;
-            delete statistics.total_squads;
-        }
-        if (data.exclude_daily) 
-            delete statistics.today
+        console.log(JSON.stringify(statistics))
+        data.options?.exclude_stats?.forEach(stat => {
+            if (statistics[stat]) delete statistics[stat]
+        })
         return callback({
             code: 200,
             data: statistics
