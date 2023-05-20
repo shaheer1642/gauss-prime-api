@@ -925,7 +925,7 @@ function leaderboardsFetch(data,callback) {
                         if (squad.bot_type == 'relicbot') squads_count.relic_squads++
                         if (squad.bot_type == 'squadbot') squads_count.non_relic_squads++
                         
-                        if (squad.bot_type == 'relicbot') squads_count.event_squads++
+                        if (squad.bot_type == 'relicbot') squads_count.event_squads++ 
                         if (squad.bot_type == 'squadbot' && (squad.squad_string.toLowerCase().replace(/_/g,' ').match(/\btraces\b/) || squad.squad_string.toLowerCase().replace(/_/g,' ').match(/\btrace\b/))) squads_count.event_squads++
                     }
                 }
