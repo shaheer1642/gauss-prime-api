@@ -128,15 +128,19 @@ db.on('notification', (notification) => {
     if (payload[0].members.length == 0 && payload[1].members.length > 0) {
       db.query(`UPDATE as_rb_squads SET status = 'abandoned' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}'`).catch(console.error)
     }
-    if (payload[0].members.length == 4 && payload[1].members.length < 4) {
+    if (payload[0].members.length == payload[0].spots && payload[0].status == 'active') {
       const host_recommendation = allsquads.calculateBestPingRating(payload[0].members)
       db.query(`
-        UPDATE as_rb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
-        UPDATE as_rb_squads SET status='opened',open_timestamp=${new Date().getTime()}, host_recommendation = '${JSON.stringify(host_recommendation)}' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
-        UPDATE as_rb_squads SET members=members${payload[0].members.map(user_id => `-'${user_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"'`).join(' OR ')});
-        UPDATE as_sb_squads SET members=members${payload[0].members.map(user_id => `-'${user_id}'`).join('')} WHERE status='active' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"'`).join(' OR ')});
-      `).catch(console.error)
-      db_modules.schedule_query(`UPDATE as_rb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,relicbot.squad_closure)
+        UPDATE as_rb_squads SET status='opened', open_timestamp=${new Date().getTime()}, host_recommendation = '${JSON.stringify(host_recommendation)}' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}' AND jsonb_array_length(members) = spots;
+      `).then(res => {
+        if (res.rowCount != 1) return
+        db.query(`
+          UPDATE as_rb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
+          UPDATE as_rb_squads SET members=members${payload[0].members.map(user_id => `-'${user_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"'`).join(' OR ')});
+          UPDATE as_sb_squads SET members=members${payload[0].members.map(user_id => `-'${user_id}'`).join('')} WHERE status='active' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"'`).join(' OR ')});
+        `).catch(console.error)
+        db_modules.schedule_query(`UPDATE as_rb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,relicbot.squad_closure)
+      }).catch(console.error)
     }
     if (payload[0].status != 'active' && payload[1].status == 'active') {
       db.query(`UPDATE as_rb_squads SET squad_code='${payload[0].squad_code}_${payload[0].creation_timestamp}' WHERE squad_id='${payload[0].squad_id}'`).catch(console.error)
@@ -184,15 +188,17 @@ db.on('notification', (notification) => {
     if (payload[0].members.length == payload[0].spots && payload[0].status == 'active') {
       const host_recommendation = allsquads.calculateBestPingRating(payload[0].members)
       db.query(`
-        UPDATE as_sb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
-        UPDATE as_sb_squads SET status='opened',open_timestamp=${new Date().getTime()}, host_recommendation = '${JSON.stringify(host_recommendation)}' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}';
-        UPDATE as_sb_squads SET members=members${payload[0].members.map(user_id => `-'${user_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"'`).join(' OR ')});
-        UPDATE as_rb_squads SET members=members${payload[0].members.map(user_id => `-'${user_id}'`).join('')} WHERE status='active' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"'`).join(' OR ')});
+        UPDATE as_sb_squads SET status='opened', open_timestamp=${new Date().getTime()}, host_recommendation = '${JSON.stringify(host_recommendation)}' WHERE status = 'active' AND squad_id = '${payload[0].squad_id}' AND jsonb_array_length(members) = spots;
       `).then(res => {
-        console.log('--------------finished executing removal query----------------------')
+        if (res.rowCount != 1) return
+        db.query(`
+          UPDATE as_sb_squads SET status='disbanded' WHERE status = 'opened' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"' `).join(' OR ')}) AND squad_id != '${payload[0].squad_id}';
+          UPDATE as_sb_squads SET members=members${payload[0].members.map(user_id => `-'${user_id}'`).join('')} WHERE status='active' AND squad_id != '${payload[0].squad_id}' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"'`).join(' OR ')});
+          UPDATE as_rb_squads SET members=members${payload[0].members.map(user_id => `-'${user_id}'`).join('')} WHERE status='active' AND (${payload[0].members.map(user_id => `members @> '"${user_id}"'`).join(' OR ')});
+        `).catch(console.error)
+        db_modules.schedule_query(`UPDATE as_sb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,payload[0].squad_closure)
+        allsquads.pingmuteOnSquadOpen(payload[0])
       }).catch(console.error)
-      db_modules.schedule_query(`UPDATE as_sb_squads SET status='closed' WHERE squad_id = '${payload[0].squad_id}' AND status='opened'`,payload[0].squad_closure)
-      allsquads.pingmuteOnSquadOpen(payload[0])
     }
     if (payload[0].status != 'active' && payload[1].status == 'active') {
       db.query(`UPDATE as_sb_squads SET squad_code='${payload[0].squad_code}_${payload[0].creation_timestamp}' WHERE squad_id='${payload[0].squad_id}'`).catch(console.error)
