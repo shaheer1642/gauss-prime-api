@@ -10,7 +10,7 @@ const http = require('http');
 const cookieParser = require('cookie-parser');
 
 api.use(cors({
-  origin: process.env.ENVIRONMENT_TYPE == 'dev' ? ['http://localhost:3000','https://dev.allsquads.com'] : ['https://dev.allsquads.com'],
+  origin: process.env.ENVIRONMENT_TYPE == 'dev' ? ['http://localhost:3000','https://dev.allsquads.com'] : ['https://dev.allsquads.com','https://allsquads.com','https://www.allsquads.com'],
   credentials: true
 }))
 api.use(bodyParser.urlencoded({extended: true}));
