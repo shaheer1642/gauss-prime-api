@@ -41,7 +41,7 @@ io.on('connection', (socket) => {
                 message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.user_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[as_users_list[data.user_id].suspended_by].discord_id}>`
               }) : null
             }
-            relicbot.endpoints[key](data, () => { logReponseTime(ts,key); callback ? callback() : null })
+            relicbot.endpoints[key](data, (res) => { logReponseTime(ts,key); callback ? callback(res) : null })
           } else {
             return callback ? callback({
               code: 499,
@@ -49,7 +49,7 @@ io.on('connection', (socket) => {
             }) : null
           }
         } else {
-          relicbot.endpoints[key](data, () => { logReponseTime(ts,key); callback ? callback() : null })
+          relicbot.endpoints[key](data, (res) => { logReponseTime(ts,key); callback ? callback(res) : null })
         }
       })
     })
@@ -64,7 +64,7 @@ io.on('connection', (socket) => {
                 message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.user_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[as_users_list[data.user_id].suspended_by].discord_id}>`
               }) : null
             }
-            squadbot.endpoints[key](data, () => { logReponseTime(ts,key); callback ? callback() : null })
+            squadbot.endpoints[key](data, (res) => { logReponseTime(ts,key); callback ? callback(res) : null })
           } else {
             return callback ? callback({
               code: 499,
@@ -72,7 +72,7 @@ io.on('connection', (socket) => {
             }) : null
           }
         } else {
-          squadbot.endpoints[key](data, () => { logReponseTime(ts,key); callback ? callback() : null })
+          squadbot.endpoints[key](data, (res) => { logReponseTime(ts,key); callback ? callback(res) : null })
         }
       })
     })
@@ -87,7 +87,7 @@ io.on('connection', (socket) => {
                 message: `You have been temporarily suspended from this service. Your suspension will be lifted in ${msToFullTime(as_users_list[data.user_id].suspension_expiry - new Date().getTime())}.\nIf you would like to appeal, please contact <@${as_users_list[as_users_list[data.user_id].suspended_by].discord_id}>`
               }) : null
             }
-            allsquads.endpoints[key](data, () => { logReponseTime(ts,key); callback ? callback() : null })
+            allsquads.endpoints[key](data, (res) => { logReponseTime(ts,key); callback ? callback(res) : null })
           } else {
             return callback ? callback({
               code: 499,
@@ -95,7 +95,7 @@ io.on('connection', (socket) => {
             }) : null
           }
         } else {
-          allsquads.endpoints[key](data, () => { logReponseTime(ts,key); callback ? callback() : null })
+          allsquads.endpoints[key](data, (res) => { logReponseTime(ts,key); callback ? callback(res) : null })
         }
       })
     })
@@ -104,7 +104,7 @@ io.on('connection', (socket) => {
       socket.addListener(key, (data,callback) => {
         if (Object.keys(data).includes('user_id')) {
           if (as_users_list[data.user_id] && as_users_list[data.user_id].ingame_name) {
-            global_variables.endpoints[key](data, () => { logReponseTime(ts,key); callback ? callback() : null })
+            global_variables.endpoints[key](data, (res) => { logReponseTime(ts,key); callback ? callback(res) : null })
           } else {
             return callback ? callback({
               code: 499,
@@ -112,7 +112,7 @@ io.on('connection', (socket) => {
             }) : null
           }
         } else {
-          global_variables.endpoints[key](data, () => { logReponseTime(ts,key); callback ? callback() : null })
+          global_variables.endpoints[key](data, (res) => { logReponseTime(ts,key); callback ? callback(res) : null })
         }
       })
     })
