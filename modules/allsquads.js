@@ -333,7 +333,7 @@ function usersFetch(data,callback) {
         })
         return callback({
             code: 200,
-            data: res.rows
+            data: res.rows.map(row => ({user_id: row.user_id, ingame_name: row.ingame_name}))
         })
     }).catch(err => {
         console.log(err)
