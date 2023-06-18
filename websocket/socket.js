@@ -54,8 +54,8 @@ io.on('connection', (socket) => {
       })
     })
     Object.keys(squadbot.endpoints).forEach(key => {
-      const ts = new Date().getTime()
       socket.addListener(key, (data,callback) => {
+        const ts = new Date().getTime()
         if (Object.keys(data).includes('user_id')) {
           if (as_users_list[data.user_id] && as_users_list[data.user_id].ingame_name) {
             if (as_users_list[data.user_id].is_suspended) {
@@ -77,8 +77,8 @@ io.on('connection', (socket) => {
       })
     })
     Object.keys(allsquads.endpoints).forEach(key => {
-      const ts = new Date().getTime()
       socket.addListener(key, (data,callback) => {
+        const ts = new Date().getTime()
         if (Object.keys(data).includes('user_id')) {
           if (as_users_list[data.user_id] && as_users_list[data.user_id].ingame_name) {
             if (as_users_list[data.user_id].is_suspended) {
@@ -100,8 +100,8 @@ io.on('connection', (socket) => {
       })
     })
     Object.keys(global_variables.endpoints).forEach(key => {
-      const ts = new Date().getTime()
       socket.addListener(key, (data,callback) => {
+        const ts = new Date().getTime()
         if (Object.keys(data).includes('user_id')) {
           if (as_users_list[data.user_id] && as_users_list[data.user_id].ingame_name) {
             global_variables.endpoints[key](data, (res) => { logReponseTime(ts,key); callback ? callback(res) : null })
