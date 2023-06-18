@@ -324,13 +324,13 @@ function usersFetch(data,callback) {
     db.query(`
         SELECT * FROM as_users_list;
     `).then(res => {
-        res.rows.map((row,index) => {
-            delete row.login_tokens
-            delete row.email
-            delete row.password
-            delete row.discord_token
-            res[index] = row
-        })
+        // res.rows.map((row,index) => {
+        //     delete row.login_tokens
+        //     delete row.email
+        //     delete row.password
+        //     delete row.discord_token
+        //     res[index] = row
+        // })
         return callback({
             code: 200,
             data: res.rows.map(row => ({user_id: row.user_id, ingame_name: row.ingame_name}))

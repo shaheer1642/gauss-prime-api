@@ -31,13 +31,16 @@ function updateUser(user_id) {
 }
 
 function notifySocketOnUpdate(user) {
-    delete user.login_tokens
-    delete user.email
-    delete user.password
-    delete user.discord_token
+    // delete user.login_tokens
+    // delete user.email
+    // delete user.password
+    // delete user.discord_token
     event_emitter.emit('socketNotifyAll',{
         event: 'allsquads/users/update',
-        data: user
+        data: {
+            user_id: user.user_id,
+            ingame_name: user.ingame_name
+        }
     })
 }
 
