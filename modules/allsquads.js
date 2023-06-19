@@ -853,6 +853,7 @@ function statisticsFetch(data,callback) {
 
 function leaderboardsFetch(data,callback) {
     console.log('[allsquads.leaderboardsFetch] data:',data)
+    const ts = new Date().getTime()
     db.query(`
         SELECT * FROM as_users_list;
         SELECT * FROM as_rb_squads WHERE status = 'closed';
@@ -862,6 +863,7 @@ function leaderboardsFetch(data,callback) {
         SELECT * FROM challenges_completed;
         SELECT * FROM as_users_ratings WHERE rating_type = 'squad_rating';
     `).then(res => {
+        console.log('DB query time',new Date().getTime() - ts,'ms')
         const db_users = res[0].rows
         const db_squads = res[1].rows.concat(res[2].rows)
         const db_giveaways = res[3].rows
@@ -898,6 +900,36 @@ function leaderboardsFetch(data,callback) {
                 statistics.top_squads[squad.squad_string]++
                 statistics.total_squads++
             }
+            squad.members.filter(id => !squad.invalidated_members?.includes(id)).forEach(member_id => {
+                const userIndex = db_users.findIndex(u => u.user_id == member_id)
+                if (userIndex == -1) return
+                if (!db_users[userIndex].squads_filled) db_users[userIndex].squads_filled = []
+                db_users[userIndex].squads_filled.push(squad)
+            })
+        })
+        db_giveaways.forEach(giveaway => {
+            const userIndex = db_users.findIndex(u => u.user_id == giveaway.user_id)
+            if (userIndex == -1) return
+            if (!db_users[userIndex].giveaways_hosted) db_users[userIndex].giveaways_hosted = []
+            db_users[userIndex].giveaways_hosted.push(giveaway)
+        })
+        db_blessings.forEach(blessing => {
+            const userIndex = db_users.findIndex(u => u.user_id == blessing.user_id)
+            if (userIndex == -1) return
+            if (!db_users[userIndex].blessings_hosted) db_users[userIndex].blessings_hosted = []
+            db_users[userIndex].blessings_hosted.push(blessing)
+        })
+        db_daywave_challenges.forEach(daywave_challenge => {
+            const userIndex = db_users.findIndex(u => u.user_id == daywave_challenge.user_id)
+            if (userIndex == -1) return
+            if (!db_users[userIndex].challenges_completed) db_users[userIndex].challenges_completed = []
+            db_users[userIndex].challenges_completed.push(daywave_challenge)
+        })
+        db_users_ratings.forEach(user_rating => {
+            const userIndex = db_users.findIndex(u => u.user_id == user_rating.rated_user)
+            if (userIndex == -1) return
+            if (!db_users[userIndex].ratings_received) db_users[userIndex].ratings_received = []
+            db_users[userIndex].ratings_received.push(user_rating)
         })
         db_users.forEach(user => {
             const user_id = user.user_id
@@ -911,51 +943,41 @@ function leaderboardsFetch(data,callback) {
             }
             user.last_squad_timestamp = 0
             const squads_count = {squads: 0, relic_squads: 0, non_relic_squads: 0, event_squads: 0}
-            db_squads.forEach(squad => {
-                if (squad.members.filter(id => !squad.invalidated_members?.includes(id)).includes(user_id)) {
-                    const rep = rep_scheme[squad.bot_type]
-                    reputation.all_time += rep
-                    if (squad.open_timestamp >= today_start) reputation.today += rep
-                    if (squad.open_timestamp >= week_start) reputation.this_week += rep
-                    if (squad.open_timestamp >= month_start) reputation.this_month += rep
-                    if (squad.open_timestamp > user.last_squad_timestamp ) user.last_squad_timestamp = squad.open_timestamp
+            user.squads_filled?.forEach(squad => {
+                const rep = rep_scheme[squad.bot_type]
+                reputation.all_time += rep
+                if (squad.open_timestamp >= today_start) reputation.today += rep
+                if (squad.open_timestamp >= week_start) reputation.this_week += rep
+                if (squad.open_timestamp >= month_start) reputation.this_month += rep
+                if (squad.open_timestamp > user.last_squad_timestamp ) user.last_squad_timestamp = squad.open_timestamp
+                
+                if (squad.open_timestamp > top_runners_start_ts && squad.open_timestamp < top_runners_end_ts && !user.is_staff && !user.is_admin) {
+                    squads_count.squads++
+                    if (squad.bot_type == 'relicbot') squads_count.relic_squads++
+                    if (squad.bot_type == 'squadbot') squads_count.non_relic_squads++
                     
-                    if (squad.open_timestamp > top_runners_start_ts && squad.open_timestamp < top_runners_end_ts && !user.is_staff && !user.is_admin) {
-                        squads_count.squads++
-                        if (squad.bot_type == 'relicbot') squads_count.relic_squads++
-                        if (squad.bot_type == 'squadbot') squads_count.non_relic_squads++
-                        
-                        if (squad.bot_type == 'relicbot') squads_count.event_squads++  
-                        if (squad.bot_type == 'squadbot' && (squad.squad_string.toLowerCase().replace(/_/g,' ').match(/\btraces\b/) || squad.squad_string.toLowerCase().replace(/_/g,' ').match(/\btrace\b/))) squads_count.event_squads++
-                    }
+                    if (squad.bot_type == 'relicbot') squads_count.event_squads++  
+                    if (squad.bot_type == 'squadbot' && (squad.squad_string.toLowerCase().replace(/_/g,' ').match(/\btraces\b/) || squad.squad_string.toLowerCase().replace(/_/g,' ').match(/\btrace\b/))) squads_count.event_squads++
                 }
             })
-            db_giveaways.forEach(giveaway => {
-                if (giveaway.user_id == user_id) {
-                    const rep = rep_scheme.giveaway
-                    reputation.all_time += rep
-                }
+            user.giveaways_hosted?.forEach(giveaway => {
+                const rep = rep_scheme.giveaway
+                reputation.all_time += rep
             })
-            db_blessings.forEach(blessing => {
-                if (blessing.user_id == user_id) {
-                    const rep = rep_scheme.blessing
-                    reputation.all_time += rep
-                }
+            user.blessings_hosted?.forEach(blessing => {
+                const rep = rep_scheme.blessing
+                reputation.all_time += rep
             })
-            db_daywave_challenges.forEach(daywave_challenge => {
-                if (daywave_challenge.user_id == user_id) {
-                    const rep = rep_scheme.daywave_completion
-                    reputation.all_time += rep
-                    if (daywave_challenge.timestamp >= today_start) reputation.today += rep 
-                    if (daywave_challenge.timestamp >= week_start) reputation.this_week += rep
-                    if (daywave_challenge.timestamp >= month_start) reputation.this_month += rep
-                }
+            user.challenges_completed?.forEach(daywave_challenge => {
+                const rep = rep_scheme.daywave_completion
+                reputation.all_time += rep
+                if (daywave_challenge.timestamp >= today_start) reputation.today += rep 
+                if (daywave_challenge.timestamp >= week_start) reputation.this_week += rep
+                if (daywave_challenge.timestamp >= month_start) reputation.this_month += rep
             })
-            db_users_ratings.forEach(user_rating => {
-                if (user_rating.rated_user == user_id) {
-                    const rep = rep_scheme.rating[user_rating.rating]
-                    reputation.all_time += rep
-                }
+            user.ratings_received?.forEach(user_rating => {
+                const rep = rep_scheme.rating[user_rating.rating]
+                reputation.all_time += rep
             })
             if (reputation.all_time > 0) statistics.all_time.push({ discord_id: user.discord_id, user_id: user.user_id, ingame_name: user.ingame_name, reputation: reputation.all_time, last_squad_timestamp: user.last_squad_timestamp })
             if (reputation.today > 0) statistics.today.push({ discord_id: user.discord_id, user_id: user.user_id, ingame_name: user.ingame_name, reputation: reputation.today, last_squad_timestamp: user.last_squad_timestamp })
@@ -986,7 +1008,6 @@ function leaderboardsFetch(data,callback) {
             statistics.top_runners.squad_runners = statistics.top_runners.squad_runners.map((o,index) => index < data.options.limit ? o:null).filter(o => o != null)
             statistics.top_runners.event_runners = statistics.top_runners.event_runners.map((o,index) => index < data.options.limit ? o:null).filter(o => o != null)
         }
-        console.log(JSON.stringify(statistics))
         data.options?.exclude_stats?.forEach(stat => {
             if (statistics[stat]) delete statistics[stat]
         })
