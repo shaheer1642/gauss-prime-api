@@ -163,11 +163,15 @@ function fetchDiscordUserProfile(discord_token) {
     })
 }
 
+function relicBotSquadToString(squad,include_sp_rj,exclude_cycle_count) {
+    return `${convertUpper(squad.tier)} ${squad.main_relics.join(' ').toUpperCase()} ${squad.squad_type} ${squad.main_refinements.join(' ')} ${squad.off_relics.length > 0 ? 'with':''} ${squad.off_relics.join(' ').toUpperCase()} ${squad.off_refinements.join(' ')} ${include_sp_rj ? (squad.is_steelpath ? 'Steelpath':squad.is_railjack ? 'Railjack':''):''} ${exclude_cycle_count ? '' : squad.cycle_count == '' ? '':`(${squad.cycle_count} runs)`}`.replace(/\s+/g, ' ').trim()
+}
+
 module.exports = {
     dynamicSort,dynamicSortDesc,msToTime,msToFullTime,
     getRandomColor,embedScore,convertUpper,
     getTodayStartMs,getWeekStartMs,getMonthStartMs,getWeekEndMs,
     calcArrAvg,
     generateVerificationCode,escapeDBCharacters,
-    fetchDiscordUserProfile
+    fetchDiscordUserProfile, relicBotSquadToString
 };

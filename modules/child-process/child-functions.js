@@ -1,4 +1,4 @@
-const { getTodayStartMs, getWeekStartMs, getMonthStartMs, dynamicSortDesc, getWeekEndMs } = require("../functions")
+const { getTodayStartMs, getWeekStartMs, getMonthStartMs, dynamicSortDesc, getWeekEndMs, relicBotSquadToString } = require("../functions")
 
 function allsquadsLeaderboardsGenerate(req) {
     const rep_scheme = req.rep_scheme
@@ -152,10 +152,6 @@ function allsquadsLeaderboardsGenerate(req) {
     })
 
     return statistics
-}
-
-function relicBotSquadToString(squad,include_sp_rj,exclude_cycle_count) {
-    return `${convertUpper(squad.tier)} ${squad.main_relics.join(' ').toUpperCase()} ${squad.squad_type} ${squad.main_refinements.join(' ')} ${squad.off_relics.length > 0 ? 'with':''} ${squad.off_relics.join(' ').toUpperCase()} ${squad.off_refinements.join(' ')} ${include_sp_rj ? (squad.is_steelpath ? 'Steelpath':squad.is_railjack ? 'Railjack':''):''} ${exclude_cycle_count ? '' : squad.cycle_count == '' ? '':`(${squad.cycle_count} runs)`}`.replace(/\s+/g, ' ').trim()
 }
 
 process.on('message', (req) => {
