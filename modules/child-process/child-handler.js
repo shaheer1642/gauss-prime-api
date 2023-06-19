@@ -6,9 +6,11 @@ function createChildProcess(func,data,callback) {
         func: func,
         data: data
     },(err) => {
-        if (err) console.error('Error creating child process',err)
-        callback ? callback(undefined,'Error creating child process',err) : null
-        child.kill()
+        if (err) {
+            child.kill()
+            console.error('Error creating child process',err)
+            callback ? callback(undefined,'Error creating child process',err) : null
+        }
     });
     child.on('message', ({res,err}) => {
         child.kill()

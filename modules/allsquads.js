@@ -883,7 +883,10 @@ function leaderboardsFetch(data,callback) {
             db_daywave_challenges: db_daywave_challenges,
             db_users_ratings: db_users_ratings,
         }, (statistics,err) => {
-            if (err) return callback({code: 500, message: err})
+            if (err) {
+                console.error(err)
+                return callback({code: 500, message: err})
+            }
             return callback({
                 code: 200,
                 data: statistics
