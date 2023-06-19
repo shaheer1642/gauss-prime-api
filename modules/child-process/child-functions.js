@@ -1,4 +1,5 @@
 const { getTodayStartMs, getWeekStartMs, getMonthStartMs, dynamicSortDesc, getWeekEndMs } = require("../functions")
+const { relicBotSquadToString } = require("../relicbot")
 
 function allsquadsLeaderboardsGenerate(req) {
     const rep_scheme = req.rep_scheme
