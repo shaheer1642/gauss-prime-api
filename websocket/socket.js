@@ -13,6 +13,7 @@ const relicbot = require('../modules/relicbot')
 const squadbot = require('../modules/squadbot')
 const allsquads = require('../modules/allsquads')
 const global_variables = require('../modules/global_variables');
+const miniframe = require('../modules/miniframe');
 const { pushNotify } = require('../modules/firebase/FCM');
 const { event_emitter } = require('../modules/event_emitter');
 
@@ -28,6 +29,8 @@ io.on('connection', (socket) => {
       delete clients[socket.id]
       console.log('[websocket] connected clients',new Date(),Object.keys(clients).length)
       socket.removeAllListeners()
+
+      miniframe.socketCleanUp(socket.id)
     });
 
     Object.keys(relicbot.endpoints).forEach(key => {
@@ -114,6 +117,12 @@ io.on('connection', (socket) => {
         } else {
           global_variables.endpoints[key](data, (res) => { logReponseTime(ts,key); callback ? callback(res) : null })
         }
+      })
+    })
+    Object.keys(miniframe.endpoints).forEach(key => {
+      socket.addListener(key, (data,callback) => {
+        const ts = new Date().getTime()
+        miniframe.endpoints[key]({...data, socket_id: socket.id}, (res) => { logReponseTime(ts,key); callback ? callback(res) : null })
       })
     })
 });
