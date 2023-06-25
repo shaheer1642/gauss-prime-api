@@ -39,6 +39,7 @@ function miniframeCharacterSpawn(data,callback) {
 }
 
 function miniframeCharacterUpdate(data,callback) {
+    if (!data.character || !data.socket_id) return callback({code: 400, message: 'Invalid data'})
     characters = characters.map((char) => {
         if (char.character_id == data.socket_id)
             return data.character
@@ -53,8 +54,8 @@ function miniframeCharacterUpdate(data,callback) {
 
 var characters = []
 
-const mapSizeH = 60
-const mapSizeV = 20
+const mapSizeH = 1920
+const mapSizeV = 1080
 
 var props = {
     healths: [],

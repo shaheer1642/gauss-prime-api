@@ -246,6 +246,6 @@ db.on('notification', (notification) => {
 })
 
 event_emitter.on('socketNotifyAll',(data) => {
-  console.log('[socketNotifyAll]',data)
+  // console.log('[socketNotifyAll]',data)
   io.emit(data.event,data.data)
 })
