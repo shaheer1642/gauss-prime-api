@@ -38,7 +38,7 @@ router.get('/discordOAuth2', async (req, res) => {
         }).then(async userResult => {
             const userData = await getJSONResponse(userResult.body);
             console.log(userData)
-            userAuthentication('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, link_account: link_account, cookies: req.cookies})
+            userAuthentication('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, link_account: link_account, query: req.cookies || req.query})
             .then((login_token) => {
                 console.log('login_token',login_token)
                 if (!link_account) res.redirect(`${origin}?login_token=${login_token}`)
@@ -103,7 +103,7 @@ router.get('/login/email', async (req, res) => {
         })
     }
     
-    userAuthentication('email',{email: req.query.email, password: req.query.password, link_account: req.query.link_account, cookies: req.cookies})
+    userAuthentication('email',{email: req.query.email, password: req.query.password, link_account: req.query.link_account, cookies: req.cookies || req.query})
     .then((login_token) => {
         return res.send({
             code: 200,
@@ -240,12 +240,12 @@ async function userAuthentication(type,data) {
             const discord_user = await fetchDiscordUserProfile(data.discord_token)
             if (!discord_user) return reject('[userAuthentication] bad parameters: no discord_token')
             if (data.link_account) {
-                if (!data.query?.login_token) return reject('[userAuthentication] unauthorized: no login_token found')
+                if (!data.cookies?.login_token) return reject('[userAuthentication] unauthorized: no login_token found')
                 query = `
                     UPDATE as_users_list SET 
                     discord_id = '${discord_user.id}',
                     discord_profile = '${JSON.stringify(discord_user)}'
-                    WHERE login_tokens @> '[{"token": "${data.query.login_token}"}]'
+                    WHERE login_tokens @> '[{"token": "${data.cookies.login_token}"}]'
                     RETURNING *;
                 `
             } else {
@@ -262,12 +262,12 @@ async function userAuthentication(type,data) {
             if (!data.email) return reject('[userAuthentication] bad parameters: no email')
             if (!data.password) return reject('[userAuthentication] bad parameters: no password')
             if (data.link_account) {
-                if (!data.query?.login_token) return reject('[userAuthentication] unauthorized: no login_token found')
+                if (!data.cookies?.login_token) return reject('[userAuthentication] unauthorized: no login_token found')
                 query = `
                     UPDATE as_users_list SET 
                     email = '${data.email}',
                     password = '${data.password}'
-                    WHERE login_tokens @> '[{"token": "${data.query.login_token}"}]'
+                    WHERE login_tokens @> '[{"token": "${data.cookies.login_token}"}]'
                     RETURNING *;
                 `
             } else {
