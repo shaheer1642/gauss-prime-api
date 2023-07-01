@@ -104,7 +104,7 @@ router.get('/login/email', async (req, res) => {
         })
     }
     
-    userAuthentication('email',{email: req.query.email, password: req.query.password, link_account: req.query.link_account, cookies: req.cookies || req.query})
+    userAuthentication('email',{email: req.query.email, password: req.query.password, link_account: req.query.link_account, cookies: req.query})
     .then((login_token) => {
         return res.send({
             code: 200,
