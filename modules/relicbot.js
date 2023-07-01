@@ -44,12 +44,12 @@ const pa_relics_list = [
     'axi_g10_relic',
     'axi_b6_relic',
     // prime resurgence
-    'lith_d5_relic',
-    'lith_p7_relic',
-    'meso_l2_relic',
-    'neo_a9_relic',
-    'neo_r5_relic',
-    'axi_m4_relic',
+    'lith_v10_relic',
+    'lmeso_p12_relic',
+    'meso_c7_relic',
+    'neo_a10_relic',
+    'axi_i3_relic',
+    'axi_k12_relic'
 ]
 const relics_list = {}
 var hosting_table = []
