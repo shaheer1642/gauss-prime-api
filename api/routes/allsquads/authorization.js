@@ -240,12 +240,12 @@ async function userAuthentication(type,data) {
             const discord_user = await fetchDiscordUserProfile(data.discord_token)
             if (!discord_user) return reject('[userAuthentication] bad parameters: no discord_token')
             if (data.link_account) {
-                if (!data.cookies?.login_token) return reject('[userAuthentication] unauthorized: no login_token found')
+                if (!data.query?.login_token) return reject('[userAuthentication] unauthorized: no login_token found')
                 query = `
                     UPDATE as_users_list SET 
                     discord_id = '${discord_user.id}',
                     discord_profile = '${JSON.stringify(discord_user)}'
-                    WHERE login_tokens @> '[{"token": "${data.cookies.login_token}"}]'
+                    WHERE login_tokens @> '[{"token": "${data.query.login_token}"}]'
                     RETURNING *;
                 `
             } else {
@@ -262,12 +262,12 @@ async function userAuthentication(type,data) {
             if (!data.email) return reject('[userAuthentication] bad parameters: no email')
             if (!data.password) return reject('[userAuthentication] bad parameters: no password')
             if (data.link_account) {
-                if (!data.cookies?.login_token) return reject('[userAuthentication] unauthorized: no login_token found')
+                if (!data.query?.login_token) return reject('[userAuthentication] unauthorized: no login_token found')
                 query = `
                     UPDATE as_users_list SET 
                     email = '${data.email}',
                     password = '${data.password}'
-                    WHERE login_tokens @> '[{"token": "${data.cookies.login_token}"}]'
+                    WHERE login_tokens @> '[{"token": "${data.query.login_token}"}]'
                     RETURNING *;
                 `
             } else {
