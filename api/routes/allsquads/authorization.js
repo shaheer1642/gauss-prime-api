@@ -15,6 +15,7 @@ router.get('/discordOAuth2', async (req, res) => {
     }
     const origin = req.query.state.split('_')[0]
     const link_account = req.query.state.split('_')[1]
+    const login_token = req.query.state.split('_')[2]
     request('https://discord.com/api/oauth2/token', {
         method: 'POST',
         body: new URLSearchParams({
@@ -38,7 +39,7 @@ router.get('/discordOAuth2', async (req, res) => {
         }).then(async userResult => {
             const userData = await getJSONResponse(userResult.body);
             console.log(userData)
-            userAuthentication('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, link_account: link_account, query: req.cookies || req.query})
+            userAuthentication('discord',{discord_token: `${oauthData.token_type} ${oauthData.access_token}`, link_account: link_account, cookies: {login_token: login_token}})
             .then((login_token) => {
                 console.log('login_token',login_token)
                 if (!link_account) res.redirect(`${origin}?login_token=${login_token}`)
@@ -77,7 +78,7 @@ router.get('/signup/email', async (req, res) => {
         })
     }
     
-    userRegistration('email',{email: req.query.email, password: req.query.password, cookies: req.cookies})
+    userRegistration('email',{email: req.query.email, password: req.query.password, cookies: req.cookies || req.query})
     .then((login_token) => {
         return res.send({
             code: 200,
