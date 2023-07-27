@@ -36,6 +36,7 @@ const pa_relics_list = [
     'meso_k6_relic',
     'meso_g5_relic',
     'meso_p13_relic',
+    'neo_c4_relic',
     'neo_d7_relic',
     'neo_t7_relic',
     'neo_f2_relic',
