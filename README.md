@@ -8,6 +8,7 @@ API and WebSocket for the Discord bot (Gauss Prime) and the allsquads.com websit
 - React.js
 - Firebase-admin
 - Googleapis
+- PostgreSQL
 
 # Running the code
 - First install the node modules using the command: `npm install`
