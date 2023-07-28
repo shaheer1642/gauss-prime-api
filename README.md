@@ -12,4 +12,4 @@ API and WebSocket for the Discord bot (Gauss Prime) and the allsquads.com websit
 
 # Running the code
 - First install the node modules using the command: `npm install`
-- Run the website using: `npm start`
+- Run the server using: `npm start`
