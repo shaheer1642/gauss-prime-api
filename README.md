@@ -1,7 +1,9 @@
-# About
+# API/WebSocket (allsquads.com)
+
+## About
 API and WebSocket for the Discord bot (Gauss Prime) and the allsquads.com website. 
 
-# Technologies
+## Technologies
 - Exress.js
 - Socket.io
 - Discord.js
@@ -10,6 +12,6 @@ API and WebSocket for the Discord bot (Gauss Prime) and the allsquads.com websit
 - Googleapis
 - PostgreSQL
 
-# Running the code
+## Running the code
 - First install the node modules using the command: `npm install`
 - Run the server using: `npm start`
