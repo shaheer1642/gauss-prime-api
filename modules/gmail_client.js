@@ -1,6 +1,6 @@
 const fs = require('fs');
 const readline = require('readline');
-const {google} = require('googleapis');
+const { google } = require('googleapis');
 const { db } = require('./db_connection');
 
 // If modifying these scopes, delete gmail_token.json.
@@ -19,18 +19,18 @@ authorize(JSON.parse(process.env.GMAIL_CREDENTIAL), gmail_api_call);
  * @param {function} callback The callback to call with the authorized client.
  */
 function authorize(credentials, callback) {
-  const {client_secret, client_id, redirect_uris} = credentials.installed;
-  const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+    const { client_secret, client_id, redirect_uris } = credentials.installed;
+    const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
 
-  // Check if we have previously stored a token.
-  fs.readFile(TOKEN_PATH, (err, token) => {
-    if (err) return getNewToken(oAuth2Client, callback);
-    oAuth2Client.setCredentials(JSON.parse(token));
-    console.log('authorized gmail')
-    setInterval(() => {
-        callback(oAuth2Client)
-    }, 2000);
-  });
+    // Check if we have previously stored a token.
+    fs.readFile(TOKEN_PATH, (err, token) => {
+        if (err) return getNewToken(oAuth2Client, callback);
+        oAuth2Client.setCredentials(JSON.parse(token));
+        console.log('authorized gmail')
+        setInterval(() => {
+            callback(oAuth2Client)
+        }, 2000);
+    });
 }
 
 /**
@@ -40,29 +40,29 @@ function authorize(credentials, callback) {
  * @param {getEventsCallback} callback The callback for the authorized client.
  */
 function getNewToken(oAuth2Client, callback) {
-  const authUrl = oAuth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: SCOPES,
-  });
-  console.log('Authorize this app by visiting this url:', authUrl);
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-  rl.question('Enter the code from that page here: ', (code) => {
-    rl.close();
-    oAuth2Client.getToken(code, (err, token) => {
-      if (err) return console.error('Error retrieving access token', err);
-      oAuth2Client.setCredentials(token);
-      // Store the token to disk for later program executions
-      fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
-        if (err) return console.error(err);
-        console.log('Token stored to', TOKEN_PATH);
-      });
-        console.log('refreshed token')
-      callback(oAuth2Client);
+    const authUrl = oAuth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: SCOPES,
     });
-  });
+    console.log('Authorize this app by visiting this url:', authUrl);
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+    });
+    rl.question('Enter the code from that page here: ', (code) => {
+        rl.close();
+        oAuth2Client.getToken(code, (err, token) => {
+            if (err) return console.error('Error retrieving access token', err);
+            oAuth2Client.setCredentials(token);
+            // Store the token to disk for later program executions
+            fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
+                if (err) return console.error(err);
+                console.log('Token stored to', TOKEN_PATH);
+            });
+            console.log('refreshed token')
+            callback(oAuth2Client);
+        });
+    });
 }
 
 /**
@@ -74,9 +74,9 @@ function getNewToken(oAuth2Client, callback) {
 async function gmail_api_call(auth) {
     if (process.env.ENVIRONMENT_TYPE == 'dev') return
     try {
-        var gmail = google.gmail({version: 'v1', auth})
+        var gmail = google.gmail({ version: 'v1', auth })
     }
-    catch(err) {
+    catch (err) {
         console.log(err)
         return
     }
@@ -126,7 +126,7 @@ async function gmail_api_call(auth) {
             }).catch(err => console.log(err));
             const email = res.data.snippet
             console.log('Received email on google: ' + email)
-            var part = res.data.payload.parts.filter(function(part) {
+            var part = res.data.payload.parts.filter(function (part) {
                 return part.mimeType == 'text/html';
             });
 
@@ -138,24 +138,25 @@ async function gmail_api_call(auth) {
                         const words = email.split(' ')
                         var i = 4
                         while (true) {
-                            if (words[i] == 'has' && words[i+1] == 'sent') break;
+                            // if (words[i] == 'has' && words[i+1] == 'sent') break; [english version]
+                            if (!words[i] || words[i] == '发送给你一封信息!') break; //[chinese version]
                             ingame_name += `${words[i]} `
                             i++;
                             if (i == 50) break; //infinite loop
                         }
                         ingame_name = ingame_name.trim()
                         const platform = ingame_name.match('(PSN)') ? 'PSN' : ingame_name.match('(NSW)') ? 'NSW' : ingame_name.match('(XBOX)') ? 'XBOX' : 'PC'
-                        ingame_name = ingame_name.replace('(PSN)','').replace('(NSW)','').replace('(XBOX)','')
+                        ingame_name = ingame_name.replace('(PSN)', '').replace('(NSW)', '').replace('(XBOX)', '')
                         console.log('User', ingame_name, 'is verifying their ign ; Platform:', platform)
                         db.query(`UPDATE as_users_list SET ingame_name='${ingame_name}', platform='${platform}' WHERE ${user_secret.id_type} = '${user_secret.identifier}' returning *;`).then(async res => {
                             if (res.rowCount == 0) {
                                 if (user_secret.id_type == 'discord_id') {
                                     db.query(`INSERT INTO as_users_list (discord_id,ingame_name,platform) values ('${user_secret.identifier}','${ingame_name}','${platform}') returning *;`)
-                                    .then(res => {
-                                        if (res.rowCount == 1) {
-                                            console.log('User', ingame_name, 'has registered their ign')
-                                        }
-                                    }).catch(console.error)
+                                        .then(res => {
+                                            if (res.rowCount == 1) {
+                                                console.log('User', ingame_name, 'has registered their ign')
+                                            }
+                                        }).catch(console.error)
                                 }
                             } else {
                                 console.log('User', ingame_name, 'has updated their ign')
