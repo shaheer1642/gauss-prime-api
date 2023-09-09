@@ -138,8 +138,8 @@ async function gmail_api_call(auth) {
                         const words = email.split(' ')
                         var i = 4
                         while (true) {
-                            // if (words[i] == 'has' && words[i+1] == 'sent') break; [english version]
-                            if (!words[i] || words[i] == '发送给你一封信息!') break; //[chinese version]
+                            // if (!words[i] || words[i] == '发送给你一封信息!') break; [chinese version]
+                            if (!words[i] || words[i] == 'has' && words[i + 1] == 'sent') break;
                             ingame_name += `${words[i]} `
                             i++;
                             if (i == 50) break; //infinite loop
