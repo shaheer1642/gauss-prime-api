@@ -4,6 +4,7 @@ const { convertUpper, dynamicSort, dynamicSortDesc } = require('./functions')
 const db_modules = require('./db_modules')
 const { event_emitter } = require('./event_emitter')
 const JSONbig = require('json-bigint');
+const { as_users_list } = require("./allsquads/as_users_list")
 
 const endpoints = {
     'relicbot/squads/create': squadsCreate,
@@ -196,7 +197,7 @@ function squadsCreate(data, callback) {
                 '["${new Date().getTime()} ${data.user_id} created squad"]')
             `).then(res => {
                 if (res.rowCount == 1) {
-                    db_modules.schedule_query(`UPDATE as_rb_squads SET members = members-'${data.user_id}', logs = logs || '"${new Date().getTime()} ${data.user_id} removed from squad due to timeout"' WHERE members @> '"${data.user_id}"' AND status='active' AND squad_id = '${squad_id}'`, squad_expiry)
+                    db_modules.schedule_query(`UPDATE as_rb_squads SET members = members-'${data.user_id}', logs = logs || '"${new Date().getTime()} ${data.user_id} removed from squad due to timeout"' WHERE members @> '"${data.user_id}"' AND status='active' AND squad_id = '${squad_id}'`, as_users_list[data.user_id].squad_timeout)
                     return resolve({ code: 200 })
                 } else return resolve({
                     code: 500,
@@ -296,7 +297,7 @@ function squadsAddMember(data, callback) {
     `).then(res => {
         if (res.rowCount == 1) {
             if (res.rows[0].members.includes(data.user_id)) {
-                db_modules.schedule_query(`UPDATE as_rb_squads SET members = members-'${data.user_id}', logs = logs || '"${new Date().getTime()} ${data.user_id} removed from squad due to timeout"' WHERE members @> '"${data.user_id}"' AND status='active' AND squad_id = '${data.squad_id}'`, squad_expiry)
+                db_modules.schedule_query(`UPDATE as_rb_squads SET members = members-'${data.user_id}', logs = logs || '"${new Date().getTime()} ${data.user_id} removed from squad due to timeout"' WHERE members @> '"${data.user_id}"' AND status='active' AND squad_id = '${data.squad_id}'`, as_users_list[data.user_id].squad_timeout)
             }
             return callback({
                 code: 200
