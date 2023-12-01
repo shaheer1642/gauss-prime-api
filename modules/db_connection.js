@@ -1,5 +1,5 @@
 const DB = require('pg');
-const {event_emitter} = require('./event_emitter')
+const { event_emitter } = require('./event_emitter')
 
 const db = new DB.Client({
     connectionString: process.env.DATABASE_URL,
@@ -96,14 +96,14 @@ db.connect().then(async res => {
 });
 
 db.on('error', err => {
-    console.log('=============== DB Connection error. ==============',err)
+    console.log('=============== DB Connection error. ==============', err)
     process.exit()
 })
 
 setInterval(() => {
-    db.query(`SELECT * FROM items_list`).then(res => {
-        console.log('Pinged the DB. Received rows:',res.rowCount)
+    db.query(`SELECT * FROM challenges`).then(res => {
+        console.log('Pinged the DB. Received rows:', res.rowCount)
     }).catch(console.error)
 }, 900000);
 
-module.exports = {db};
+module.exports = { db };
